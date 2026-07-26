@@ -27,7 +27,6 @@ android-webview/captures/
 android-webview/.externalNativeBuild/
 
 # APK 输出
-*.apk
 *.aab
 *.ap_
 *.dex
