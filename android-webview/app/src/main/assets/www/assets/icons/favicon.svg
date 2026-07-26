@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="12" fill="#2e7d32"/>
+  <g transform="translate(8,8) scale(0.6)">
+    <ellipse cx="32" cy="32" rx="14" ry="6" fill="#37474f"/>
+    <circle cx="8" cy="12" r="9" fill="none" stroke="#cfd8dc" stroke-width="2"/>
+    <circle cx="56" cy="12" r="9" fill="none" stroke="#cfd8dc" stroke-width="2"/>
+    <circle cx="8" cy="52" r="9" fill="none" stroke="#cfd8dc" stroke-width="2"/>
+    <circle cx="56" cy="52" r="9" fill="none" stroke="#cfd8dc" stroke-width="2"/>
+    <line x1="8" y1="12" x2="32" y2="32" stroke="#455a64" stroke-width="3"/>
+    <line x1="56" y1="12" x2="32" y2="32" stroke="#455a64" stroke-width="3"/>
+    <line x1="8" y1="52" x2="32" y2="32" stroke="#455a64" stroke-width="3"/>
+    <line x1="56" y1="52" x2="32" y2="32" stroke="#455a64" stroke-width="3"/>
+    <circle cx="28" cy="40" r="2" fill="#4fc3f7"/>
+    <circle cx="32" cy="42" r="2" fill="#4fc3f7"/>
+    <circle cx="36" cy="40" r="2" fill="#4fc3f7"/>
+  </g>
+</svg>

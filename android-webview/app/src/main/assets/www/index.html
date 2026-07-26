@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="day">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+  <meta name="theme-color" content="#3b7d3b" />
+  <meta name="description" content="无人机打药药量/水量/成本/利润计算器，支持多植物预设、本地存储、配置分享，可打包为安卓 APK。" />
+  <title>🚁 无人机打药计算器</title>
+  <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- 顶部装饰：飘动的云/远山 -->
+  <div class="scene-bg" aria-hidden="true">
+    <div class="mountain far"></div>
+    <div class="mountain mid"></div>
+    <div class="cloud cloud-1"></div>
+    <div class="cloud cloud-2"></div>
+    <div class="cloud cloud-3"></div>
+    <div class="field-strip"></div>
+  </div>
+
+  <!-- 飞行中的无人机动画 -->
+  <div id="flyingDrone" class="flying-drone" aria-hidden="true">
+    <svg viewBox="0 0 120 80" width="120" height="80">
+      <ellipse cx="60" cy="40" rx="14" ry="6" class="drone-body"/>
+      <g class="rotor-group r1"><circle cx="20" cy="20" r="14" class="rotor-ring"/><line x1="6" y1="20" x2="34" y2="20" class="rotor-blade"/></g>
+      <g class="rotor-group r2"><circle cx="100" cy="20" r="14" class="rotor-ring"/><line x1="86" y1="20" x2="114" y2="20" class="rotor-blade"/></g>
+      <g class="rotor-group r3"><circle cx="20" cy="60" r="14" class="rotor-ring"/><line x1="6" y1="60" x2="34" y2="60" class="rotor-blade"/></g>
+      <g class="rotor-group r4"><circle cx="100" cy="60" r="14" class="rotor-ring"/><line x1="86" y1="60" x2="114" y2="60" class="rotor-blade"/></g>
+      <line x1="20" y1="20" x2="60" y2="40" class="drone-arm"/>
+      <line x1="100" y1="20" x2="60" y2="40" class="drone-arm"/>
+      <line x1="20" y1="60" x2="60" y2="40" class="drone-arm"/>
+      <line x1="100" y1="60" x2="60" y2="40" class="drone-arm"/>
+      <g class="spray">
+        <circle cx="55" cy="55" r="1.5" class="drop d1"/>
+        <circle cx="60" cy="58" r="1.5" class="drop d2"/>
+        <circle cx="65" cy="55" r="1.5" class="drop d3"/>
+        <circle cx="58" cy="62" r="1.2" class="drop d4"/>
+        <circle cx="62" cy="62" r="1.2" class="drop d5"/>
+      </g>
+    </svg>
+  </div>
+
+  <header class="app-header">
+    <div class="header-left">
+      <span class="app-logo" aria-hidden="true">🚁</span>
+      <h1>无人机打药计算器</h1>
+      <span class="app-version">v1.0</span>
+    </div>
+    <div class="header-actions">
+      <button id="presetBtn" class="icon-btn" title="预设管理" aria-label="预设管理">📚</button>
+      <button id="importBtn" class="icon-btn" title="从文本导入配置" aria-label="导入">📥</button>
+      <button id="exportBtn" class="icon-btn" title="导出配置文本" aria-label="导出">📤</button>
+      <button id="historyBtn" class="icon-btn" title="历史记录" aria-label="历史">🕘</button>
+      <button id="themeBtn" class="icon-btn theme-toggle" title="切换日/夜模式" aria-label="切换主题">☀️</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <!-- 左侧：植物选择 -->
+    <section class="panel plant-panel" aria-label="植物选择">
+      <div class="panel-title"><span>🌱</span> 植物选择</div>
+      <div class="plant-grid" id="plantGrid"><!-- JS 注入 --></div>
+      <div class="plant-info" id="plantInfo">
+        <div class="plant-info-name" id="plantInfoName">—</div>
+        <div class="plant-info-desc" id="plantInfoDesc">请选择一种植物</div>
+        <div class="plant-info-notes" id="plantInfoNotes"></div>
+      </div>
+      <div class="preset-bar">
+        <button id="savePresetBtn" class="btn btn-secondary btn-sm">💾 存为预设</button>
+        <button id="loadPresetBtn" class="btn btn-secondary btn-sm">📂 加载预设</button>
+        <button id="deletePresetBtn" class="btn btn-secondary btn-sm danger">🗑 删除预设</button>
+      </div>
+    </section>
+
+    <!-- 右侧：结果卡片 -->
+    <section class="panel result-panel" aria-label="计算结果">
+      <div class="panel-title"><span>📊</span> 计算结果</div>
+      <div class="result-grid">
+        <div class="result-card pesticide">
+          <div class="result-icon">💊</div>
+          <div class="result-label">药剂用量</div>
+          <div class="result-value"><span id="rPesticide">0.00</span><span class="unit">套</span></div>
+          <div class="result-sub" id="rPesticideDetail">—</div>
+        </div>
+        <div class="result-card water">
+          <div class="result-icon">💧</div>
+          <div class="result-label">用水量</div>
+          <div class="result-value"><span id="rWater">0</span><span class="unit">升</span></div>
+          <div class="result-sub" id="rWaterDetail">—</div>
+        </div>
+        <div class="result-card cost">
+          <div class="result-icon">💰</div>
+          <div class="result-label">总成本</div>
+          <div class="result-value"><span id="rCost">0.00</span><span class="unit">元</span></div>
+          <div class="result-sub" id="rCostDetail">—</div>
+        </div>
+        <div class="result-card profit">
+          <div class="result-icon">📈</div>
+          <div class="result-label">粗略利润</div>
+          <div class="result-value"><span id="rProfit">0.00</span><span class="unit">元</span></div>
+          <div class="result-sub" id="rProfitDetail">—</div>
+        </div>
+      </div>
+      <div class="result-extra">
+        <div class="extra-row"><span>🚁 建议飞行高度</span><b id="rHeight">—</b></div>
+        <div class="extra-row"><span>🔄 需要循环数</span><b id="rCycles">—</b></div>
+        <div class="extra-row"><span>📐 每亩成本</span><b id="rCostPerMu">—</b></div>
+        <div class="extra-row"><span>💵 每亩利润</span><b id="rProfitPerMu">—</b></div>
+      </div>
+      <button id="calcBtn" class="btn btn-primary btn-block">🚁 开始计算</button>
+    </section>
+
+    <!-- 参数设置 -->
+    <section class="panel param-panel" aria-label="作业参数">
+      <div class="panel-title"><span>📋</span> 作业参数 <span class="hint">（所有数值均可修改，鼠标悬停查看说明）</span></div>
+      <div class="form-grid" id="paramForm"><!-- JS 注入 --></div>
+    </section>
+
+    <!-- 成本明细 -->
+    <section class="panel cost-panel" aria-label="成本明细">
+      <div class="panel-title"><span>💰</span> 成本明细</div>
+      <div class="cost-tabs">
+        <button class="tab-btn active" data-tab="cycle">🔋 循环成本</button>
+        <button class="tab-btn" data-tab="transport">🚚 交通</button>
+        <button class="tab-btn" data-tab="labor">👥 人工</button>
+        <button class="tab-btn" data-tab="other">📦 其他</button>
+      </div>
+      <div class="tab-content active" data-tab="cycle" id="tabCycle"></div>
+      <div class="tab-content" data-tab="transport" id="tabTransport"></div>
+      <div class="tab-content" data-tab="labor" id="tabLabor"></div>
+      <div class="tab-content" data-tab="other" id="tabOther"></div>
+    </section>
+
+    <!-- 收入与利润 -->
+    <section class="panel income-panel" aria-label="收入与利润">
+      <div class="panel-title"><span>💵</span> 收入与药剂</div>
+      <div class="form-grid" id="incomeForm"><!-- JS 注入 --></div>
+    </section>
+
+    <!-- 成本汇总表 -->
+    <section class="panel summary-panel" aria-label="成本汇总">
+      <div class="panel-title"><span>🧮</span> 成本汇总</div>
+      <table class="summary-table">
+        <thead>
+          <tr><th>项目</th><th>金额(元)</th><th>占比</th></tr>
+        </thead>
+        <tbody id="summaryBody"><!-- JS 注入 --></tbody>
+        <tfoot>
+          <tr><td>合计</td><td id="summaryTotal">0.00</td><td>100%</td></tr>
+        </tfoot>
+      </table>
+    </section>
+  </main>
+
+  <!-- 模态框：导入 -->
+  <div class="modal" id="importModal" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-title">📥 导入配置 <button class="modal-close" data-close>✕</button></div>
+      <p class="modal-hint">粘贴他人分享的配置文本（支持 JSON 或带【】标记的文本格式），系统会自动识别并填入。</p>
+      <textarea id="importText" rows="10" placeholder="在此粘贴配置文本..."></textarea>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" data-close>取消</button>
+        <button class="btn btn-primary" id="importConfirm">识别并填入</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：导出 -->
+  <div class="modal" id="exportModal" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-title">📤 导出配置 <button class="modal-close" data-close>✕</button></div>
+      <div class="export-tabs">
+        <button class="tab-btn active" data-exp="text">📝 文本格式（易读）</button>
+        <button class="tab-btn" data-exp="json">⚙️ JSON格式（精确）</button>
+      </div>
+      <textarea id="exportText" rows="12" readonly></textarea>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="copyExport">📋 复制到剪贴板</button>
+        <button class="btn btn-primary" data-close>完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：预设管理 -->
+  <div class="modal" id="presetModal" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-title">📚 预设管理 <button class="modal-close" data-close>✕</button></div>
+      <p class="modal-hint">点击预设名加载；选中后可删除。预设保存在本地浏览器，不会上传。</p>
+      <ul class="preset-list" id="presetList"><!-- JS 注入 --></ul>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" data-close>关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：历史记录 -->
+  <div class="modal" id="historyModal" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-title">🕘 历史记录 <button class="modal-close" data-close>✕</button></div>
+      <p class="modal-hint">最近 20 次计算记录（本地存储）。</p>
+      <ul class="history-list" id="historyList"><!-- JS 注入 --></ul>
+      <div class="modal-actions">
+        <button class="btn btn-secondary danger" id="clearHistoryBtn">🗑 清空历史</button>
+        <button class="btn btn-secondary" data-close>关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <footer class="app-footer">
+    <span>🚁 无人机打药计算器 · 本地存储不上传 · 可打包 APK</span>
+    <a href="docs/usage.md" target="_blank">使用说明</a>
+  </footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/calculator.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

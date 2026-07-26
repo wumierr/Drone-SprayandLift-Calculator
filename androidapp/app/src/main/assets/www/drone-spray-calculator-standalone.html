@@ -1,0 +1,4820 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="day">
+<head>
+<!-- 独立 HTML 版本 - 所有 CSS/JS 已内联 - 可直接双击打开 -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#2e7d32" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0d1f0d" media="(prefers-color-scheme: dark)" />
+  <meta name="description" content="无人机打药药量/水量/成本/利润计算器，支持多植物预设、本地存储、配置分享，可打包为安卓 APK。" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="无人机打药" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>🚁 无人机打药计算器</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0Ij4KICA8cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIxMiIgZmlsbD0iIzJlN2QzMiIvPgogIDxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDgsOCkgc2NhbGUoMC42KSI+CiAgICA8ZWxsaXBzZSBjeD0iMzIiIGN5PSIzMiIgcng9IjE0IiByeT0iNiIgZmlsbD0iIzM3NDc0ZiIvPgogICAgPGNpcmNsZSBjeD0iOCIgY3k9IjEyIiByPSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiNjZmQ4ZGMiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgPGNpcmNsZSBjeD0iNTYiIGN5PSIxMiIgcj0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjY2ZkOGRjIiBzdHJva2Utd2lkdGg9IjIiLz4KICAgIDxjaXJjbGUgY3g9IjgiIGN5PSI1MiIgcj0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjY2ZkOGRjIiBzdHJva2Utd2lkdGg9IjIiLz4KICAgIDxjaXJjbGUgY3g9IjU2IiBjeT0iNTIiIHI9IjkiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2NmZDhkYyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgICA8bGluZSB4MT0iOCIgeTE9IjEyIiB4Mj0iMzIiIHkyPSIzMiIgc3Ryb2tlPSIjNDU1YTY0IiBzdHJva2Utd2lkdGg9IjMiLz4KICAgIDxsaW5lIHgxPSI1NiIgeTE9IjEyIiB4Mj0iMzIiIHkyPSIzMiIgc3Ryb2tlPSIjNDU1YTY0IiBzdHJva2Utd2lkdGg9IjMiLz4KICAgIDxsaW5lIHgxPSI4IiB5MT0iNTIiIHgyPSIzMiIgeTI9IjMyIiBzdHJva2U9IiM0NTVhNjQiIHN0cm9rZS13aWR0aD0iMyIvPgogICAgPGxpbmUgeDE9IjU2IiB5MT0iNTIiIHgyPSIzMiIgeTI9IjMyIiBzdHJva2U9IiM0NTVhNjQiIHN0cm9rZS13aWR0aD0iMyIvPgogICAgPGNpcmNsZSBjeD0iMjgiIGN5PSI0MCIgcj0iMiIgZmlsbD0iIzRmYzNmNyIvPgogICAgPGNpcmNsZSBjeD0iMzIiIGN5PSI0MiIgcj0iMiIgZmlsbD0iIzRmYzNmNyIvPgogICAgPGNpcmNsZSBjeD0iMzYiIGN5PSI0MCIgcj0iMiIgZmlsbD0iIzRmYzNmNyIvPgogIDwvZz4KPC9zdmc+Cg==">
+  
+  
+  <style>
+/* ============================================================
+   无人机打药计算器 - 样式表
+   设计语言：田野绿 + 天空蓝 + 大地暖色，圆润友好，工程化模块
+   ============================================================ */
+
+/* ---------- 1. CSS 变量 / 主题 ---------- */
+:root {
+  --font-sans: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.08);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.10);
+  --shadow-lg: 0 10px 40px rgba(0,0,0,.18);
+
+  --transition: 0.25s cubic-bezier(.4,0,.2,1);
+}
+
+[data-theme="day"] {
+  --bg-grad-start: #e8f5e9;
+  --bg-grad-end:   #f1f8e9;
+  --bg-page: linear-gradient(180deg, var(--bg-grad-start) 0%, #fff 40%, var(--bg-grad-end) 100%);
+  --text-primary: #1f3d1f;
+  --text-secondary: #5a6b5a;
+  --text-muted: #8a9a8a;
+  --panel-bg: rgba(255,255,255,.92);
+  --panel-border: rgba(59,125,59,.15);
+  --accent: #2e7d32;
+  --accent-2: #1565c0;
+  --accent-soft: #e8f5e9;
+  --warn: #ef6c00;
+  --danger: #c62828;
+  --input-bg: #fff;
+  --input-border: #c8d6c8;
+  --input-focus: #2e7d32;
+  --table-stripe: #f5f9f5;
+  --mountain-far: #b8d0b8;
+  --mountain-mid: #8bb58b;
+  --cloud: rgba(255,255,255,.85);
+  --field-color: #aed581;
+}
+
+[data-theme="night"] {
+  --bg-grad-start: #0d1f0d;
+  --bg-grad-end:   #0a141a;
+  --bg-page: linear-gradient(180deg, var(--bg-grad-start) 0%, #121a22 50%, var(--bg-grad-end) 100%);
+  --text-primary: #e8f5e9;
+  --text-secondary: #b0c4b0;
+  --text-muted: #7a8a7a;
+  --panel-bg: rgba(30,40,30,.78);
+  --panel-border: rgba(120,180,120,.18);
+  --accent: #66bb6a;
+  --accent-2: #42a5f5;
+  --accent-soft: rgba(102,187,106,.12);
+  --warn: #ffa726;
+  --danger: #ef5350;
+  --input-bg: rgba(20,28,20,.85);
+  --input-border: #3d523d;
+  --input-focus: #66bb6a;
+  --table-stripe: rgba(40,55,40,.5);
+  --mountain-far: #2a3a2a;
+  --mountain-mid: #1f2e1f;
+  --cloud: rgba(180,200,180,.18);
+  --field-color: #3b5e3b;
+}
+
+/* ---------- 2. 基础重置 ---------- */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-page);
+  color: var(--text-primary);
+  line-height: 1.5;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  transition: background var(--transition), color var(--transition);
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, select, textarea { font-family: inherit; }
+ul { list-style: none; }
+a { color: var(--accent-2); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ---------- 3. 背景场景 ---------- */
+.scene-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.mountain {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 35%;
+  clip-path: polygon(0% 100%, 8% 55%, 18% 75%, 28% 40%, 40% 65%, 52% 30%, 65% 60%, 78% 45%, 90% 70%, 100% 50%, 100% 100%);
+  background: var(--mountain-far);
+  opacity: 0.6;
+}
+.mountain.mid {
+  height: 28%;
+  bottom: 0;
+  clip-path: polygon(0% 100%, 12% 60%, 25% 80%, 38% 50%, 50% 70%, 62% 40%, 75% 65%, 88% 55%, 100% 75%, 100% 100%);
+  background: var(--mountain-mid);
+  opacity: 0.7;
+}
+.field-strip {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 12%;
+  background: linear-gradient(180deg, transparent 0%, var(--field-color) 60%);
+  opacity: 0.4;
+}
+.cloud {
+  position: absolute;
+  background: var(--cloud);
+  border-radius: 50%;
+  filter: blur(8px);
+  animation: drift 80s linear infinite;
+}
+.cloud-1 { width: 180px; height: 50px; top: 8%; left: -200px; animation-duration: 90s; }
+.cloud-2 { width: 240px; height: 60px; top: 14%; left: -300px; animation-duration: 120s; animation-delay: -30s; }
+.cloud-3 { width: 150px; height: 45px; top: 20%; left: -180px; animation-duration: 75s; animation-delay: -50s; }
+@keyframes drift {
+  from { transform: translateX(0); }
+  to   { transform: translateX(calc(100vw + 300px)); }
+}
+
+/* ---------- 4. 飞行无人机动画 ---------- */
+.flying-drone {
+  position: fixed;
+  top: 80px;
+  left: -150px;
+  z-index: 5;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+.flying-drone.flying {
+  animation: flyAcross 5s linear forwards;
+  opacity: 1;
+}
+@keyframes flyAcross {
+  0%   { transform: translateX(0) translateY(0) rotate(-2deg); }
+  25%  { transform: translateX(25vw) translateY(-30px) rotate(2deg); }
+  50%  { transform: translateX(50vw) translateY(0) rotate(-2deg); }
+  75%  { transform: translateX(75vw) translateY(-20px) rotate(2deg); }
+  100% { transform: translateX(calc(100vw + 150px)) translateY(0) rotate(0); }
+}
+.drone-body { fill: #37474f; }
+.drone-arm { stroke: #455a64; stroke-width: 2; }
+.rotor-ring { fill: none; stroke: #607d8b; stroke-width: 1.5; }
+.rotor-blade { stroke: #90a4ae; stroke-width: 2; stroke-linecap: round; transform-origin: center; }
+.rotor-group { transform-origin: center; }
+.flying-drone.flying .r1 { animation: spin 0.08s linear infinite; }
+.flying-drone.flying .r2 { animation: spin 0.08s linear infinite reverse; }
+.flying-drone.flying .r3 { animation: spin 0.08s linear infinite reverse; }
+.flying-drone.flying .r4 { animation: spin 0.08s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.drop { fill: #4fc3f7; opacity: 0.8; }
+.flying-drone.flying .drop { animation: drip 0.4s linear infinite; }
+@keyframes drip {
+  0% { transform: translateY(0); opacity: 0.9; }
+  100% { transform: translateY(30px); opacity: 0; }
+}
+
+/* ---------- 5. 顶部 Header ---------- */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--panel-border);
+  box-shadow: var(--shadow-sm);
+}
+.header-left { display: flex; align-items: baseline; gap: 10px; }
+.app-logo { font-size: 28px; animation: hover 3s ease-in-out infinite; }
+@keyframes hover {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.app-header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+}
+.app-version {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 2px 6px;
+  background: var(--accent-soft);
+  border-radius: 4px;
+}
+.header-actions { display: flex; gap: 8px; }
+.icon-btn {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  transition: var(--transition);
+  border: 1px solid transparent;
+}
+.icon-btn:hover {
+  background: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.icon-btn:active { transform: translateY(0); }
+
+/* ---------- 5.5 模式切换器 ---------- */
+.mode-switcher {
+  position: relative;
+  z-index: 15;
+  display: flex;
+  gap: 4px;
+  max-width: 480px;
+  margin: 16px auto 0;
+  padding: 4px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(10px);
+}
+.mode-btn {
+  flex: 1;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-radius: 999px;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+.mode-btn:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.mode-btn.active {
+  background: linear-gradient(135deg, var(--accent), #43a047);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(46,125,50,.3);
+}
+
+/* 模式标签（显示在结果面板标题） */
+.mode-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  margin-left: auto;
+}
+
+/* 模式结果容器 */
+.mode-results { display: block; }
+
+/* 公式注释块（结果显示区） */
+.result-formula {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  padding: 4px 8px;
+  background: var(--accent-soft);
+  border-radius: 4px;
+  border-left: 2px solid var(--accent);
+  line-height: 1.4;
+  font-family: var(--font-mono);
+  word-break: break-all;
+}
+
+/* 总公式注释（汇总表下方） */
+.total-formula {
+  margin-top: 10px;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--accent);
+  font-family: var(--font-mono);
+  line-height: 1.5;
+}
+
+/* 汇总面板标题中的公式提示 */
+.summary-panel .hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* 药剂卡片库存状态视觉提示（打药模式） */
+.result-card.pesticide[data-stock="none"]   { border-left-color: #757575; }
+.result-card.pesticide[data-stock="short"]  { border-left-color: #ef6c00; }
+.result-card.pesticide[data-stock="enough"] { border-left-color: #2e7d32; }
+.result-card.pesticide[data-stock="enough"] .result-value span { color: #2e7d32; }
+.result-card.pesticide[data-stock="short"]  .result-value span { color: #ef6c00; }
+.result-card.pesticide[data-stock="none"]   .result-value span { color: #757575; }
+
+/* ---------- 作业时间面板 ---------- */
+.timing-panel, .timing-param-panel {
+  grid-column: 1 / -1;
+}
+.timing-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.timing-card {
+  background: var(--input-bg);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  position: relative;
+  border-left: 4px solid var(--accent);
+  transition: var(--transition);
+  text-align: center;
+}
+.timing-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.timing-card.total {
+  background: linear-gradient(135deg, var(--accent), #43a047);
+  color: #fff;
+  border-left-color: #1b5e20;
+}
+.timing-card.total .timing-label,
+.timing-card.total .timing-sub,
+.timing-card.total .timing-value .unit {
+  color: rgba(255,255,255,.9);
+}
+.timing-card.total .timing-value span:first-child {
+  color: #fff;
+}
+.timing-icon { font-size: 20px; opacity: 0.7; }
+.timing-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.timing-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 4px 0;
+  font-family: var(--font-mono);
+}
+.timing-value .unit {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-left: 3px;
+}
+.timing-sub { font-size: 10.5px; color: var(--text-muted); line-height: 1.4; }
+
+/* Radio 按钮组（充电模式选择） */
+.field-radio {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px;
+  background: var(--input-bg);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--input-border);
+  min-height: 44px;
+  align-items: center;
+}
+.field-radio label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: var(--accent-soft);
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-secondary);
+  transition: var(--transition);
+  -webkit-user-select: none;
+  user-select: none;
+}
+.field-radio label:hover {
+  background: var(--accent);
+  color: #fff;
+}
+.field-radio input[type="radio"] {
+  display: none;
+}
+.field-radio input[type="radio"]:checked + span {
+  font-weight: 700;
+}
+.field-radio label:has(input[type="radio"]:checked) {
+  background: linear-gradient(135deg, var(--accent), #43a047);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(46,125,50,.3);
+}
+
+/* 按钮行（开始计算 + 恢复默认） */
+.btn-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.btn-row .btn {
+  flex: 1;
+}
+
+/* 移动端：作业时间网格自适应 */
+@media (max-width: 900px) {
+  .timing-grid { grid-template-columns: repeat(2, 1fr); }
+  .timing-card.total { grid-column: 1 / -1; }
+}
+@media (max-width: 500px) {
+  .timing-grid { grid-template-columns: 1fr; }
+}
+
+/* ---------- 电池循环可视化色块条 ---------- */
+.battery-viz {
+  margin-top: 14px;
+  padding: 12px;
+  background: var(--input-bg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--panel-border);
+}
+.battery-viz-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+.battery-viz-legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  font-weight: 400;
+}
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.legend-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.battery-viz-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 2px;
+  min-height: 56px;
+  align-items: stretch;
+  /* 不再 overflow-x: auto，改为 wrap 自动换行 */
+}
+
+.viz-block {
+  flex: 1 1 40px;
+  min-width: 36px;
+  max-width: 60px;
+  border-radius: 6px;
+  padding: 4px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.viz-block:hover, .viz-block:active {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 10px rgba(0,0,0,.2);
+  z-index: 2;
+}
+.viz-block.active {
+  outline: 3px solid var(--accent);
+  outline-offset: 1px;
+  z-index: 3;
+}
+.viz-block-num { font-size: 11px; font-weight: 700; }
+.viz-block-wait { font-size: 9px; opacity: 0.9; margin-top: 1px; }
+
+/* 作业完成虚线分隔 */
+.viz-divider {
+  flex: 1 0 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 0;
+  position: relative;
+}
+.viz-divider::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 2px dashed var(--text-muted);
+}
+.viz-divider-text {
+  background: var(--input-bg);
+  padding: 2px 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+  position: relative;
+  z-index: 1;
+  border: 1px dashed var(--text-muted);
+  border-radius: 999px;
+}
+
+/* 结束后充电蓝色块 */
+.viz-block-after {
+  border: 2px solid #0d47a1;
+}
+.viz-block-after:hover {
+  box-shadow: 0 3px 10px rgba(25, 118, 210, 0.4);
+}
+
+/* Tooltip 悬停详情 */
+.viz-block-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 100;
+  margin-bottom: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.3);
+  max-width: 220px;
+  white-space: normal;
+  width: max-content;
+}
+.viz-block:hover .viz-block-tooltip {
+  opacity: 1;
+}
+
+.battery-viz-summary {
+  margin-top: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* 算法公式说明 */
+.battery-viz-formula {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: var(--input-bg);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--accent);
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+.bv-formula-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.bv-formula-line {
+  font-family: var(--font-mono);
+  word-break: break-all;
+}
+.bv-formula-line b {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+/* 点击详情面板 */
+.battery-viz-detail {
+  margin-top: 10px;
+  padding: 12px;
+  background: var(--accent-soft);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--accent);
+  animation: slideUp 0.2s ease;
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.battery-viz-detail-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.battery-viz-close {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.battery-viz-close:hover { background: var(--danger); }
+.battery-viz-detail table {
+  width: 100%;
+  font-size: 12px;
+  border-collapse: collapse;
+}
+.battery-viz-detail td {
+  padding: 4px 8px;
+  border-bottom: 1px dashed var(--input-border);
+}
+.battery-viz-detail td:first-child {
+  color: var(--text-muted);
+  width: 40%;
+}
+.battery-viz-detail td:last-child {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* 循环数小框副文案（同行显示，与主值同字号同色） */
+.extra-inline {
+  font-size: inherit;
+  color: var(--accent);
+  font-weight: 800;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  margin-left: 1px;
+}
+
+/* ---------- 6. 主区域布局 ---------- */
+.app-main {
+  position: relative;
+  z-index: 10;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 16px;
+}
+.panel {
+  background: var(--panel-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition), transform var(--transition);
+}
+.panel:hover { box-shadow: var(--shadow-md); }
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--accent-soft);
+}
+.panel-title .hint {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+/* 植物面板跨两行 */
+.plant-panel { grid-row: span 2; }
+.result-panel { grid-column: 2; }
+.param-panel,
+.cost-panel,
+.income-panel,
+.summary-panel { grid-column: 1 / -1; }
+
+/* ---------- 7. 植物选择网格 ---------- */
+.plant-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.plant-card {
+  padding: 12px 6px;
+  border: 2px solid var(--input-border);
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.plant-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+.plant-card.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 3px rgba(46,125,50,.15);
+}
+.plant-card .p-icon { font-size: 28px; display: block; }
+.plant-card .p-name { font-size: 12px; font-weight: 600; margin-top: 4px; }
+.plant-card.active::after {
+  content: "✓";
+  position: absolute;
+  top: 4px; right: 6px;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.plant-info {
+  background: var(--accent-soft);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 12px;
+  min-height: 80px;
+}
+.plant-info-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.plant-info-desc { font-size: 13px; color: var(--text-secondary); }
+.plant-info-notes {
+  font-size: 12px;
+  color: var(--warn);
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--input-border);
+}
+
+.preset-bar { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ---------- 8. 结果卡片 ---------- */
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.result-card {
+  background: var(--input-bg);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  position: relative;
+  overflow: hidden;
+  border-left: 4px solid var(--accent);
+  transition: var(--transition);
+}
+.result-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.result-card.pesticide { border-left-color: #ab47bc; }
+.result-card.water     { border-left-color: #29b6f6; }
+.result-card.cost      { border-left-color: #ef5350; }
+.result-card.profit    { border-left-color: #66bb6a; }
+.result-card.profit[data-loss="true"] { border-left-color: var(--danger); }
+.result-icon { font-size: 22px; position: absolute; top: 10px; right: 12px; opacity: 0.5; }
+.result-label { font-size: 12px; color: var(--text-muted); }
+.result-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 4px 0;
+  font-family: var(--font-mono);
+}
+.result-value .unit {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-left: 4px;
+}
+.result-sub { font-size: 11px; color: var(--text-muted); }
+
+.result-extra {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.extra-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  padding: 8px 10px;
+  background: var(--input-bg);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--panel-border);
+  min-height: 40px;
+  overflow: hidden;
+  min-width: 0;
+}
+.extra-row > span {
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 45%;
+}
+.extra-row > b {
+  color: var(--accent);
+  font-family: var(--font-mono);
+  text-align: right;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* 自动缩小字号防止溢出 */
+  font-size: clamp(10px, 2.6vw, 13px);
+}
+/* 当 b 后面有 small 副文案时，整体右对齐显示 */
+.extra-row > b + small {
+  flex: 0 0 auto;
+}
+
+/* ---------- 9. 表单 ---------- */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: help;
+}
+.field label .tip {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 10px;
+  text-align: center;
+  line-height: 14px;
+  font-weight: 700;
+  cursor: help;
+  position: relative;
+  font-style: normal;
+}
+.field label .tip:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 400;
+  z-index: 100;
+  margin-bottom: 4px;
+  max-width: 280px;
+  white-space: normal;
+  width: max-content;
+}
+.field input,
+.field select {
+  padding: 8px 10px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: var(--transition);
+  width: 100%;
+  /* 移动端防止输入框过宽 */
+  max-width: 100%;
+  min-width: 0;
+}
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--input-focus);
+  box-shadow: 0 0 0 3px rgba(46,125,50,.15);
+}
+/* 输入验证状态 */
+.field input[data-invalid="true"] {
+  border-color: var(--danger);
+  background: rgba(198, 40, 40, 0.05);
+}
+.field input[data-warn="true"] {
+  border-color: var(--warn);
+}
+
+/* 高优先级字段凸显 */
+.field input[data-priority="high"] {
+  border: 2px solid var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
+  font-size: 15px;
+}
+.field input[data-priority="high"]:focus {
+  box-shadow: 0 0 0 4px rgba(46,125,50,.2);
+}
+.field:has(input[data-priority="high"]) > label {
+  font-weight: 700;
+  color: var(--accent);
+}
+.field:has(input[data-priority="high"]) > label::after {
+  content: ' ⭐';
+  font-size: 11px;
+}
+
+/* 禁用字段（仍可见但不参与计算） */
+.field input[data-disabled="true"] {
+  background: rgba(0,0,0,0.05);
+  color: var(--text-muted);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+[data-theme="night"] .field input[data-disabled="true"] {
+  background: rgba(255,255,255,0.05);
+}
+.field input[data-disabled="true"]:focus {
+  outline: none;
+  border-color: var(--input-border);
+  box-shadow: none;
+}
+.field .unit-suffix {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+.field .unit-suffix input {
+  /* 给单位腾出位置，确保单位在框内最右 */
+  padding-right: 70px;
+  text-align: left;
+  /* 让数字靠左，单位靠右 */
+  width: 100%;
+}
+.field .unit-suffix::after {
+  content: attr(data-unit);
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: var(--accent-soft);
+  padding: 2px 5px;
+  border-radius: 4px;
+  pointer-events: none;
+  white-space: nowrap;
+  /* 允许单位完整显示，最多缩到 9px */
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+  font-weight: 600;
+}
+/* 单位过长时自动缩小字号 */
+.field .unit-suffix[data-unit]:hover::after {
+  /* hover 时显示完整单位（临时） */
+  max-width: 140px;
+  z-index: 10;
+}
+/* 当单位为空时不显示后缀 */
+.field .unit-suffix:not([data-unit])::after,
+.field .unit-suffix[data-unit=""]::after {
+  display: none;
+}
+
+/* 复选框 */
+.field-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--input-bg);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--input-border);
+  cursor: pointer;
+  font-size: 13px;
+}
+.field-check input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+/* ---------- 10. 成本 Tabs ---------- */
+.cost-tabs, .export-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid var(--accent-soft);
+  flex-wrap: wrap;
+}
+.tab-btn {
+  padding: 8px 14px;
+  font-size: 13px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  color: var(--text-secondary);
+  transition: var(--transition);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+.tab-btn:hover { color: var(--accent); }
+.tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 700;
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ---------- 11. 按钮 ---------- */
+.btn {
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), #43a047);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(46,125,50,.3);
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(46,125,50,.4); }
+.btn-primary:active { transform: translateY(0); }
+.btn-secondary {
+  background: var(--input-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--input-border);
+}
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.btn-sm { padding: 6px 10px; font-size: 12px; }
+.btn-block { width: 100%; padding: 14px; font-size: 16px; }
+.btn.danger { color: var(--danger); border-color: var(--danger); }
+.btn.danger:hover { background: var(--danger); color: #fff; }
+
+/* ---------- 12. 汇总表 ---------- */
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.summary-table th, .summary-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--panel-border);
+}
+.summary-table th {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+}
+.summary-table tbody tr:nth-child(even) { background: var(--table-stripe); }
+.summary-table tfoot td {
+  font-weight: 800;
+  color: var(--accent);
+  border-top: 2px solid var(--accent);
+  border-bottom: none;
+}
+.summary-table td:nth-child(2),
+.summary-table td:nth-child(3) { font-family: var(--font-mono); text-align: right; }
+.cost-bar {
+  display: inline-block;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 4px;
+  vertical-align: middle;
+  margin-right: 6px;
+  min-width: 2px;
+}
+
+/* ---------- 13. 模态框 ---------- */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+.modal.show { display: flex; animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal-box {
+  background: var(--panel-bg);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  animation: slideUp 0.25s ease;
+}
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-close {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  font-size: 14px;
+  background: var(--accent-soft);
+  transition: var(--transition);
+}
+.modal-close:hover { background: var(--danger); color: #fff; }
+.modal-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.modal-box textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  resize: vertical;
+  min-height: 120px;
+}
+.modal-box textarea:focus {
+  outline: none;
+  border-color: var(--input-focus);
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+.preset-list, .history-list {
+  max-height: 380px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+.preset-list li, .history-list li {
+  padding: 10px 12px;
+  background: var(--input-bg);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: var(--transition);
+  border: 1px solid var(--input-border);
+}
+.preset-list li:hover, .history-list li:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.preset-list li.selected {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.preset-list .preset-meta, .history-list .hist-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ---------- 14. Toast ---------- */
+.toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: #333;
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+  opacity: 0;
+  transition: all 0.3s ease;
+  max-width: 90vw;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.toast.success { background: #2e7d32; }
+.toast.error { background: #c62828; }
+.toast.warn { background: #ef6c00; }
+
+/* ---------- 15. Footer ---------- */
+.app-footer {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  padding: 20px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--panel-border);
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ---------- 16. 响应式 ---------- */
+@media (max-width: 900px) {
+  .app-main {
+    grid-template-columns: 1fr;
+  }
+  .plant-panel { grid-row: auto; }
+  .result-panel { grid-column: auto; }
+  .app-header h1 { font-size: 16px; }
+}
+@media (max-width: 500px) {
+  .plant-grid { grid-template-columns: repeat(2, 1fr); }
+  .result-grid { grid-template-columns: 1fr; }
+  .result-extra { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+  .app-main { padding: 12px; }
+  .panel { padding: 14px; }
+  .app-version { display: none; }
+  .extra-row { font-size: 12px; padding: 6px 8px; }
+  .extra-row > span { font-size: 11px; }
+  .extra-row > b { font-size: 12px; }
+  /* 移动端结果卡片数值缩小 */
+  .result-value { font-size: 24px; }
+  .result-card { padding: 12px; }
+}
+/* ---------- 17. 数字滚动动画 ---------- */
+.result-value span {
+  display: inline-block;
+  transition: color 0.3s;
+}
+.result-value.flash span { animation: flash 0.6s; }
+@keyframes flash {
+  0% { transform: scale(1); color: var(--text-primary); }
+  50% { transform: scale(1.15); color: var(--accent); }
+  100% { transform: scale(1); color: var(--text-primary); }
+}
+
+/* 打印样式 */
+@media print {
+  .scene-bg, .flying-drone, .app-header, .app-footer,
+  .header-actions, .preset-bar, .calcBtn, .cost-tabs, .tab-btn { display: none !important; }
+  body { background: #fff; color: #000; }
+  .panel { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+}
+
+/* ============================================================
+   18. 移动端深度优化（Android WebView / 手机浏览器 / PWA）
+   ============================================================ */
+
+/* safe-area 适配（刘海屏 / 异形屏） */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+.app-header {
+  padding-top: calc(12px + env(safe-area-inset-top));
+}
+
+/* 防止 WebView 长按弹出选择/复制菜单（UI 元素） */
+.plant-card, .result-card, .panel-title, .extra-row,
+.tab-btn, .btn, .icon-btn, .preset-list li, .history-list li,
+.app-header h1, .app-footer, .result-value, .result-label, .result-sub {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* 输入框允许选择/复制（保留用户体验） */
+input, textarea, select {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
+/* 输入框字号 ≥16px，防止 iOS Safari 自动缩放页面 */
+input[type="number"],
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+select,
+textarea {
+  font-size: 16px;
+}
+
+/* 禁用 WebView 的过度滚动弹性效果（防止页面被拖出） */
+html, body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 触摸目标 ≥44px（Apple HIG / Material Design 推荐最小尺寸） */
+.plant-card { min-height: 76px; }
+.btn { min-height: 44px; }
+.icon-btn { min-width: 44px; min-height: 44px; }
+.tab-btn { min-height: 40px; }
+.field-check { min-height: 44px; }
+.extra-row { min-height: 40px; }
+
+/* 取消点击高亮（Android WebView 默认黄色/蓝色高亮） */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 增强输入框焦点态（移动端易识别） */
+.field input:focus,
+.field select:focus,
+.field-check input:focus + span {
+  outline: none;
+}
+.field input,
+.field select {
+  min-height: 44px;
+}
+
+/* 模态框在小屏幕上从底部滑入（移动端常见交互） */
+@media (max-width: 600px) {
+  .modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .modal-box {
+    border-radius: 18px 18px 0 0;
+    max-width: 100%;
+    width: 100%;
+    max-height: 90vh;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    animation: slideUpMobile 0.3s cubic-bezier(.4,0,.2,1);
+  }
+  @keyframes slideUpMobile {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+  .modal-actions .btn {
+    width: 100%;
+  }
+}
+
+/* 超小屏幕（<380px，老安卓机）进一步紧凑 */
+@media (max-width: 380px) {
+  .app-header { padding: 8px 10px; padding-top: calc(8px + env(safe-area-inset-top)); }
+  .app-header h1 { font-size: 14px; }
+  .header-left { gap: 6px; }
+  .app-logo { font-size: 22px; }
+  .header-actions { gap: 2px; }
+  /* 注意：icon-btn 仍保持 44px 最小触摸区，仅缩小间距 */
+  .plant-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .plant-card { padding: 8px 4px; min-height: 64px; }
+  .plant-card .p-icon { font-size: 22px; }
+  .plant-card .p-name { font-size: 11px; }
+  .result-card { padding: 12px; }
+  .result-value { font-size: 22px; }
+  .result-icon { font-size: 18px; }
+  .panel { padding: 12px; border-radius: 14px; }
+  .panel-title { font-size: 14px; margin-bottom: 10px; padding-bottom: 8px; }
+  .app-main { padding: 10px; gap: 10px; }
+  .btn-block { padding: 12px; font-size: 15px; }
+  .extra-row { font-size: 12px; padding: 6px 10px; }
+  .summary-table th, .summary-table td { padding: 8px 6px; font-size: 12px; }
+}
+
+/* 横屏模式优化（手机横屏时减少 header 高度） */
+@media (max-width: 900px) and (orientation: landscape) {
+  .app-header { padding: 6px 16px; padding-top: calc(6px + env(safe-area-inset-top)); }
+  .app-logo { font-size: 22px; }
+  .app-header h1 { font-size: 15px; }
+  /* 保持 icon-btn 44px 最小触摸区，仅减小间距 */
+  .header-actions { gap: 4px; }
+  .app-main { padding-top: 10px; }
+}
+
+/* 大屏/平板优化（≥1200px） */
+@media (min-width: 1200px) {
+  .app-main {
+    grid-template-columns: 1fr 1.4fr 1fr;
+    grid-template-areas:
+      "plant result param"
+      "plant result cost"
+      "income income income"
+      "summary summary summary";
+  }
+  .plant-panel { grid-area: plant; grid-row: auto; }
+  .result-panel { grid-area: result; grid-column: auto; }
+  .param-panel { grid-area: param; }
+  .cost-panel { grid-area: cost; }
+  .income-panel { grid-area: income; }
+  .summary-panel { grid-area: summary; }
+}
+
+/* 减少动画偏好（无障碍） */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .flying-drone.flying { animation: none; opacity: 0; }
+}
+
+/* PWA 桌面/独立显示模式优化 */
+@media (display-mode: standalone) {
+  .app-header {
+    padding-top: calc(12px + env(safe-area-inset-top));
+  }
+  body { user-select: none; }
+  input, textarea { user-select: text; }
+}
+
+/* 滚动条样式（桌面浏览器可见，移动端通常隐藏） */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--input-border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+
+</style>
+</head>
+<body>
+  <!-- 顶部装饰：飘动的云/远山 -->
+  <div class="scene-bg" aria-hidden="true">
+    <div class="mountain far"></div>
+    <div class="mountain mid"></div>
+    <div class="cloud cloud-1"></div>
+    <div class="cloud cloud-2"></div>
+    <div class="cloud cloud-3"></div>
+    <div class="field-strip"></div>
+  </div>
+
+  <!-- 飞行中的无人机动画 -->
+  <div id="flyingDrone" class="flying-drone" aria-hidden="true">
+    <svg viewBox="0 0 120 80" width="120" height="80">
+      <ellipse cx="60" cy="40" rx="14" ry="6" class="drone-body"/>
+      <g class="rotor-group r1"><circle cx="20" cy="20" r="14" class="rotor-ring"/><line x1="6" y1="20" x2="34" y2="20" class="rotor-blade"/></g>
+      <g class="rotor-group r2"><circle cx="100" cy="20" r="14" class="rotor-ring"/><line x1="86" y1="20" x2="114" y2="20" class="rotor-blade"/></g>
+      <g class="rotor-group r3"><circle cx="20" cy="60" r="14" class="rotor-ring"/><line x1="6" y1="60" x2="34" y2="60" class="rotor-blade"/></g>
+      <g class="rotor-group r4"><circle cx="100" cy="60" r="14" class="rotor-ring"/><line x1="86" y1="60" x2="114" y2="60" class="rotor-blade"/></g>
+      <line x1="20" y1="20" x2="60" y2="40" class="drone-arm"/>
+      <line x1="100" y1="20" x2="60" y2="40" class="drone-arm"/>
+      <line x1="20" y1="60" x2="60" y2="40" class="drone-arm"/>
+      <line x1="100" y1="60" x2="60" y2="40" class="drone-arm"/>
+      <g class="spray">
+        <circle cx="55" cy="55" r="1.5" class="drop d1"/>
+        <circle cx="60" cy="58" r="1.5" class="drop d2"/>
+        <circle cx="65" cy="55" r="1.5" class="drop d3"/>
+        <circle cx="58" cy="62" r="1.2" class="drop d4"/>
+        <circle cx="62" cy="62" r="1.2" class="drop d5"/>
+      </g>
+    </svg>
+  </div>
+
+  <header class="app-header">
+    <div class="header-left">
+      <span class="app-logo" aria-hidden="true">🚁</span>
+      <h1>无人机作业计算器</h1>
+      <span class="app-version">v2.0</span>
+    </div>
+    <div class="header-actions">
+      <button id="presetBtn" class="icon-btn" title="预设管理" aria-label="预设管理">📚</button>
+      <button id="importBtn" class="icon-btn" title="从文本导入配置" aria-label="导入">📥</button>
+      <button id="exportBtn" class="icon-btn" title="导出配置文本" aria-label="导出">📤</button>
+      <button id="historyBtn" class="icon-btn" title="历史记录" aria-label="历史">🕘</button>
+      <button id="themeBtn" class="icon-btn theme-toggle" title="切换日/夜模式" aria-label="切换主题">☀️</button>
+    </div>
+  </header>
+
+  <!-- 模式切换器 -->
+  <div class="mode-switcher">
+    <button class="mode-btn active" data-mode="spray">🚁 打药模式</button>
+    <button class="mode-btn" data-mode="haul">📦 吊运模式</button>
+  </div>
+
+  <main class="app-main">
+    <!-- 左侧：植物选择 -->
+    <section class="panel plant-panel" aria-label="植物选择">
+      <div class="panel-title"><span>🌱</span> 植物选择</div>
+      <div class="plant-grid" id="plantGrid"><!-- JS 注入 --></div>
+      <div class="plant-info" id="plantInfo">
+        <div class="plant-info-name" id="plantInfoName">—</div>
+        <div class="plant-info-desc" id="plantInfoDesc">请选择一种植物</div>
+        <div class="plant-info-notes" id="plantInfoNotes"></div>
+      </div>
+      <div class="preset-bar">
+        <button id="savePresetBtn" class="btn btn-secondary btn-sm">💾 存为预设</button>
+        <button id="loadPresetBtn" class="btn btn-secondary btn-sm">📂 加载预设</button>
+        <button id="deletePresetBtn" class="btn btn-secondary btn-sm danger">🗑 删除预设</button>
+      </div>
+    </section>
+
+    <!-- 右侧：结果卡片 -->
+    <section class="panel result-panel" aria-label="计算结果">
+      <div class="panel-title"><span>📊</span> 计算结果 <span class="mode-tag" id="modeTag">打药模式</span></div>
+
+      <!-- 打药模式结果 -->
+      <div id="sprayResults" class="mode-results">
+        <div class="result-grid">
+          <div class="result-card pesticide">
+            <div class="result-icon">💊</div>
+            <div class="result-label">现有药剂（主）</div>
+            <div class="result-value"><span id="rPesticide">0</span><span class="unit">套</span></div>
+            <div class="result-sub" id="rPesticideDetail">—</div>
+            <div class="result-formula" id="rPesticideFormula"></div>
+          </div>
+          <div class="result-card water">
+            <div class="result-icon">💧</div>
+            <div class="result-label">用水量</div>
+            <div class="result-value"><span id="rWater">0</span><span class="unit">升</span></div>
+            <div class="result-sub" id="rWaterDetail">—</div>
+            <div class="result-formula" id="rWaterFormula"></div>
+          </div>
+          <div class="result-card cost">
+            <div class="result-icon">💰</div>
+            <div class="result-label">总成本</div>
+            <div class="result-value"><span id="rCost">0.00</span><span class="unit">元</span></div>
+            <div class="result-sub" id="rCostDetail">—</div>
+            <div class="result-formula" id="rCostFormula"></div>
+          </div>
+          <div class="result-card profit">
+            <div class="result-icon">📈</div>
+            <div class="result-label">粗略利润</div>
+            <div class="result-value"><span id="rProfit">0.00</span><span class="unit">元</span></div>
+            <div class="result-sub" id="rProfitDetail">—</div>
+            <div class="result-formula" id="rProfitFormula"></div>
+          </div>
+        </div>
+        <div class="result-extra">
+          <div class="extra-row"><span>🚁 飞行高度</span><b id="rHeight">—</b></div>
+          <div class="extra-row"><span>🔄 循环数</span><b id="rCycles">—</b><small id="rCyclesSub" class="extra-inline"></small></div>
+          <div class="extra-row"><span>⏱️ 作业时间(估)</span><b id="rTiming">—</b></div>
+          <div class="extra-row"><span>📐 每亩成本</span><b id="rCostPerMu">—</b></div>
+          <div class="extra-row"><span>💵 每亩利润</span><b id="rProfitPerMu">—</b></div>
+          <div class="extra-row"><span>💰 总收入</span><b id="rSprayIncome">—</b></div>
+          <div class="extra-row"><span>🧪 浓度 现有/参考</span><b id="rConcentration">—</b></div>
+          <div class="extra-row"><span>💊 是否包药</span><b id="rPesticideIncluded">—</b></div>
+        </div>
+      </div>
+
+      <!-- 吊运模式结果 -->
+      <div id="haulResults" class="mode-results" style="display:none;">
+        <div class="result-grid">
+          <div class="result-card" style="border-left-color:#ab47bc;">
+            <div class="result-icon">📦</div>
+            <div class="result-label">总躺数</div>
+            <div class="result-value"><span id="rTrips">0</span><span class="unit">躺</span></div>
+            <div class="result-sub" id="rTripsDetail">—</div>
+            <div class="result-formula" id="rTripsFormula"></div>
+          </div>
+          <div class="result-card" style="border-left-color:#29b6f6;">
+            <div class="result-icon">🔋</div>
+            <div class="result-label">电池循环</div>
+            <div class="result-value"><span id="rBatteryCycles">0</span><span class="unit">次</span></div>
+            <div class="result-sub" id="rBatteryCyclesDetail">—</div>
+            <div class="result-formula" id="rBatteryCyclesFormula"></div>
+          </div>
+          <div class="result-card cost">
+            <div class="result-icon">💰</div>
+            <div class="result-label">总成本</div>
+            <div class="result-value"><span id="rHaulCost">0.00</span><span class="unit">元</span></div>
+            <div class="result-sub" id="rHaulCostDetail">—</div>
+            <div class="result-formula" id="rHaulCostFormula"></div>
+          </div>
+          <div class="result-card profit">
+            <div class="result-icon">📈</div>
+            <div class="result-label">粗略利润</div>
+            <div class="result-value"><span id="rHaulProfit">0.00</span><span class="unit">元</span></div>
+            <div class="result-sub" id="rHaulProfitDetail">—</div>
+            <div class="result-formula" id="rHaulProfitFormula"></div>
+          </div>
+        </div>
+        <div class="result-extra">
+          <div class="extra-row"><span>🚁 飞行高度</span><b id="rHaulHeight">—</b></div>
+          <div class="extra-row"><span>📦 总斤数</span><b id="rTotalWeight">—</b></div>
+          <div class="extra-row"><span>📐 每斤成本</span><b id="rCostPerJin">—</b></div>
+          <div class="extra-row"><span>💵 每斤利润</span><b id="rProfitPerJin">—</b></div>
+          <div class="extra-row"><span>💵 总收入</span><b id="rHaulIncome">—</b></div>
+          <div class="extra-row"><span>🧺 是否包采摘</span><b id="rPickupIncluded">—</b></div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button id="calcBtn" class="btn btn-primary">🚁 开始计算</button>
+        <button id="resetBtn" class="btn btn-secondary">🔄 恢复默认</button>
+      </div>
+    </section>
+
+    <!-- 参数设置 -->
+    <section class="panel param-panel" aria-label="作业参数">
+      <div class="panel-title"><span>📋</span> 作业参数 <span class="hint">（所有数值均可修改，鼠标悬停查看说明）</span></div>
+      <div class="form-grid" id="paramForm"><!-- JS 注入 --></div>
+    </section>
+
+    <!-- 成本明细 -->
+    <section class="panel cost-panel" aria-label="成本明细">
+      <div class="panel-title"><span>💰</span> 成本明细</div>
+      <div class="cost-tabs" id="costTabs"><!-- JS 注入 --></div>
+      <div class="tab-content-container" id="tabContentContainer"><!-- JS 注入 --></div>
+    </section>
+
+    <!-- 收入与利润 -->
+    <section class="panel income-panel" aria-label="收入与利润">
+      <div class="panel-title"><span>💵</span> 收入参数</div>
+      <div class="form-grid" id="incomeForm"><!-- JS 注入 --></div>
+    </section>
+
+    <!-- 成本汇总表 -->
+    <section class="panel summary-panel" aria-label="成本汇总">
+      <div class="panel-title"><span>🧮</span> 成本汇总 <span class="hint" id="summaryFormula"></span></div>
+      <table class="summary-table">
+        <thead>
+          <tr><th>项目</th><th>金额(元)</th><th>占比</th></tr>
+        </thead>
+        <tbody id="summaryBody"><!-- JS 注入 --></tbody>
+        <tfoot>
+          <tr><td>合计</td><td id="summaryTotal">0.00</td><td>100%</td></tr>
+        </tfoot>
+      </table>
+      <div class="total-formula" id="totalFormula"></div>
+    </section>
+
+    <!-- 作业时间估算（仅打药模式） -->
+    <section class="panel timing-panel" id="timingPanel" aria-label="作业时间估算">
+      <div class="panel-title"><span>⏱️</span> 作业时间估算 <span class="hint" id="timingModeHint"></span></div>
+      <div class="timing-grid">
+        <div class="timing-card">
+          <div class="timing-icon">🧪</div>
+          <div class="timing-label">兑水兑药</div>
+          <div class="timing-value"><span id="tMixTime">0</span></div>
+          <div class="timing-sub" id="tMixDetail">—</div>
+        </div>
+        <div class="timing-card">
+          <div class="timing-icon">✈️</div>
+          <div class="timing-label">飞行作业</div>
+          <div class="timing-value"><span id="tFlightTime">0</span></div>
+          <div class="timing-sub" id="tFlightDetail">—</div>
+        </div>
+        <div class="timing-card">
+          <div class="timing-icon">🔄</div>
+          <div class="timing-label">来回升降</div>
+          <div class="timing-value"><span id="tRoundTrip">0</span></div>
+          <div class="timing-sub" id="tRoundTripDetail">—</div>
+        </div>
+        <div class="timing-card">
+          <div class="timing-icon">🔋</div>
+          <div class="timing-label">电池等待</div>
+          <div class="timing-value"><span id="tBatteryWait">0</span></div>
+          <div class="timing-sub" id="tBatteryDetail">—</div>
+        </div>
+        <div class="timing-card total">
+          <div class="timing-icon">⏱️</div>
+          <div class="timing-label">总作业时间（估）</div>
+          <div class="timing-value"><span id="tTotalTime">0</span></div>
+          <div class="timing-sub" id="tTotalDetail">—</div>
+        </div>
+      </div>
+      <div class="total-formula" id="timingFormula"></div>
+      <!-- 电池循环可视化（色块条） -->
+      <div class="battery-viz" id="batteryViz">
+        <div class="battery-viz-title">
+          <span>🔋 电池循环状态图</span>
+          <span class="battery-viz-legend">
+            <span class="legend-item"><span class="legend-dot" style="background:#2e7d32"></span>无等待</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#ff9800"></span>少量等待</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#c62828"></span>充电瓶颈</span>
+          </span>
+        </div>
+        <div class="battery-viz-bar" id="batteryVizBar"><!-- JS 注入色块 --></div>
+        <div class="battery-viz-summary" id="batteryVizSummary">—</div>
+        <div class="battery-viz-formula" id="batteryVizFormula"></div>
+        <div class="battery-viz-detail" id="batteryVizDetail" style="display:none;">
+          <div class="battery-viz-detail-title">详情 <button class="battery-viz-close" id="batteryVizClose">✕</button></div>
+          <div id="batteryVizDetailContent"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 时间参数（仅打药模式） -->
+    <section class="panel timing-param-panel" id="timingParamPanel" aria-label="时间参数">
+      <div class="panel-title"><span>⚙️</span> 时间参数 <span class="hint">（用于作业时间估算）</span></div>
+      <div class="form-grid" id="timingForm"><!-- JS 注入 --></div>
+    </section>
+  </main>
+
+  <!-- 模态框：导入 -->
+  <div class="modal" id="importModal" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-title">📥 导入配置 <button class="modal-close" data-close>✕</button></div>
+      <p class="modal-hint">粘贴他人分享的配置文本（支持 JSON 或带【】标记的文本格式），系统会自动识别并填入。</p>
+      <textarea id="importText" rows="10" placeholder="在此粘贴配置文本..."></textarea>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" data-close>取消</button>
+        <button class="btn btn-primary" id="importConfirm">识别并填入</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：导出 -->
+  <div class="modal" id="exportModal" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-title">📤 导出配置 <button class="modal-close" data-close>✕</button></div>
+      <div class="export-tabs">
+        <button class="tab-btn active" data-exp="text">📝 文本格式（易读）</button>
+        <button class="tab-btn" data-exp="json">⚙️ JSON格式（精确）</button>
+      </div>
+      <textarea id="exportText" rows="12" readonly></textarea>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="copyExport">📋 复制到剪贴板</button>
+        <button class="btn btn-primary" data-close>完成</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：预设管理 -->
+  <div class="modal" id="presetModal" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-title">📚 预设管理 <button class="modal-close" data-close>✕</button></div>
+      <p class="modal-hint">点击预设名加载；选中后可删除。预设保存在本地浏览器，不会上传。</p>
+      <ul class="preset-list" id="presetList"><!-- JS 注入 --></ul>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" data-close>关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：历史记录 -->
+  <div class="modal" id="historyModal" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-title">🕘 历史记录 <button class="modal-close" data-close>✕</button></div>
+      <p class="modal-hint">最近 20 次计算记录（本地存储）。</p>
+      <ul class="history-list" id="historyList"><!-- JS 注入 --></ul>
+      <div class="modal-actions">
+        <button class="btn btn-secondary danger" id="clearHistoryBtn">🗑 清空历史</button>
+        <button class="btn btn-secondary" data-close>关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <footer class="app-footer">
+    <span>🚁 无人机打药计算器 · 本地存储不上传 · 可打包 APK</span>
+    <a href="docs/usage.md" target="_blank">使用说明</a>
+  </footer>
+
+  <script>
+/* ============================================================
+   data.js — 默认植物数据库 & 默认参数
+   每种植物包含：
+     - calcMode: 'tree' 按棵计算 | 'area' 按面积计算
+     - flightHeight: 建议飞行高度（米）
+     - waterPerMu: 每亩水量（升）
+     - treesPerMu: 每亩棵数（果树类）
+     - waterPerTree: 每棵用水量（升，果树类）
+     - pesticideWaterPerSet: 一套药对应的水量（升）
+     - droneSavingCoeff: 无人机省药系数（0-1）
+   ============================================================ */
+
+const PLANT_DATABASE = {
+  fruit_tree: {
+    name: '果树',
+    icon: '🌳',
+    calcMode: 'tree',
+    flightHeight: 2.0,
+    waterPerMu: 20,
+    treesPerMu: 80,
+    waterPerTree: 3,
+    pesticideWaterPerSet: 300,
+    droneSavingCoeff: 0.7,
+    description: '苹果/梨/桃等常见果树，建议高于树冠1-1.5米作业',
+    notes: '⚠️ 花期、幼果期慎用敏感药剂；避免大风天作业。'
+  },
+  orchard_dense: {
+    name: '密植果园',
+    icon: '🍎',
+    calcMode: 'tree',
+    flightHeight: 1.8,
+    waterPerMu: 25,
+    treesPerMu: 110,
+    waterPerTree: 2.5,
+    pesticideWaterPerSet: 300,
+    droneSavingCoeff: 0.7,
+    description: '矮化密植苹果/樱桃等，行距小、棵数多',
+    notes: '⚠️ 注意树冠穿透性，可适当降低飞行高度。'
+  },
+  citrus: {
+    name: '柑橘园',
+    icon: '🍊',
+    calcMode: 'tree',
+    flightHeight: 2.0,
+    waterPerMu: 22,
+    treesPerMu: 60,
+    waterPerTree: 3.5,
+    pesticideWaterPerSet: 300,
+    droneSavingCoeff: 0.7,
+    description: '柑橘/橙/柚，树冠较大需稍高水量',
+    notes: '⚠️ 红蜘蛛、潜叶蛾高发期注意轮换用药。'
+  },
+  rice: {
+    name: '水稻',
+    icon: '🌾',
+    calcMode: 'area',
+    flightHeight: 2.0,
+    waterPerMu: 1.5,
+    treesPerMu: 0,
+    waterPerTree: 0,
+    pesticideWaterPerSet: 300,
+    droneSavingCoeff: 0.7,
+    description: '水稻飞防最佳期为分蘖期至抽穗期',
+    notes: '⚠️ 避开开花期(9-11点)喷洒；注意防治稻飞虱、二化螟。'
+  },
+  wheat: {
+    name: '小麦',
+    icon: '🌾',
+    calcMode: 'area',
+    flightHeight: 1.8,
+    waterPerMu: 1.5,
+    treesPerMu: 0,
+    waterPerTree: 0,
+    pesticideWaterPerSet: 300,
+    droneSavingCoeff: 0.7,
+    description: '小麦飞防最佳期为拔节期至灌浆期',
+    notes: '⚠️ 重点防治赤霉病、蚜虫、白粉病。'
+  },
+  corn: {
+    name: '玉米',
+    icon: '🌽',
+    calcMode: 'area',
+    flightHeight: 2.5,
+    waterPerMu: 2.0,
+    treesPerMu: 0,
+    waterPerTree: 0,
+    pesticideWaterPerSet: 300,
+    droneSavingCoeff: 0.7,
+    description: '玉米飞防最佳期为大喇叭口期',
+    notes: '⚠️ 玉米植株高，飞行高度需相应提高，避免倒伏。'
+  },
+  cotton: {
+    name: '棉花',
+    icon: '🌱',
+    calcMode: 'area',
+    flightHeight: 2.0,
+    waterPerMu: 1.8,
+    treesPerMu: 0,
+    waterPerTree: 0,
+    pesticideWaterPerSet: 300,
+    droneSavingCoeff: 0.7,
+    description: '棉花飞防注意防治蚜虫、红蜘蛛、棉铃虫',
+    notes: '⚠️ 避免在花期喷洒影响授粉。'
+  },
+  vegetables: {
+    name: '蔬菜',
+    icon: '🥬',
+    calcMode: 'area',
+    flightHeight: 1.5,
+    waterPerMu: 1.2,
+    treesPerMu: 0,
+    waterPerTree: 0,
+    pesticideWaterPerSet: 300,
+    droneSavingCoeff: 0.7,
+    description: '叶菜/根菜类，飞行高度低，需选低毒农药',
+    notes: '⚠️ 严格遵守安全间隔期，避免农残超标。'
+  },
+  tea: {
+    name: '茶园',
+    icon: '🍵',
+    calcMode: 'area',
+    flightHeight: 1.8,
+    waterPerMu: 2.5,
+    treesPerMu: 0,
+    waterPerTree: 0,
+    pesticideWaterPerSet: 300,
+    droneSavingCoeff: 0.7,
+    description: '茶园飞防注意防治茶小绿叶蝉、茶尺蠖',
+    notes: '⚠️ 采摘前15天停止喷药；优选生物农药。'
+  },
+  banana: {
+    name: '香蕉园',
+    icon: '🍌',
+    calcMode: 'area',
+    flightHeight: 2.2,
+    waterPerMu: 3.0,
+    treesPerMu: 0,
+    waterPerTree: 0,
+    pesticideWaterPerSet: 300,
+    droneSavingCoeff: 0.7,
+    description: '香蕉叶片大需水量较高',
+    notes: '⚠️ 注意防治叶斑病、黑星病。'
+  },
+  forest: {
+    name: '林地/防护林',
+    icon: '🌲',
+    calcMode: 'area',
+    flightHeight: 3.0,
+    waterPerMu: 3.0,
+    treesPerMu: 0,
+    waterPerTree: 0,
+    pesticideWaterPerSet: 300,
+    droneSavingCoeff: 0.75,
+    description: '杨树/松树等林地，飞行高度较高',
+    notes: '⚠️ 注意防治美国白蛾、松毛虫。'
+  }
+};
+
+/* 默认成本参数（用户可全量修改） */
+const DEFAULT_COSTS = {
+  // 循环成本
+  cycleCost: 14,          // 单次循环费用：电池折旧7元+发电机油钱7元（元）
+  cycleCostThreePhase: 7, // 三相电模式下：仅电池折旧（元）
+  cycleArea: 2,           // 单次循环作业亩数（亩）
+  useThreePhase: false,   // 是否使用三相电（true 则只用电池折旧费）
+
+  // 交通成本
+  distance: 20,           // 单程路程（公里），本地作业通常 10-30km
+  fuelConsumption: 12,    // 满载小型厢式货车油耗（升/100公里）
+  fuelPrice: 8,           // 油价（元/升）
+  tolls: 0,               // 路桥费（元）
+  vehicleDepreciation: 0.5, // 车辆折旧（元/公里）
+
+  // 人工成本
+  workers: 3,             // 作业人数（含飞手）
+  days: 0.3,              // 作业天数（3人团队10亩约0.3天，实际可喷30-50亩/天）
+  dailyWage: 300,         // 每人日薪（元）
+  mealCost: 50,           // 每人每天餐费（元）
+  accommodation: 0,       // 住宿费（元/天，全部人员合计；3人住2间×200元则填400）
+  accommodationDays: 0,   // 住宿天数（与作业天数独立，如提前一天到达则填作业天数+1）
+
+  // 其他成本
+  pesticidePrice: 80,     // 一套药剂价格（元/套）
+  pesticideIncluded: false, // 是否包药（true=作业方提供药剂并计入成本；false=农户自备，不扣药剂成本）
+  droneDepreciation: 0.3, // 无人机折旧（元/亩）
+  maintenanceReserve: 0.2,// 维修保养储备金（元/亩）
+  protectiveGear: 5,      // 防护装备分摊（元/次作业）
+  cleaningCost: 10,       // 清洗费用（元/次作业）
+  insurance: 0.1,         // 保险分摊（元/亩）
+  miscCost: 0             // 其他杂费（元）
+};
+
+/* 默认收入参数 */
+const DEFAULT_INCOME = {
+  pricePerMu: 25,         // 每亩服务收费（元/亩）
+  subsidy: 0              // 农机补贴等（元）
+};
+
+/* 默认作业时间参数（用于作业时间估算） */
+const DEFAULT_TIMING = {
+  flightSpeed: 2.5,           // 飞行速度（m/s）
+  lineSpacing: 2,             // 航线间距（米）
+  manualFlightTime: 0,        // 手动输入飞行作业时间（min，高优先级，0表示用估算）
+  roundTripTime: 3,           // 飞行来回升降时间（min/循环）
+  baseMixTime: 10,            // 基础兑药时间（min/轮）
+  waterMixRate: 1.5,          // 兑水速度（min/100L）：每加100升水需多少分钟
+  batteryCount: 2,            // 拥有电池数量（块）
+  generatorChargeTime: 8,     // 发电机充电时间（min/块）
+  threePhaseChargeTime: 5,    // 三相电充电时间（min/块）
+  chargeMode: 'generator',    // 充电模式：generator | threePhase | dual
+  chargeAfterWork: true       // 作业结束后是否充满所有电池再走（默认true）
+};
+
+/* 默认作业参数 */
+const DEFAULT_FIELD = {
+  area: 10,               // 作业亩数
+  plantKey: 'fruit_tree', // 默认植物
+  existingPesticideSets: 0 // 现有药剂套数（用户填，0表示无库存，作为主显示）
+};
+
+/* 表单字段定义（用于动态渲染 + tooltip 说明 + 输入验证）
+   约束元数据：
+     integer: true    → 整数约束（输入时自动取整）
+     min: number      → 最小值（低于则警告，但不阻止）
+     minHard: number  → 硬性最小值（低于则拒绝并弹窗）
+     warnBelow: number → 低于此值显示橙色警告边框
+     warnAbove: number → 高于此值显示橙色警告边框
+*/
+const FIELD_DEFS = {
+  // 作业参数
+  area: { label: '作业亩数', unit: '亩', tip: '本次需要打药的总亩数（建议 1-1000）', group: 'param', default: 10, step: 0.1, minHard: 0.01, warnBelow: 0.1, warnAbove: 10000, priority: 'high' },
+  existingPesticideSets: { label: '现有药剂套数', unit: '套', tip: '已库存的药剂套数（主显示，作为主要参考）。0表示无库存，将完全按公式参考量采购', group: 'param', default: 0, step: 1, integer: true, min: 0, priority: 'high' },
+  flightHeight: { label: '飞行高度', unit: '米', tip: '无人机距离作物冠层的建议高度，影响覆盖均匀度（建议 1-5 米）', group: 'param', default: 2.0, step: 0.1, min: 0.5, warnBelow: 0.5, warnAbove: 10 },
+  waterPerMu: { label: '每亩水量', unit: '升', tip: '每亩地需要喷洒的药液总量（升/亩，建议 1-50）', group: 'param', default: 20, step: 0.1, min: 0.1, warnBelow: 0.5 },
+  treesPerMu: { label: '每亩棵数', unit: '棵', tip: '每亩种植的棵数，仅果树类使用', group: 'param', default: 80, step: 1, integer: true, min: 0 },
+  waterPerTree: { label: '每棵用水量', unit: '升', tip: '单棵树需要喷洒的药液量（升/棵），仅果树类使用', group: 'param', default: 3, step: 0.1, min: 0 },
+  pesticideWaterPerSet: { label: '一套药需水量', unit: '升', tip: '一整套药剂对应需要的水量（升），决定一套药能配多少药液', group: 'param', default: 300, step: 1, min: 1, warnBelow: 10 },
+  droneSavingCoeff: { label: '无人机省药系数', unit: '', tip: '无人机相比人工打药节省的药量比例，0.7 表示省 30%（可超过1，表示更费药；建议 0.5-1.5）', group: 'param', default: 0.7, step: 0.05, min: 0, warnBelow: 0.1, warnAbove: 3 },
+
+  // 循环成本
+  cycleCost: { label: '单次循环成本', unit: '元', tip: '一个循环的电池折旧(7元)+发电机油钱(7元)=14元', group: 'cycle', default: 14, step: 0.1, min: 0 },
+  cycleCostThreePhase: { label: '三相电循环成本', unit: '元', tip: '使用三相电时仅需电池折旧费(7元)', group: 'cycle', default: 7, step: 0.1, min: 0 },
+  cycleArea: { label: '单循环亩数', unit: '亩', tip: '一个循环（一组电池）能完成的作业亩数（建议 0.5-30）', group: 'cycle', default: 2, step: 0.1, min: 0.1, warnBelow: 0.1, warnAbove: 100 },
+  useThreePhase: { label: '使用三相电（仅电池折旧）', unit: '', tip: '勾选后循环成本改为仅电池折旧费', group: 'cycle', type: 'check', default: false },
+
+  // 交通
+  distance: { label: '单程路程', unit: '公里', tip: '从驻地到作业地块的单程距离（建议 0-500km）', group: 'transport', default: 20, step: 1, min: 0, warnAbove: 1000 },
+  fuelConsumption: { label: '满载油耗', unit: '升/100km', tip: '小型厢式货车满载（无人机+发电机+水桶+人员）的油耗（建议 8-20）', group: 'transport', default: 12, step: 0.5, min: 0, warnBelow: 3, warnAbove: 50 },
+  fuelPrice: { label: '油价', unit: '元/升', tip: '当前柴油/汽油价格（建议 5-10）', group: 'transport', default: 8, step: 0.05, min: 0, warnBelow: 1, warnAbove: 20 },
+  tolls: { label: '路桥费', unit: '元', tip: '来回过路过桥费总和', group: 'transport', default: 0, step: 1, min: 0 },
+  vehicleDepreciation: { label: '车辆折旧', unit: '元/公里', tip: '车辆磨损分摊，建议 0.3-0.6 元/公里', group: 'transport', default: 0.5, step: 0.05, min: 0, warnAbove: 5 },
+
+  // 人工
+  workers: { label: '作业人数', unit: '人', tip: '含飞手、配药、搬运等所有人员。填0可剔除人工成本', group: 'labor', default: 3, step: 1, integer: true, min: 0 },
+  days: { label: '作业天数', unit: '天', tip: '本次作业预计所需天数。3人团队一天可喷 30-50 亩。按天计薪时半天通常按 1 天算', group: 'labor', default: 0.3, step: 0.1, min: 0, warnAbove: 30 },
+  dailyWage: { label: '每人日薪', unit: '元/天', tip: '每个工人每天的工钱（建议 100-1000）', group: 'labor', default: 300, step: 10, min: 0, warnBelow: 50, warnAbove: 2000 },
+  mealCost: { label: '每人每天餐费', unit: '元', tip: '每人每天的饭钱（含中午工作餐）', group: 'labor', default: 50, step: 5, min: 0 },
+  accommodation: { label: '住宿费', unit: '元/天', tip: '全部人员合计的住宿费/天（3人住2间×200元则填400，0表示不住宿）', group: 'labor', default: 0, step: 50, min: 0 },
+  accommodationDays: { label: '住宿天数', unit: '天', tip: '住宿天数，与作业天数独立。如需提前一天到达，则填 作业天数+1', group: 'labor', default: 0, step: 0.5, min: 0 },
+
+  // 其他
+  pesticidePrice: { label: '一套药剂价格', unit: '元/套', tip: '一套药剂的进货价格（建议 20-500）', group: 'other', default: 80, step: 1, min: 0, warnBelow: 1, warnAbove: 5000 },
+  pesticideIncluded: { label: '包药（作业方提供药剂）', unit: '', tip: '勾选=作业方提供药剂并承担药剂成本；不勾选=农户自备药剂，不扣药剂成本（默认不包药）', group: 'other', type: 'check', default: false },
+  droneDepreciation: { label: '无人机折旧', unit: '元/亩', tip: '无人机机身分摊到每亩的折旧费', group: 'other', default: 0.3, step: 0.05, min: 0 },
+  maintenanceReserve: { label: '维修保养储备', unit: '元/亩', tip: '机臂、桨叶、电机等易损件更换分摊', group: 'other', default: 0.2, step: 0.05, min: 0 },
+  protectiveGear: { label: '防护装备', unit: '元/次', tip: '口罩、手套、护目镜等分摊到每次作业', group: 'other', default: 5, step: 1, min: 0 },
+  cleaningCost: { label: '清洗费用', unit: '元/次', tip: '作业后药箱、管路清洗的材料费', group: 'other', default: 10, step: 1, min: 0 },
+  insurance: { label: '保险分摊', unit: '元/亩', tip: '无人机+第三者责任险分摊到每亩', group: 'other', default: 0.1, step: 0.05, min: 0 },
+  miscCost: { label: '其他杂费', unit: '元', tip: '如通信、停车、临时用工等本次作业的杂费', group: 'other', default: 0, step: 1, min: 0 },
+
+  // 收入
+  pricePerMu: { label: '每亩收费', unit: '元/亩', tip: '向农户/农场收取的每亩服务费。果树类一般 60-150 元/亩（含药），大田作物 8-25 元/亩', group: 'income', default: 25, step: 0.5, min: 0, warnBelow: 1, priority: 'high' },
+  subsidy: { label: '农机补贴等', unit: '元', tip: '政府补贴或项目补贴（若有）', group: 'income', default: 0, step: 10, min: 0 },
+
+  // 作业时间参数
+  flightSpeed: { label: '飞行速度', unit: 'm/s', tip: '无人机作业时的飞行速度，常见 2-5 m/s（建议 1-10）。填了飞行作业时间后此字段禁用', group: 'timing', default: 2.5, step: 0.1, minHard: 0.1, warnBelow: 0.5, warnAbove: 20 },
+  lineSpacing: { label: '航线间距', unit: '米', tip: '相邻航线间距，影响喷幅覆盖。一般 1.5-3 米（建议 1-5）。填了飞行作业时间后此字段禁用', group: 'timing', default: 2, step: 0.1, minHard: 0.5, warnBelow: 0.5, warnAbove: 10 },
+  manualFlightTime: { label: '飞行作业时间（手动）', unit: 'min', tip: '高优先级：手动输入飞行作业时间。填了则用此值计算（显示"准确时间"），不填或0则用飞行速度×航线间距估算（显示"参考时间"）', group: 'timing', default: 0, step: 0.5, min: 0, priority: 'high' },
+  roundTripTime: { label: '来回升降时间', unit: 'min/循环', tip: '每次循环的起飞、降落、转场时间。一般 2-5 分钟', group: 'timing', default: 3, step: 0.5, min: 0, warnAbove: 30 },
+  baseMixTime: { label: '基础兑药时间', unit: 'min/轮', tip: '每轮兑药桶加药剂搅拌的基础时间，与水量无关', group: 'timing', default: 10, step: 1, min: 0, warnAbove: 60 },
+  waterMixRate: { label: '兑水速度', unit: 'min/100L', tip: '每加100升水需要的时间（普通农户水管约1-2 min/100L）', group: 'timing', default: 1.5, step: 0.1, minHard: 0.01, warnBelow: 0.1, warnAbove: 30 },
+  batteryCount: { label: '拥有电池数量', unit: '块', tip: '作业用电池数量（至少 1 块）。2块轮流、3块以上更宽松', group: 'timing', default: 2, step: 1, integer: true, minHard: 1, warnBelow: 1, warnAbove: 20 },
+  generatorChargeTime: { label: '发电机充电时间', unit: 'min/块', tip: '发电机给单块电池充满的时间，一般 6-10 min', group: 'timing', default: 8, step: 0.5, minHard: 0.1, warnBelow: 1, warnAbove: 60 },
+  threePhaseChargeTime: { label: '三相电充电时间', unit: 'min/块', tip: '三相电给单块电池充满的时间，一般 4-6 min', group: 'timing', default: 5, step: 0.5, minHard: 0.1, warnBelow: 1, warnAbove: 60 },
+  chargeMode: { label: '充电模式', unit: '', tip: '仅发电机/仅三相电/三相电+发电机双充（双充更快但需≥3块电池才能完全无等待）', group: 'timing', type: 'radio', options: [
+    { value: 'generator', label: '仅发电机' },
+    { value: 'threePhase', label: '仅三相电' },
+    { value: 'dual', label: '三相电+发电机' }
+  ], default: 'generator' },
+  chargeAfterWork: { label: '作业结束后充满电再走', unit: '', tip: '勾选=作业完成后所有未满电池继续充电至充满（结束后用三相电，成本低）；不勾选=作业完成即走，剩余电量保留', group: 'timing', type: 'check', default: true }
+};
+
+/* 顺序字段分组（控制表单渲染顺序） */
+const FIELD_ORDER = {
+  param: ['area', 'existingPesticideSets', 'flightHeight', 'waterPerMu', 'treesPerMu', 'waterPerTree', 'pesticideWaterPerSet', 'droneSavingCoeff'],
+  cycle: ['cycleCost', 'cycleCostThreePhase', 'cycleArea', 'useThreePhase'],
+  transport: ['distance', 'fuelConsumption', 'fuelPrice', 'tolls', 'vehicleDepreciation'],
+  labor: ['workers', 'days', 'dailyWage', 'mealCost', 'accommodation', 'accommodationDays'],
+  other: ['pesticidePrice', 'pesticideIncluded', 'droneDepreciation', 'maintenanceReserve', 'protectiveGear', 'cleaningCost', 'insurance', 'miscCost'],
+  income: ['pricePerMu', 'subsidy'],
+  timing: ['manualFlightTime', 'flightSpeed', 'lineSpacing', 'roundTripTime', 'baseMixTime', 'waterMixRate', 'batteryCount', 'generatorChargeTime', 'threePhaseChargeTime', 'chargeMode', 'chargeAfterWork']
+};
+
+// 暴露到全局
+window.PLANT_DATABASE = PLANT_DATABASE;
+window.DEFAULT_COSTS = DEFAULT_COSTS;
+window.DEFAULT_INCOME = DEFAULT_INCOME;
+window.DEFAULT_TIMING = DEFAULT_TIMING;
+window.DEFAULT_FIELD = DEFAULT_FIELD;
+window.FIELD_DEFS = FIELD_DEFS;
+window.FIELD_ORDER = FIELD_ORDER;
+
+/* ============================================================
+   ★★★ 吊运模式（HAUL）—— 与打药模式完全独立 ★★★
+   场景：无人机吊运水果/农产品从果园下山或跨地形运输
+   收入：按每斤多少毛计费（用户填毛，实际 ×0.1 = 元）
+   人工：分无人机部分（按天）+ 采摘部分（按斤，可选）
+   成本：电池循环（多少躺一组电池）+ 交通 + 设备折旧 + 其他
+   ============================================================ */
+
+/* 吊运模式默认成本参数 */
+const DEFAULT_HAUL_COSTS = {
+  // 电池循环
+  batteryCycleCost: 5,             // 单次电池循环成本（元）：充电+电池折旧+发电机油钱
+  batteryCycleCostThreePhase: 3,   // 三相电模式：仅电池折旧（元）
+  weightPerTrip: 50,               // 一躺多少斤（斤/躺）：单次吊运重量，T40约50-60斤
+  tripsPerBatteryCycle: 6,         // 多少躺一组电池：满电到换电能跑的来回数
+  useThreePhase: false,            // 是否使用三相电
+
+  // 无人机人工（按天计算，与采摘独立）
+  droneWorkers: 1,                 // 无人机作业人数（飞手，地面辅助由采摘工兼任或另算）
+  droneDays: 1,                    // 无人机作业天数
+  droneDailyWage: 500,             // 无人机每人日薪（飞手工资较高，按天算 400-600）
+  droneMealCost: 50,               // 无人机每人每天餐费
+  droneAccommodation: 0,           // 无人机住宿费（元/天，全部人员合计）
+  droneAccommodationDays: 0,       // 无人机住宿天数（独立于作业天数）
+
+  // 采摘人工（按斤计算，可选）
+  pickupIncluded: false,           // 是否包采摘（true=作业方负责采摘并承担成本）
+  pickupPricePerJin: 5,            // 采摘每斤单价（毛，5毛=0.5元/斤）
+
+  // 交通成本（与打药模式逻辑相同，数值独立）
+  distance: 20,                    // 单程路程（公里）
+  fuelConsumption: 12,             // 满载油耗（升/100km）
+  fuelPrice: 8,                    // 油价（元/升）
+  tolls: 0,                        // 路桥费（元）
+  vehicleDepreciation: 0.5,        // 车辆折旧（元/公里）
+
+  // 设备折旧（按100斤分摊，吊运按重量计损更合理）
+  droneDepreciation: 0.5,          // 无人机折旧（元/100斤）
+  maintenanceReserve: 0.3,         // 维修保养储备（元/100斤）
+  protectiveGear: 5,               // 防护装备（元/次）
+  cleaningCost: 5,                 // 清洗费用（元/次）
+  insurance: 0.05,                 // 保险分摊（元/100斤）
+  miscCost: 0                      // 其他杂费（元）
+};
+
+/* 吊运模式默认收入参数 */
+const DEFAULT_HAUL_INCOME = {
+  pricePerJin: 12                  // 吊运每斤单价（毛，12毛=1.2元/斤）
+};
+
+/* 吊运模式默认作业参数 */
+const DEFAULT_HAUL_FIELD = {
+  totalWeight: 1000,               // 总斤数（斤）
+  flightHeight: 5                  // 飞行高度（米）
+};
+
+/* 吊运模式字段定义 */
+const HAUL_FIELD_DEFS = {
+  // 作业参数
+  totalWeight: { label: '总斤数', unit: '斤', tip: '本次需要吊运的总重量（斤）', group: 'param', default: 1000, step: 10 },
+  flightHeight: { label: '飞行高度', unit: '米', tip: '无人机吊运时的飞行高度，根据地形和障碍物调整。山区吊运通常 5-15 米', group: 'param', default: 5, step: 0.5 },
+
+  // 电池循环
+  batteryCycleCost: { label: '电池循环成本', unit: '元', tip: '一组电池的充电+电池折旧+发电机油钱。一个循环指一组电池从满电用到换电', group: 'cycle', default: 5, step: 0.5 },
+  batteryCycleCostThreePhase: { label: '三相电循环成本', unit: '元', tip: '使用三相电时仅需电池折旧费', group: 'cycle', default: 3, step: 0.5 },
+  weightPerTrip: { label: '一躺多少斤', unit: '斤', tip: '单次吊运（一个来回）的重量。受无人机载重限制，T40约50-60斤，T30约30-40斤', group: 'cycle', default: 50, step: 5 },
+  tripsPerBatteryCycle: { label: '多少躺一组电池', unit: '躺', tip: '一组电池能完成的来回数（满电到换电）。载重越大越少，通常4-8躺', group: 'cycle', default: 6 },
+  useThreePhase: { label: '使用三相电（仅电池折旧）', unit: '', tip: '勾选后循环成本改为仅电池折旧费', group: 'cycle', type: 'check', default: false },
+
+  // 无人机人工（按天）
+  droneWorkers: { label: '无人机作业人数', unit: '人', tip: '含飞手、地面辅助人员（装货/卸货）', group: 'droneLabor', default: 2 },
+  droneDays: { label: '无人机作业天数', unit: '天', tip: '无人机作业预计所需天数', group: 'droneLabor', default: 1, step: 0.5 },
+  droneDailyWage: { label: '每人日薪', unit: '元/天', tip: '无人机作业人员每人每天的工钱（飞手工资通常较高 400-600）', group: 'droneLabor', default: 400, step: 10 },
+  droneMealCost: { label: '每人每天餐费', unit: '元', tip: '每人每天的饭钱', group: 'droneLabor', default: 50, step: 5 },
+  droneAccommodation: { label: '住宿费', unit: '元/天', tip: '全部人员合计的住宿费/天；0表示不住宿', group: 'droneLabor', default: 0, step: 50 },
+  droneAccommodationDays: { label: '住宿天数', unit: '天', tip: '住宿天数，与作业天数独立。如需提前一天到达则填作业天数+1', group: 'droneLabor', default: 0, step: 0.5 },
+
+  // 采摘人工（按斤）
+  pickupIncluded: { label: '包采摘（作业方负责采摘）', unit: '', tip: '勾选=作业方负责采摘并承担采摘人工成本；不勾选=农户自采，作业方只负责吊运（默认不包采摘）', group: 'pickupLabor', type: 'check', default: false },
+  pickupPricePerJin: { label: '采摘每斤单价', unit: '毛', tip: '采摘工每斤的工钱（毛）。5毛=0.5元/斤。仅包采摘时计入', group: 'pickupLabor', default: 5, step: 0.5 },
+
+  // 交通（与打药相同字段名，但独立存储）
+  distance: { label: '单程路程', unit: '公里', tip: '从驻地到作业地块的单程距离', group: 'transport', default: 20, step: 1 },
+  fuelConsumption: { label: '满载油耗', unit: '升/100km', tip: '小型厢式货车满载（无人机+发电机+人员+果筐）的油耗', group: 'transport', default: 12, step: 0.5 },
+  fuelPrice: { label: '油价', unit: '元/升', tip: '当前柴油/汽油价格', group: 'transport', default: 8, step: 0.05 },
+  tolls: { label: '路桥费', unit: '元', tip: '来回过路过桥费总和', group: 'transport', default: 0, step: 1 },
+  vehicleDepreciation: { label: '车辆折旧', unit: '元/公里', tip: '车辆磨损分摊，建议 0.3-0.6 元/公里', group: 'transport', default: 0.5, step: 0.05 },
+
+  // 设备折旧（按100斤）
+  droneDepreciation: { label: '无人机折旧', unit: '元/100斤', tip: '无人机机身分摊到每100斤的折旧费（吊运损耗比打药大）', group: 'other', default: 0.5, step: 0.05 },
+  maintenanceReserve: { label: '维修保养储备', unit: '元/100斤', tip: '机臂、桨叶、电机等易损件更换分摊', group: 'other', default: 0.3, step: 0.05 },
+  protectiveGear: { label: '防护装备', unit: '元/次', tip: '口罩、手套、安全帽等分摊到每次作业', group: 'other', default: 5, step: 1 },
+  cleaningCost: { label: '清洗费用', unit: '元/次', tip: '作业后设备清洗的材料费', group: 'other', default: 5, step: 1 },
+  insurance: { label: '保险分摊', unit: '元/100斤', tip: '无人机+第三者责任险分摊', group: 'other', default: 0.05, step: 0.01 },
+  miscCost: { label: '其他杂费', unit: '元', tip: '如通信、停车、临时用工等', group: 'other', default: 0, step: 1 },
+
+  // 收入
+  pricePerJin: { label: '吊运每斤单价', unit: '毛', tip: '吊运服务每斤的收费（毛）。8毛=0.8元/斤。山区果园吊运通常 5-15 毛/斤', group: 'income', default: 8, step: 0.5 }
+};
+
+/* 吊运模式字段顺序（控制表单渲染顺序和 Tab 分组） */
+const HAUL_FIELD_ORDER = {
+  param: ['totalWeight', 'flightHeight'],
+  cycle: ['batteryCycleCost', 'batteryCycleCostThreePhase', 'weightPerTrip', 'tripsPerBatteryCycle', 'useThreePhase'],
+  droneLabor: ['droneWorkers', 'droneDays', 'droneDailyWage', 'droneMealCost', 'droneAccommodation', 'droneAccommodationDays'],
+  pickupLabor: ['pickupIncluded', 'pickupPricePerJin'],
+  transport: ['distance', 'fuelConsumption', 'fuelPrice', 'tolls', 'vehicleDepreciation'],
+  other: ['droneDepreciation', 'maintenanceReserve', 'protectiveGear', 'cleaningCost', 'insurance', 'miscCost'],
+  income: ['pricePerJin']
+};
+
+/* 吊运模式 Tab 配置（显示在成本明细面板） */
+const HAUL_TAB_CONFIG = [
+  { key: 'cycle',      label: '🔋 电池循环' },
+  { key: 'droneLabor', label: '🚁 无人机人工' },
+  { key: 'pickupLabor',label: '🧺 采摘人工' },
+  { key: 'transport',  label: '🚚 交通' },
+  { key: 'other',      label: '📦 其他' }
+];
+
+// 吊运模式常量暴露到全局
+window.DEFAULT_HAUL_COSTS = DEFAULT_HAUL_COSTS;
+window.DEFAULT_HAUL_INCOME = DEFAULT_HAUL_INCOME;
+window.DEFAULT_HAUL_FIELD = DEFAULT_HAUL_FIELD;
+window.HAUL_FIELD_DEFS = HAUL_FIELD_DEFS;
+window.HAUL_FIELD_ORDER = HAUL_FIELD_ORDER;
+window.HAUL_TAB_CONFIG = HAUL_TAB_CONFIG;
+
+</script>
+  <script>
+/* ============================================================
+   calculator.js — 计算核心
+   公式：
+     【果树类 calcMode='tree'】（按人工打药水量计算药量）
+       药量(套) = (亩数 × 每棵水量 × 每亩棵数 ÷ 一套药需水量) × 无人机省药系数
+     【面积类 calcMode='area'】（按每亩水量计算药量）
+       药量(套) = (亩数 × 每亩水量 ÷ 一套药需水量) × 无人机省药系数
+
+     注意：药量公式中的"每棵水量/每亩水量"是【人工打药稀释水量】，
+          用于计算需要多少套药剂；
+          而下方的"实际用水量"用的是植物的 waterPerMu，
+          即【无人机实际喷洒水量】，两者独立、互不影响。
+
+     7舍8入取整：小数部分 ≥0.8 进1，否则舍去
+       例：5.7→5，5.8→6，5.9→6
+     实际用水量(升) = 亩数 × 每亩水量（无人机喷洒量）
+     参考浓度(套/100升) = 取整后药量(套) ÷ 实际水量(升) × 100
+     循环数 = ceil(亩数 / 单循环亩数)
+     循环成本 = 循环数 × (三相电 ? cycleCostThreePhase : cycleCost)
+     交通 = (单程×2) × 油耗/100 × 油价 + 路桥费 + 车辆折旧×(单程×2)
+     人工 = 人数 × 作业天数 × (日薪 + 餐费) + 住宿费 × 住宿天数
+     药剂成本 = 取整后药量(套) × 一套药价  （仅 pesticideIncluded=true 时计入）
+     设备折旧 = 亩数 × (无人机折旧 + 维修储备 + 保险分摊)
+     其他 = 防护装备 + 清洗费 + 杂费
+     总成本 = 上述之和
+     收入 = 亩数 × 每亩收费 + 补贴
+     利润 = 收入 - 总成本
+   ============================================================ */
+
+const Calculator = {
+  /**
+   * 7舍8入取整：小数部分 ≥0.8 进1，否则舍去
+   * 例：5.7→5，5.8→6，5.9→6，5.0→5
+   * 用字符串处理，彻底避免 JS 浮点精度问题（2.8 % 1 = 0.7999...）
+   */
+  round78(num) {
+    if (typeof num !== 'number' || isNaN(num) || num < 0) return 0;
+    // toFixed 截到 4 位小数，转为字符串后取小数点后第一位判断
+    const str = num.toFixed(4);
+    const dotIdx = str.indexOf('.');
+    if (dotIdx === -1) return parseInt(str, 10);
+    const intPart = parseInt(str.substring(0, dotIdx), 10);
+    const firstDecimal = parseInt(str.charAt(dotIdx + 1), 10);
+    return intPart + (firstDecimal >= 8 ? 1 : 0);
+  },
+
+  /**
+   * 主计算函数
+   * @param {Object} state - 完整状态 { plant, field, costs, income }
+   * @returns {Object} 计算结果
+   *
+   * 双路线药剂计算：
+   *   路线A（主显示）：existingPesticideSets = 用户填的现有库存套数
+   *   路线B（参考）：pesticide/pesticideRounded = 按水量公式算的参考需要套数
+   *   主卡片显示 existingPesticideSets（最高优先级）
+   *   参考行显示 pesticideRounded（7舍8入后）
+   *   药剂成本（包药时）= max(0, 参考取整 - 现有) × 单价  —— 即需补购的量
+   */
+  compute(state) {
+    const { plant, field, costs, income } = state;
+    const area = Number(field.area) || 0;
+    const existingSets = Number(field.existingPesticideSets) || 0;
+    const result = {
+      pesticide: 0,                  // 参考药量（小数原值）
+      pesticideRounded: 0,           // 参考药量（7舍8入取整）
+      existingSets: existingSets,    // 现有药量（主显示）
+      needToBuy: 0,                  // 需补购套数 = max(0, 参考-现有)
+      stockStatus: 'none',           // 库存状态：enough/sufficient/short/none
+      water: 0,                      // 实际喷洒水量（升）
+      concentration: 0,              // 参考浓度（套/100升，用参考取整套数算）
+      cycles: 0,                     // 循环数
+      costBreakdown: {},             // 成本明细
+      totalCost: 0,                  // 总成本
+      income: 0,                     // 收入
+      profit: 0,                     // 利润
+      costPerMu: 0,                  // 每亩成本
+      profitPerMu: 0,                // 每亩利润
+      flightHeight: plant.flightHeight,
+      pesticideIncluded: costs.pesticideIncluded !== false
+    };
+
+    if (area <= 0) return result;
+
+    /* 1. 参考药量（按人工打药稀释水量计算） */
+    let pesticideRaw;
+    const pesticideWaterPerSet = Math.max(0.01, Number(plant.pesticideWaterPerSet) || 1);
+    if (plant.calcMode === 'tree') {
+      const treesPerMu = Number(plant.treesPerMu) || 0;
+      const waterPerTree = Number(plant.waterPerTree) || 0;
+      pesticideRaw = (area * waterPerTree * treesPerMu) / pesticideWaterPerSet;
+    } else {
+      pesticideRaw = (area * Number(plant.waterPerMu)) / pesticideWaterPerSet;
+    }
+    pesticideRaw *= Number(plant.droneSavingCoeff) || 1;
+    result.pesticide = pesticideRaw;
+    result.pesticideRounded = this.round78(pesticideRaw);
+
+    /* 1.5 现有药量与补购计算（双路线核心） */
+    result.needToBuy = Math.max(0, result.pesticideRounded - existingSets);
+    if (existingSets <= 0) {
+      result.stockStatus = 'none';        // 无库存
+    } else if (existingSets >= result.pesticideRounded) {
+      result.stockStatus = 'enough';      // 库存充足
+    } else {
+      result.stockStatus = 'short';       // 库存不足
+    }
+
+    /* 2. 实际用水量（无人机喷洒量，独立于药量计算） */
+    result.water = area * Number(plant.waterPerMu);
+
+    /* 2.5 参考浓度（套/100升）—— 用参考取整套数和实际喷洒水量 */
+    result.concentration = result.water > 0
+      ? (result.pesticideRounded / result.water) * 100
+      : 0;
+
+    /* 3. 循环数 */
+    const cycleArea = Math.max(0.01, Number(costs.cycleArea) || 1);
+    result.cycles = Math.ceil(area / cycleArea);
+
+    /* 4. 循环成本（电池+充电+油钱 或 仅电池折旧） */
+    const cycleUnitCost = costs.useThreePhase
+      ? Number(costs.cycleCostThreePhase) || 0
+      : Number(costs.cycleCost) || 0;
+    result.costBreakdown.cycle = result.cycles * cycleUnitCost;
+
+    /* 5. 交通成本 */
+    const distance = Number(costs.distance) || 0;
+    const fuelConsumption = Number(costs.fuelConsumption) || 0;
+    const fuelPrice = Number(costs.fuelPrice) || 0;
+    const roundTripKm = distance * 2;
+    const fuelCost = roundTripKm * (fuelConsumption / 100) * fuelPrice;
+    const vehicleDep = roundTripKm * (Number(costs.vehicleDepreciation) || 0);
+    result.costBreakdown.transport = fuelCost + vehicleDep + (Number(costs.tolls) || 0);
+
+    /* 6. 人工成本（住宿天数独立于作业天数） */
+    const workers = Number(costs.workers) || 0;
+    const days = Number(costs.days) || 0;
+    const dailyWage = Number(costs.dailyWage) || 0;
+    const mealCost = Number(costs.mealCost) || 0;
+    const accommodation = Number(costs.accommodation) || 0;
+    const accommodationDays = Number(costs.accommodationDays) || 0;
+    result.costBreakdown.labor = workers * days * (dailyWage + mealCost)
+                               + accommodation * accommodationDays;
+
+    /* 7. 药剂成本（仅当 pesticideIncluded=true 时计入）
+       用 needToBuy（需补购套数）× 单价
+       即：现有库存够则不花钱，不足则补差额 */
+    const pesticidePrice = Number(costs.pesticidePrice) || 0;
+    if (result.pesticideIncluded) {
+      result.costBreakdown.pesticide = result.needToBuy * pesticidePrice;
+    } else {
+      // 不包药：药剂农户自备，作业方不承担药剂成本
+      result.costBreakdown.pesticide = 0;
+    }
+
+    /* 8. 设备折旧 & 维修 & 保险（每亩分摊） */
+    const perMuCost = (Number(costs.droneDepreciation) || 0)
+                    + (Number(costs.maintenanceReserve) || 0)
+                    + (Number(costs.insurance) || 0);
+    result.costBreakdown.equipment = area * perMuCost;
+
+    /* 9. 其他成本（每次作业固定） */
+    result.costBreakdown.other = (Number(costs.protectiveGear) || 0)
+                               + (Number(costs.cleaningCost) || 0)
+                               + (Number(costs.miscCost) || 0);
+
+    /* 10. 汇总 */
+    result.totalCost = Object.values(result.costBreakdown).reduce((a, b) => a + b, 0);
+
+    /* 11. 收入 */
+    const pricePerMu = Number(income.pricePerMu) || 0;
+    const subsidy = Number(income.subsidy) || 0;
+    result.income = area * pricePerMu + subsidy;
+
+    /* 12. 利润 */
+    result.profit = result.income - result.totalCost;
+
+    /* 13. 每亩指标 */
+    result.costPerMu = area > 0 ? result.totalCost / area : 0;
+    result.profitPerMu = area > 0 ? result.profit / area : 0;
+
+    /* 14. 作业时间估算 */
+    result.timing = this.computeTiming(state, result);
+
+    return result;
+  },
+
+  /* ============================================================
+     ★★★ 作业时间计算（打药模式专用）★★★
+     公式：
+       【兑水兑药时间】（按水量分轮，每轮最多1000升）
+         总轮数 = ⌈总水量 ÷ 1000⌉
+         每轮水量 = 总水量 ÷ 总轮数
+         每轮兑水时间 = (每轮水量 ÷ 100) × 兑水速度
+         每轮兑药时间 = 基础兑药时间
+         每轮实际 = max(每轮兑水, 每轮兑药)  （同时进行，取较大者）
+         总兑水兑药 = 每轮实际 × 总轮数
+       【飞行作业时间】
+         飞行长度 = 亩数 × 666.67 ÷ 航线间距 (米)
+         飞行时间 = 飞行长度 ÷ 飞行速度 (秒) ÷ 60 (分钟)
+       【来回升降时间】
+         来回升降 = 循环数 × 来回升降时间
+       【电池等待时间】（事件驱动模拟）
+         见 computeBatteryWait 方法
+       【总作业时间】
+         总时间 = 兑水兑药 + 飞行作业 + 来回升降 + 电池等待
+     ============================================================ */
+  computeTiming(state, r) {
+    const t = state.timing || DEFAULT_TIMING;
+    const flightSpeed = Math.max(0.01, Number(t.flightSpeed) || 2.5);
+    const lineSpacing = Math.max(0.1, Number(t.lineSpacing) || 2);
+    const manualFlightTime = Math.max(0, Number(t.manualFlightTime) || 0);
+    const roundTripTime = Math.max(0, Number(t.roundTripTime) || 0);
+    const baseMixTime = Math.max(0, Number(t.baseMixTime) || 0);
+    const waterMixRate = Math.max(0, Number(t.waterMixRate) || 0);
+    const batteryCount = Math.max(1, Math.floor(Number(t.batteryCount) || 1));
+    const generatorChargeTime = Math.max(0.1, Number(t.generatorChargeTime) || 8);
+    const threePhaseChargeTime = Math.max(0.1, Number(t.threePhaseChargeTime) || 5);
+    const chargeMode = t.chargeMode || 'generator';
+    const chargeAfterWork = t.chargeAfterWork !== false;
+
+    const area = Number(state.field.area) || 0;
+    const totalWater = r.water || 0;
+    const cycles = r.cycles || 0;
+
+    /* 1. 兑水兑药时间 */
+    let mixTotalTime = 0;
+    let mixRounds = 0;
+    let perRoundWater = 0;
+    let perRoundWaterTime = 0;
+    let perRoundActual = 0;
+    if (totalWater > 0) {
+      mixRounds = Math.ceil(totalWater / 1000);
+      if (mixRounds < 1) mixRounds = 1;
+      perRoundWater = totalWater / mixRounds;
+      perRoundWaterTime = (perRoundWater / 100) * waterMixRate;
+      perRoundActual = Math.max(perRoundWaterTime, baseMixTime);
+      mixTotalTime = perRoundActual * mixRounds;
+    }
+
+    /* 2. 飞行作业时间（高优先级：manualFlightTime > 0 时用此值，否则估算） */
+    let flightLength = 0;
+    let flightTimeMin = 0;
+    let flightTimeSource = 'estimate';  // 'estimate' or 'manual'
+    if (manualFlightTime > 0) {
+      flightTimeMin = manualFlightTime;
+      flightTimeSource = 'manual';
+      // 飞行长度不计算（手动模式不需要）
+    } else {
+      flightLength = area > 0 ? (area * 666.67) / lineSpacing : 0;
+      const flightTimeSec = flightLength / flightSpeed;
+      flightTimeMin = flightTimeSec / 60;
+      flightTimeSource = 'estimate';
+    }
+
+    /* 3. 来回升降时间 */
+    const roundTripTotal = cycles * roundTripTime;
+
+    /* 3.5 单次循环时间 T = 来回升降 + 飞行作业/循环数 */
+    const perCycleFlight = cycles > 0 ? flightTimeMin / cycles : 0;
+    const T = roundTripTime + perCycleFlight;
+
+    /* 4. 电池等待时间（事件驱动模拟） */
+    const batteryResult = this.computeBatteryWait(
+      cycles,
+      T,
+      batteryCount,
+      chargeMode,
+      generatorChargeTime,
+      threePhaseChargeTime
+    );
+    const batteryWait = batteryResult.total;
+
+    /* 5. 结束后充电（如果勾选） */
+    const afterWorkCharge = chargeAfterWork ? this.computeAfterWorkCharge(
+      batteryResult.batteries_final, batteryResult.cycleEnd, batteryCount, chargeMode,
+      generatorChargeTime, threePhaseChargeTime
+    ) : { total: 0, blocks: [] };
+
+    /* 6. 总作业时间（不含结束后充电） */
+    const totalTime = mixTotalTime + flightTimeMin + roundTripTotal + batteryWait;
+    const totalTimeWithCharge = totalTime + afterWorkCharge.total;
+
+    return {
+      mixTotalTime: mixTotalTime,
+      mixRounds: mixRounds,
+      perRoundWater: perRoundWater,
+      perRoundWaterTime: perRoundWaterTime,
+      perRoundActual: perRoundActual,
+      flightLength: flightLength,
+      flightTimeMin: flightTimeMin,
+      flightTimeSource: flightTimeSource,    // 'manual' or 'estimate'
+      roundTripTotal: roundTripTotal,
+      T: T,
+      perCycleFlight: perCycleFlight,
+      batteryWait: batteryWait,
+      batteryCycles: batteryResult.cycles,
+      noWaitCount: batteryResult.noWaitCount,
+      totalTime: totalTime,
+      afterWorkCharge: afterWorkCharge.total,
+      afterWorkBlocks: afterWorkCharge.blocks,
+      totalTimeWithCharge: totalTimeWithCharge,
+      batteryCount: batteryCount,
+      chargeMode: chargeMode,
+      chargeAfterWork: chargeAfterWork
+    };
+  },
+
+  /* ============================================================
+     ★ 结束后充电计算 ★
+     作业完成后，所有未满电池继续充电至充满
+     - 无论什么模式，结束后都是单充电器串行
+     - dual / threePhase 模式 → 用三相电（成本低）
+     - generator 模式 → 用发电机（只有发电机）
+     - 每块电池独立显示一个蓝色块
+     返回：{ total, blocks: [{ idx, time, charger }] }
+     ============================================================ */
+  computeAfterWorkCharge(batteries_final, cycleEndTime, N, mode, genTime, threeTime) {
+    if (!batteries_final || batteries_final.length === 0) {
+      return { total: 0, blocks: [] };
+    }
+    // 结束后充电器选择：有三相电用三相电，没有才用发电机
+    const useTime = (mode === 'generator') ? genTime : threeTime;
+    const useCharger = (mode === 'generator') ? 'generator' : 'threePhase';
+
+    // 收集所有未满电池的剩余充电时间
+    const pending = [];
+    batteries_final.forEach(b => {
+      const remaining = Math.max(0, b.avail_time - cycleEndTime);
+      if (remaining > 0.001) {
+        pending.push({ idx: b.idx, time: remaining });
+      }
+    });
+
+    // 按剩余时间排序（短的先充）
+    pending.sort((a, b) => a.time - b.time);
+
+    // 单充电器串行充
+    const blocks = [];
+    let accuTime = 0;
+    pending.forEach(p => {
+      blocks.push({
+        idx: p.idx,
+        time: p.time,
+        startAt: cycleEndTime + accuTime,
+        endAt: cycleEndTime + accuTime + p.time,
+        charger: useCharger
+      });
+      accuTime += p.time;
+    });
+    return { total: accuTime, blocks };
+  },
+
+  /* ============================================================
+     ★ 电池等待时间事件驱动模拟 ★
+     参数：
+       cycles: 循环数
+       T: 单次循环时间 (min) = 来回升降 + 飞行作业/循环数
+          一个完整循环 = 升空去作业点 + 单次作业时间 + 回来降落
+       N: 电池数量
+       mode: 'generator' | 'threePhase' | 'dual'
+       genTime: 发电机充电时间
+       threeTime: 三相电充电时间
+
+     算法（事件驱动）：
+       - 每块电池跟踪 avail_time（可用时刻，初始0表示满电）
+       - 充电器跟踪 free_at（空闲时刻）
+       - 每轮循环：
+         1. 找 avail_time <= 当前时间的电池
+         2. 没有则等待到最早可用时刻
+         3. 用最早可用的电池，飞行 T 分钟
+         4. 用完后安排充电（选最早空闲的充电器）
+         5. 更新该电池 avail_time = charge_end
+         6. 记录该轮实际使用的充电器（影响瓶颈计算）
+
+     单充电器：1个充电器（generator 或 threePhase 之一）
+     双充电器：2个充电器（generator + threePhase 同时工作）
+
+     返回：{ total, cycles, noWaitCount, batteries_final, cycleEnd }
+       - cycles[i].charger = 该轮实际充电器（dual 模式可能是 threePhase 或 generator）
+       - cycles[i].chargeTime = 该轮实际充电时间（用于精确计算瓶颈）
+       - batteries_final = 所有电池的最终 avail_time（供结束后充电计算）
+       - cycleEnd = 作业结束时刻
+     ============================================================ */
+  computeBatteryWait(cycles, T, N, mode, genTime, threeTime) {
+    if (cycles <= 0 || N <= 0) return { total: 0, cycles: [], noWaitCount: 0, batteries_final: [], cycleEnd: 0 };
+    if (cycles === 1) {
+      const chgTime = mode === 'threePhase' ? threeTime : (mode === 'generator' ? genTime : Math.min(threeTime, genTime));
+      return {
+        total: 0,
+        noWaitCount: 1,
+        cycles: [{
+          idx: 1, wait: 0, tStart: 0, tEnd: T, battery: 0,
+          chargeStart: T, chargeEnd: T + chgTime,
+          charger: mode === 'dual' ? 'threePhase' : mode,
+          chargeTime: chgTime
+        }],
+        batteries_final: [{ avail_time: T + chgTime, idx: 0 }],
+        cycleEnd: T
+      };
+    }
+
+    // 初始化：N 块电池都满（avail_time = 0），跟踪电池索引
+    const batteries = new Array(N).fill(0).map((_, i) => ({ avail_time: 0, idx: i }));
+
+    // 充电器配置
+    let charger1Time, charger2Time;
+    if (mode === 'generator') {
+      charger1Time = genTime;
+      charger2Time = 0;
+    } else if (mode === 'threePhase') {
+      charger1Time = threeTime;
+      charger2Time = 0;
+    } else { // dual
+      charger1Time = threeTime;
+      charger2Time = genTime;
+    }
+
+    let charger1FreeAt = 0;
+    let charger2FreeAt = 0;
+    let waitTotal = 0;
+    const cycleDetails = [];
+    let noWaitCount = 0;
+
+    for (let cycle = 0; cycle < cycles; cycle++) {
+      let tNow = cycle * T + waitTotal;
+      const cycleStart = tNow;
+
+      // 找可用电池（avail_time <= tNow）
+      let useBattery = null;
+      let minAvail = Infinity;
+      for (const b of batteries) {
+        if (b.avail_time <= tNow) {
+          if (b.avail_time < minAvail) {
+            minAvail = b.avail_time;
+            useBattery = b;
+          }
+        } else {
+          if (b.avail_time < minAvail) {
+            minAvail = b.avail_time;
+          }
+        }
+      }
+
+      // 没有可用电池，需要等待
+      let thisWait = 0;
+      if (useBattery === null) {
+        thisWait = minAvail - tNow;
+        waitTotal += thisWait;
+        tNow = minAvail;
+        for (const b of batteries) {
+          if (b.avail_time <= tNow) {
+            useBattery = b;
+            break;
+          }
+        }
+        if (useBattery === null) continue;
+      } else {
+        noWaitCount++;
+      }
+
+      const tEnd = tNow + T;
+      const usedBatteryIdx = useBattery.idx;
+
+      // 安排充电
+      let chargeEnd, chargeStart, usedCharger;
+      if (mode === 'dual') {
+        if (charger1FreeAt <= charger2FreeAt) {
+          chargeStart = Math.max(tEnd, charger1FreeAt);
+          chargeEnd = chargeStart + charger1Time;
+          charger1FreeAt = chargeEnd;
+          usedCharger = 'threePhase';
+        } else {
+          chargeStart = Math.max(tEnd, charger2FreeAt);
+          chargeEnd = chargeStart + charger2Time;
+          charger2FreeAt = chargeEnd;
+          usedCharger = 'generator';
+        }
+      } else {
+        chargeStart = Math.max(tEnd, charger1FreeAt);
+        chargeEnd = chargeStart + charger1Time;
+        charger1FreeAt = chargeEnd;
+        usedCharger = mode;
+      }
+
+      useBattery.avail_time = chargeEnd;
+
+      cycleDetails.push({
+        idx: cycle + 1,
+        wait: thisWait,
+        tStart: cycleStart,
+        tEnd: tEnd,
+        battery: usedBatteryIdx,
+        chargeStart: chargeStart,
+        chargeEnd: chargeEnd,
+        charger: usedCharger,
+        chargeTime: charger1Time && usedCharger === 'threePhase' ? (mode === 'dual' ? threeTime : charger1Time) :
+                    (usedCharger === 'generator' ? (mode === 'dual' ? genTime : charger1Time) : charger1Time)
+      });
+    }
+
+    // 计算作业结束时刻（最后一个循环的 tEnd）
+    const cycleEnd = cycleDetails.length > 0 ? cycleDetails[cycleDetails.length - 1].tEnd : 0;
+
+    // 返回 batteries_final 供结束后充电使用
+    return {
+      total: waitTotal,
+      cycles: cycleDetails,
+      noWaitCount: noWaitCount,
+      batteries_final: batteries,
+      cycleEnd: cycleEnd
+    };
+  },
+
+  /* ============================================================
+     ★★★ 吊运模式计算 ★★★
+     公式：
+       单价换算：元/斤 = 毛数 × 0.1
+       总躺数 = ⌈总斤数 ÷ 一躺多少斤⌉
+         （一躺 = 一个来回：装货→飞→卸货→飞回）
+       电池循环数 = ⌈总躺数 ÷ 多少躺一组电池⌉
+         （一组电池从满电用到换电算一个循环）
+       电池循环成本 = 电池循环数 × (三相电 ? 三相电成本 : 电池循环成本)
+       无人机人工 = 人数 × 天数 × (日薪 + 餐费) + 住宿费 × 住宿天数
+       采摘人工 = 包采摘 ? 总斤数 × (采摘毛数 × 0.1) : 0
+       交通 = (单程×2) × 油耗/100 × 油价 + 路桥费 + 车折旧×(单程×2)
+       设备折旧 = (总斤数 ÷ 100) × (无人机折旧 + 维修储备 + 保险)
+       其他 = 防护装备 + 清洗费 + 杂费
+       总成本 = 电池循环 + 无人机人工 + 采摘人工 + 交通 + 设备 + 其他
+       总收入 = 总斤数 × (吊运毛数 × 0.1)
+       粗利润 = 总收入 - 总成本
+       每斤成本 = 总成本 ÷ 总斤数
+       每斤利润 = 粗利润 ÷ 总斤数
+     ============================================================ */
+  computeHaul(state) {
+    const { field, costs, income } = state;
+    const totalWeight = Number(field.totalWeight) || 0;
+    const result = {
+      totalTrips: 0,              // 总躺数
+      batteryCycles: 0,           // 电池循环数
+      costBreakdown: {},
+      totalCost: 0,
+      income: 0,
+      profit: 0,
+      costPerJin: 0,
+      profitPerJin: 0,
+      flightHeight: field.flightHeight,
+      pickupIncluded: costs.pickupIncluded !== false,
+      pricePerJinYuan: 0,         // 换算后的吊运单价（元/斤）
+      pickupPricePerJinYuan: 0    // 换算后的采摘单价（元/斤）
+    };
+
+    if (totalWeight <= 0) return result;
+
+    /* 1. 单价换算：毛 → 元（1元=10毛） */
+    result.pricePerJinYuan = (Number(income.pricePerJin) || 0) * 0.1;
+    result.pickupPricePerJinYuan = (Number(costs.pickupPricePerJin) || 0) * 0.1;
+
+    /* 2. 总躺数 = ⌈总斤数 ÷ 一躺多少斤⌉
+          一躺 = 一个来回（装货→飞行→卸货→飞回） */
+    const weightPerTrip = Math.max(0.01, Number(costs.weightPerTrip) || 1);
+    result.totalTrips = Math.ceil(totalWeight / weightPerTrip);
+
+    /* 3. 电池循环数 = ⌈总躺数 ÷ 多少躺一组电池⌉
+          一组电池从满电用到换电算一个循环 */
+    const tripsPerBatteryCycle = Math.max(1, Number(costs.tripsPerBatteryCycle) || 1);
+    result.batteryCycles = Math.ceil(result.totalTrips / tripsPerBatteryCycle);
+
+    /* 4. 电池循环成本 = 电池循环数 × 单次成本 */
+    const batteryCycleUnitCost = costs.useThreePhase
+      ? Number(costs.batteryCycleCostThreePhase) || 0
+      : Number(costs.batteryCycleCost) || 0;
+    result.costBreakdown.battery = result.batteryCycles * batteryCycleUnitCost;
+
+    /* 5. 无人机人工（按天计算，独立于采摘）
+          = 人数 × 天数 × (日薪 + 餐费) + 住宿费 × 住宿天数 */
+    const droneWorkers = Number(costs.droneWorkers) || 0;
+    const droneDays = Number(costs.droneDays) || 0;
+    const droneDailyWage = Number(costs.droneDailyWage) || 0;
+    const droneMealCost = Number(costs.droneMealCost) || 0;
+    const droneAccommodation = Number(costs.droneAccommodation) || 0;
+    const droneAccommodationDays = Number(costs.droneAccommodationDays) || 0;
+    result.costBreakdown.droneLabor = droneWorkers * droneDays * (droneDailyWage + droneMealCost)
+                                    + droneAccommodation * droneAccommodationDays;
+
+    /* 6. 采摘人工（按斤计算，可选）
+          = 包采摘 ? 总斤数 × (采摘毛数 × 0.1) : 0 */
+    if (result.pickupIncluded) {
+      result.costBreakdown.pickupLabor = totalWeight * result.pickupPricePerJinYuan;
+    } else {
+      result.costBreakdown.pickupLabor = 0;
+    }
+
+    /* 7. 交通成本（与打药模式逻辑相同）
+          = (单程×2) × 油耗/100 × 油价 + 路桥费 + 车折旧×(单程×2) */
+    const distance = Number(costs.distance) || 0;
+    const fuelConsumption = Number(costs.fuelConsumption) || 0;
+    const fuelPrice = Number(costs.fuelPrice) || 0;
+    const roundTripKm = distance * 2;
+    const fuelCost = roundTripKm * (fuelConsumption / 100) * fuelPrice;
+    const vehicleDep = roundTripKm * (Number(costs.vehicleDepreciation) || 0);
+    result.costBreakdown.transport = fuelCost + vehicleDep + (Number(costs.tolls) || 0);
+
+    /* 8. 设备折旧（按100斤分摊，吊运按重量计损）
+          = (总斤数 ÷ 100) × (无人机折旧 + 维修储备 + 保险) */
+    const per100JinCost = (Number(costs.droneDepreciation) || 0)
+                        + (Number(costs.maintenanceReserve) || 0)
+                        + (Number(costs.insurance) || 0);
+    result.costBreakdown.equipment = (totalWeight / 100) * per100JinCost;
+
+    /* 9. 其他成本（每次作业固定）
+          = 防护装备 + 清洗费 + 杂费 */
+    result.costBreakdown.other = (Number(costs.protectiveGear) || 0)
+                               + (Number(costs.cleaningCost) || 0)
+                               + (Number(costs.miscCost) || 0);
+
+    /* 10. 总成本 = 电池循环 + 无人机人工 + 采摘人工 + 交通 + 设备 + 其他 */
+    result.totalCost = Object.values(result.costBreakdown).reduce((a, b) => a + b, 0);
+
+    /* 11. 总收入 = 总斤数 × (吊运毛数 × 0.1) */
+    result.income = totalWeight * result.pricePerJinYuan;
+
+    /* 12. 粗利润 = 总收入 - 总成本 */
+    result.profit = result.income - result.totalCost;
+
+    /* 13. 每斤指标 */
+    result.costPerJin = totalWeight > 0 ? result.totalCost / totalWeight : 0;
+    result.profitPerJin = totalWeight > 0 ? result.profit / totalWeight : 0;
+
+    return result;
+  },
+
+  /**
+   * 格式化数字显示
+   */
+  fmt(num, decimals = 2) {
+    if (typeof num !== 'number' || isNaN(num)) return '0';
+    return num.toFixed(decimals).replace(/\.?0+$/, (m) => m.includes('.') ? '' : m);
+  },
+
+  /**
+   * 格式化时长（min → "Xh Ymin" 紧凑格式）
+   * 例：45 → "45min", 90 → "1h30min", 120 → "2h", 67 → "1h7min"
+   */
+  formatDuration(min) {
+    if (typeof min !== 'number' || isNaN(min) || min < 0) min = 0;
+    const totalMin = Math.round(min);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    if (h === 0) return `${m}min`;
+    if (m === 0) return `${h}h`;
+    return `${h}h${m}min`;
+  },
+
+  /**
+   * 格式化货币
+   */
+  fmtMoney(num) {
+    if (typeof num !== 'number' || isNaN(num)) num = 0;
+    return num.toFixed(2);
+  },
+
+  /**
+   * 生成成本明细文案
+   */
+  costBreakdownText(r) {
+    const c = r.costBreakdown;
+    return [
+      `循环(电池/充电/油): ¥${this.fmtMoney(c.cycle)}`,
+      `交通(油费/折旧/路桥): ¥${this.fmtMoney(c.transport)}`,
+      `人工(工资/餐/宿): ¥${this.fmtMoney(c.labor)}`,
+      `药剂: ¥${this.fmtMoney(c.pesticide)}`,
+      `设备折旧/维修/保险: ¥${this.fmtMoney(c.equipment)}`,
+      `其他(防护/清洗/杂): ¥${this.fmtMoney(c.other)}`
+    ].join('；');
+  },
+
+  /* ============================================================
+     ★★★ 吊运模式计算（HAUL）—— 与打药模式完全独立 ★★★
+     公式：
+       【收入】
+         总收入(元) = 总斤数 × 吊运单价(毛) × 0.1
+         例：1000斤 × 8毛 × 0.1 = 800元
+       【电池循环】
+         总躺数 = ⌈总斤数 ÷ 每躺斤数⌉         （一躺=一个来回）
+         电池循环数 = ⌈总躺数 ÷ 每组电池躺数⌉  （多少躺换一次电池）
+         电池循环成本 = 电池循环数 × (三相电 ? 三相电成本 : 普通成本)
+       【无人机人工（按天）】
+         无人机人工 = 人数 × 天数 × (日薪 + 餐费) + 住宿费 × 住宿天数
+       【采摘人工（按斤，可选）】
+         采摘人工 = 包采摘 ? 总斤数 × 采摘单价(毛) × 0.1 : 0
+       【交通】
+         油费 = 单程×2 × 油耗/100 × 油价
+         车折旧 = 单程×2 × 元/公里
+         交通 = 油费 + 车折旧 + 路桥费
+       【设备折旧（按100斤）】
+         设备折旧 = (总斤数 ÷ 100) × (无人机折旧 + 维修储备 + 保险)
+       【其他】
+         其他 = 防护装备 + 清洗费 + 杂费
+       【汇总】
+         总成本 = 电池循环 + 无人机人工 + 采摘人工 + 交通 + 设备折旧 + 其他
+         利润 = 总收入 - 总成本
+         每斤利润 = 利润 ÷ 总斤数
+         每躺利润 = 利润 ÷ 总躺数
+     ============================================================ */
+  computeHaul(state) {
+    // 兼容两种调用形式：
+    //   1. UI 传 { field, costs, income }（haulField/haulCosts/haulIncome 已展开）
+    //   2. 完整 state 传 { haul: { field, costs, income } }
+    const haul = state.haul || state;
+    const totalWeight = Number(haul.field.totalWeight) || 0;
+    const result = {
+      totalWeight: totalWeight,        // 总斤数
+      totalTrips: 0,                   // 总躺数（来回数）
+      batteryCycles: 0,                // 电池循环数
+      costBreakdown: {},               // 成本明细
+      totalCost: 0,                    // 总成本
+      income: 0,                       // 总收入
+      profit: 0,                       // 利润
+      profitPerJin: 0,                 // 每斤利润
+      profitPerTrip: 0,                // 每躺利润
+      costPerJin: 0,                   // 每斤成本
+      pickupIncluded: haul.costs.pickupIncluded === true,
+      flightHeight: haul.field.flightHeight
+    };
+
+    if (totalWeight <= 0) return result;
+
+    /* 1. 总躺数（一躺=一个来回） */
+    const weightPerTrip = Math.max(0.01, Number(haul.costs.weightPerTrip) || 1);
+    result.totalTrips = Math.ceil(totalWeight / weightPerTrip);
+
+    /* 2. 电池循环数 */
+    const tripsPerCycle = Math.max(1, Number(haul.costs.tripsPerBatteryCycle) || 1);
+    result.batteryCycles = Math.ceil(result.totalTrips / tripsPerCycle);
+
+    /* 3. 电池循环成本 */
+    const cycleUnitCost = haul.costs.useThreePhase
+      ? Number(haul.costs.batteryCycleCostThreePhase) || 0
+      : Number(haul.costs.batteryCycleCost) || 0;
+    result.costBreakdown.cycle = result.batteryCycles * cycleUnitCost;
+
+    /* 4. 无人机人工（按天） */
+    const dWorkers = Number(haul.costs.droneWorkers) || 0;
+    const dDays = Number(haul.costs.droneDays) || 0;
+    const dWage = Number(haul.costs.droneDailyWage) || 0;
+    const dMeal = Number(haul.costs.droneMealCost) || 0;
+    const dAcc = Number(haul.costs.droneAccommodation) || 0;
+    const dAccDays = Number(haul.costs.droneAccommodationDays) || 0;
+    result.costBreakdown.droneLabor = dWorkers * dDays * (dWage + dMeal) + dAcc * dAccDays;
+
+    /* 5. 采摘人工（按斤，可选） */
+    if (result.pickupIncluded) {
+      const pickupPricePerJin = Number(haul.costs.pickupPricePerJin) || 0;
+      // 用户填的是"毛"，×0.1 转元
+      result.costBreakdown.pickupLabor = totalWeight * pickupPricePerJin * 0.1;
+    } else {
+      result.costBreakdown.pickupLabor = 0;
+    }
+
+    /* 6. 交通 */
+    const distance = Number(haul.costs.distance) || 0;
+    const fuelConsumption = Number(haul.costs.fuelConsumption) || 0;
+    const fuelPrice = Number(haul.costs.fuelPrice) || 0;
+    const roundTripKm = distance * 2;
+    const fuelCost = roundTripKm * (fuelConsumption / 100) * fuelPrice;
+    const vehicleDep = roundTripKm * (Number(haul.costs.vehicleDepreciation) || 0);
+    result.costBreakdown.transport = fuelCost + vehicleDep + (Number(haul.costs.tolls) || 0);
+
+    /* 7. 设备折旧（按100斤） */
+    const per100JinCost = (Number(haul.costs.droneDepreciation) || 0)
+                        + (Number(haul.costs.maintenanceReserve) || 0)
+                        + (Number(haul.costs.insurance) || 0);
+    result.costBreakdown.equipment = (totalWeight / 100) * per100JinCost;
+
+    /* 8. 其他 */
+    result.costBreakdown.other = (Number(haul.costs.protectiveGear) || 0)
+                               + (Number(haul.costs.cleaningCost) || 0)
+                               + (Number(haul.costs.miscCost) || 0);
+
+    /* 9. 汇总 */
+    result.totalCost = Object.values(result.costBreakdown).reduce((a, b) => a + b, 0);
+
+    /* 10. 总收入（用户填毛，×0.1 转元） */
+    const pricePerJin = Number(haul.income.pricePerJin) || 0;
+    result.income = totalWeight * pricePerJin * 0.1;
+
+    /* 11. 利润 */
+    result.profit = result.income - result.totalCost;
+    result.profitPerJin = totalWeight > 0 ? result.profit / totalWeight : 0;
+    result.profitPerTrip = result.totalTrips > 0 ? result.profit / result.totalTrips : 0;
+    result.costPerJin = totalWeight > 0 ? result.totalCost / totalWeight : 0;
+
+    return result;
+  }
+};
+
+window.Calculator = Calculator;
+
+</script>
+  <script>
+/* ============================================================
+   storage.js — 本地存储 / 预设 / 历史记录 / 导入导出
+   支持打药模式(spray) + 吊运模式(haul) 双模式
+   ============================================================ */
+
+const Storage = {
+  KEYS: {
+    state: 'drone_spray_state_v2',
+    presets: 'drone_spray_presets_v2',
+    history: 'drone_spray_history_v2',
+    theme: 'drone_spray_theme_v1'
+  },
+
+  get(key, fallback) {
+    try {
+      const v = localStorage.getItem(key);
+      return v ? JSON.parse(v) : fallback;
+    } catch (e) {
+      console.warn('Storage.get failed:', key, e);
+      return fallback;
+    }
+  },
+  set(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    } catch (e) {
+      console.warn('Storage.set failed:', key, e);
+      return false;
+    }
+  },
+
+  getTheme() { return this.get(this.KEYS.theme, 'day'); },
+  setTheme(t) { this.set(this.KEYS.theme, t); },
+
+  getState() { return this.get(this.KEYS.state, null); },
+  saveState(state) { this.set(this.KEYS.state, state); },
+
+  getPresets() { return this.get(this.KEYS.presets, []); },
+
+  savePreset(name, mode, state) {
+    const presets = this.getPresets();
+    const idx = presets.findIndex(p => p.name === name);
+    const item = {
+      name,
+      mode,
+      plant: mode === 'spray' ? { ...state.plant } : null,
+      field: { ...state.field },
+      costs: { ...state.costs },
+      income: { ...state.income },
+      haulField: { ...state.haulField },
+      haulCosts: { ...state.haulCosts },
+      haulIncome: { ...state.haulIncome },
+      savedAt: new Date().toISOString()
+    };
+    if (idx >= 0) presets[idx] = item;
+    else presets.push(item);
+    this.set(this.KEYS.presets, presets);
+    return item;
+  },
+
+  deletePreset(name) {
+    const presets = this.getPresets().filter(p => p.name !== name);
+    this.set(this.KEYS.presets, presets);
+  },
+
+  getHistory() { return this.get(this.KEYS.history, []); },
+
+  addHistory(record) {
+    const history = this.getHistory();
+    history.unshift({ ...record, time: new Date().toISOString() });
+    if (history.length > 20) history.length = 20;
+    this.set(this.KEYS.history, history);
+  },
+
+  clearHistory() { this.set(this.KEYS.history, []); },
+
+  /* ---------- 导出为文本格式（易读，支持双模式） ---------- */
+  exportText(state, mode) {
+    const lines = [];
+    lines.push('===== 无人机作业配置 =====');
+    lines.push(`版本: 2.0`);
+    lines.push(`模式: ${mode === 'haul' ? '吊运' : '打药'}`);
+    lines.push(`导出时间: ${new Date().toLocaleString('zh-CN')}`);
+    lines.push('');
+
+    if (mode === 'haul') {
+      // 吊运模式导出
+      lines.push('【作业参数】');
+      lines.push(`  总斤数: ${state.haulField.totalWeight} 斤`);
+      lines.push(`  飞行高度: ${state.haulField.flightHeight} 米`);
+      lines.push('');
+      lines.push('【电池循环】');
+      lines.push(`  电池循环成本: ${state.haulCosts.batteryCycleCost} 元`);
+      lines.push(`  三相电循环成本: ${state.haulCosts.batteryCycleCostThreePhase} 元`);
+      lines.push(`  一躺多少斤: ${state.haulCosts.weightPerTrip} 斤`);
+      lines.push(`  多少躺一组电池: ${state.haulCosts.tripsPerBatteryCycle} 躺`);
+      lines.push(`  使用三相电: ${state.haulCosts.useThreePhase ? '是' : '否'}`);
+      lines.push('');
+      lines.push('【无人机人工】');
+      lines.push(`  无人机作业人数: ${state.haulCosts.droneWorkers}`);
+      lines.push(`  无人机作业天数: ${state.haulCosts.droneDays}`);
+      lines.push(`  每人日薪: ${state.haulCosts.droneDailyWage} 元`);
+      lines.push(`  每人每天餐费: ${state.haulCosts.droneMealCost} 元`);
+      lines.push(`  住宿费: ${state.haulCosts.droneAccommodation} 元/天`);
+      lines.push(`  住宿天数: ${state.haulCosts.droneAccommodationDays}`);
+      lines.push('');
+      lines.push('【采摘人工】');
+      lines.push(`  包采摘: ${state.haulCosts.pickupIncluded ? '是' : '否'}`);
+      lines.push(`  采摘每斤单价: ${state.haulCosts.pickupPricePerJin} 毛`);
+      lines.push('');
+      lines.push('【交通成本】');
+      lines.push(`  单程路程: ${state.haulCosts.distance} 公里`);
+      lines.push(`  油耗: ${state.haulCosts.fuelConsumption} 升/100km`);
+      lines.push(`  油价: ${state.haulCosts.fuelPrice} 元/升`);
+      lines.push(`  路桥费: ${state.haulCosts.tolls} 元`);
+      lines.push(`  车辆折旧: ${state.haulCosts.vehicleDepreciation} 元/公里`);
+      lines.push('');
+      lines.push('【其他成本】');
+      lines.push(`  无人机折旧: ${state.haulCosts.droneDepreciation} 元/100斤`);
+      lines.push(`  维修保养储备: ${state.haulCosts.maintenanceReserve} 元/100斤`);
+      lines.push(`  防护装备: ${state.haulCosts.protectiveGear} 元/次`);
+      lines.push(`  清洗费用: ${state.haulCosts.cleaningCost} 元/次`);
+      lines.push(`  保险分摊: ${state.haulCosts.insurance} 元/100斤`);
+      lines.push(`  其他杂费: ${state.haulCosts.miscCost} 元`);
+      lines.push('');
+      lines.push('【收入参数】');
+      lines.push(`  吊运每斤单价: ${state.haulIncome.pricePerJin} 毛`);
+    } else {
+      // 打药模式导出
+      const plant = state.plant;
+      lines.push(`【植物】${plant.icon || ''} ${plant.name} (calcMode=${plant.calcMode})`);
+      lines.push(`  飞行高度: ${plant.flightHeight} 米`);
+      lines.push(`  每亩水量: ${plant.waterPerMu} 升`);
+      lines.push(`  每亩棵数: ${plant.treesPerMu}`);
+      lines.push(`  每棵水量: ${plant.waterPerTree} 升`);
+      lines.push(`  一套药需水量: ${plant.pesticideWaterPerSet} 升`);
+      lines.push(`  无人机省药系数: ${plant.droneSavingCoeff}`);
+      lines.push('');
+      lines.push('【作业参数】');
+      lines.push(`  亩数: ${state.field.area}`);
+      lines.push(`  现有药剂套数: ${state.field.existingPesticideSets}`);
+      lines.push('');
+      lines.push('【循环成本】');
+      lines.push(`  单次循环成本: ${state.costs.cycleCost} 元`);
+      lines.push(`  三相电循环成本: ${state.costs.cycleCostThreePhase} 元`);
+      lines.push(`  单循环亩数: ${state.costs.cycleArea} 亩`);
+      lines.push(`  使用三相电: ${state.costs.useThreePhase ? '是' : '否'}`);
+      lines.push('');
+      lines.push('【交通成本】');
+      lines.push(`  单程路程: ${state.costs.distance} 公里`);
+      lines.push(`  油耗: ${state.costs.fuelConsumption} 升/100km`);
+      lines.push(`  油价: ${state.costs.fuelPrice} 元/升`);
+      lines.push(`  路桥费: ${state.costs.tolls} 元`);
+      lines.push(`  车辆折旧: ${state.costs.vehicleDepreciation} 元/公里`);
+      lines.push('');
+      lines.push('【人工成本】');
+      lines.push(`  作业人数: ${state.costs.workers}`);
+      lines.push(`  作业天数: ${state.costs.days}`);
+      lines.push(`  每人日薪: ${state.costs.dailyWage} 元`);
+      lines.push(`  每人每天餐费: ${state.costs.mealCost} 元`);
+      lines.push(`  住宿费: ${state.costs.accommodation} 元/天`);
+      lines.push(`  住宿天数: ${state.costs.accommodationDays}`);
+      lines.push('');
+      lines.push('【其他成本】');
+      lines.push(`  一套药剂价格: ${state.costs.pesticidePrice} 元`);
+      lines.push(`  包药: ${state.costs.pesticideIncluded ? '是' : '否'}`);
+      lines.push(`  无人机折旧: ${state.costs.droneDepreciation} 元/亩`);
+      lines.push(`  维修保养储备: ${state.costs.maintenanceReserve} 元/亩`);
+      lines.push(`  防护装备: ${state.costs.protectiveGear} 元/次`);
+      lines.push(`  清洗费用: ${state.costs.cleaningCost} 元/次`);
+      lines.push(`  保险分摊: ${state.costs.insurance} 元/亩`);
+      lines.push(`  其他杂费: ${state.costs.miscCost} 元`);
+      lines.push('');
+      lines.push('【收入参数】');
+      lines.push(`  每亩收费: ${state.income.pricePerMu} 元/亩`);
+      lines.push(`  补贴: ${state.income.subsidy} 元`);
+      // 时间参数
+      if (state.timing) {
+        lines.push('');
+        lines.push('【时间参数】');
+        lines.push(`  飞行速度: ${state.timing.flightSpeed} m/s`);
+        lines.push(`  航线间距: ${state.timing.lineSpacing} 米`);
+        lines.push(`  来回升降时间: ${state.timing.roundTripTime} min/循环`);
+        lines.push(`  基础兑药时间: ${state.timing.baseMixTime} min/轮`);
+        lines.push(`  兑水速度: ${state.timing.waterMixRate} min/100L`);
+        lines.push(`  拥有电池数量: ${state.timing.batteryCount} 块`);
+        lines.push(`  发电机充电时间: ${state.timing.generatorChargeTime} min/块`);
+        lines.push(`  三相电充电时间: ${state.timing.threePhaseChargeTime} min/块`);
+        lines.push(`  充电模式: ${state.timing.chargeMode}`);
+      }
+    }
+
+    lines.push('');
+    lines.push('===== 配置结束 =====');
+    return lines.join('\n');
+  },
+
+  /* ---------- 导出为 JSON 格式（精确，支持双模式） ---------- */
+  exportJSON(state, mode) {
+    return JSON.stringify({
+      type: 'drone-spray-config',
+      version: '2.0',
+      mode: mode,
+      exportedAt: new Date().toISOString(),
+      plant: mode === 'spray' ? { ...state.plant } : null,
+      field: { ...state.field },
+      costs: { ...state.costs },
+      income: { ...state.income },
+      timing: state.timing ? { ...state.timing } : null,
+      haulField: { ...state.haulField },
+      haulCosts: { ...state.haulCosts },
+      haulIncome: { ...state.haulIncome }
+    }, null, 2);
+  },
+
+  /* ---------- 从文本导入（自动识别 JSON 或带【】文本） ---------- */
+  importText(text) {
+    if (!text || typeof text !== 'string') return null;
+    text = text.trim();
+
+    // 1. 尝试 JSON
+    if (text.startsWith('{')) {
+      try {
+        const obj = JSON.parse(text);
+        if (obj.type === 'drone-spray-config') {
+          return this._normalizeImport(obj);
+        }
+      } catch (e) {
+        console.warn('JSON parse failed, try text format', e);
+      }
+    }
+
+    // 2. 尝试文本格式
+    return this._parseTextFormat(text);
+  },
+
+  _normalizeImport(obj) {
+    const result = {
+      mode: obj.mode || 'spray',
+      plant: obj.plant || { ...window.PLANT_DATABASE.fruit_tree },
+      field: Object.assign({}, window.DEFAULT_FIELD, obj.field || {}),
+      costs: Object.assign({}, window.DEFAULT_COSTS, obj.costs || {}),
+      income: Object.assign({}, window.DEFAULT_INCOME, obj.income || {}),
+      timing: Object.assign({}, window.DEFAULT_TIMING, obj.timing || {}),
+      haulField: Object.assign({}, window.DEFAULT_HAUL_FIELD, obj.haulField || {}),
+      haulCosts: Object.assign({}, window.DEFAULT_HAUL_COSTS, obj.haulCosts || {}),
+      haulIncome: Object.assign({}, window.DEFAULT_HAUL_INCOME, obj.haulIncome || {})
+    };
+    return result;
+  },
+
+  _parseTextFormat(text) {
+    const result = {
+      mode: 'spray',
+      plant: { ...window.PLANT_DATABASE.fruit_tree },
+      field: { ...window.DEFAULT_FIELD },
+      costs: { ...window.DEFAULT_COSTS },
+      income: { ...window.DEFAULT_INCOME },
+      timing: { ...window.DEFAULT_TIMING },
+      haulField: { ...window.DEFAULT_HAUL_FIELD },
+      haulCosts: { ...window.DEFAULT_HAUL_COSTS },
+      haulIncome: { ...window.DEFAULT_HAUL_INCOME }
+    };
+
+    // 检测模式
+    if (text.includes('模式: 吊运') || text.includes('【吊运') || text.includes('【电池循环】') && text.includes('一躺多少斤')) {
+      result.mode = 'haul';
+    }
+
+    // 字段映射表（打药 + 吊运合并）
+    const fieldMap = {
+      // 打药-植物
+      '飞行高度': ['plant', 'flightHeight', parseFloat],
+      '每亩水量': ['plant', 'waterPerMu', parseFloat],
+      '每亩棵数': ['plant', 'treesPerMu', parseFloat],
+      '每棵水量': ['plant', 'waterPerTree', parseFloat],
+      '一套药需水量': ['plant', 'pesticideWaterPerSet', parseFloat],
+      '无人机省药系数': ['plant', 'droneSavingCoeff', parseFloat],
+      // 打药-作业
+      '亩数': ['field', 'area', parseFloat],
+      '现有药剂套数': ['field', 'existingPesticideSets', parseFloat],
+      // 打药-循环
+      '单次循环成本': ['costs', 'cycleCost', parseFloat],
+      '三相电循环成本': ['costs', 'cycleCostThreePhase', parseFloat],
+      '单循环亩数': ['costs', 'cycleArea', parseFloat],
+      // 打药-人工
+      '作业人数': ['costs', 'workers', parseFloat],
+      '作业天数': ['costs', 'days', parseFloat],
+      '每人日薪': ['costs', 'dailyWage', parseFloat],
+      '每人每天餐费': ['costs', 'mealCost', parseFloat],
+      '住宿费': ['costs', 'accommodation', parseFloat],
+      '住宿天数': ['costs', 'accommodationDays', parseFloat],
+      // 打药-其他
+      '一套药剂价格': ['costs', 'pesticidePrice', parseFloat],
+      '无人机折旧': ['costs', 'droneDepreciation', parseFloat],
+      '维修保养储备': ['costs', 'maintenanceReserve', parseFloat],
+      '防护装备': ['costs', 'protectiveGear', parseFloat],
+      '清洗费用': ['costs', 'cleaningCost', parseFloat],
+      '保险分摊': ['costs', 'insurance', parseFloat],
+      '其他杂费': ['costs', 'miscCost', parseFloat],
+      // 打药-收入
+      '每亩收费': ['income', 'pricePerMu', parseFloat],
+      '补贴': ['income', 'subsidy', parseFloat],
+      // 时间参数
+      '飞行速度': ['timing', 'flightSpeed', parseFloat],
+      '航线间距': ['timing', 'lineSpacing', parseFloat],
+      '来回升降时间': ['timing', 'roundTripTime', parseFloat],
+      '基础兑药时间': ['timing', 'baseMixTime', parseFloat],
+      '兑水速度': ['timing', 'waterMixRate', parseFloat],
+      '拥有电池数量': ['timing', 'batteryCount', parseFloat],
+      '发电机充电时间': ['timing', 'generatorChargeTime', parseFloat],
+      '三相电充电时间': ['timing', 'threePhaseChargeTime', parseFloat],
+      '充电模式': ['timing', 'chargeMode', (v) => v],
+      // 吊运-作业
+      '总斤数': ['haulField', 'totalWeight', parseFloat],
+      // 吊运-电池循环
+      '电池循环成本': ['haulCosts', 'batteryCycleCost', parseFloat],
+      '一躺多少斤': ['haulCosts', 'weightPerTrip', parseFloat],
+      '多少躺一组电池': ['haulCosts', 'tripsPerBatteryCycle', parseFloat],
+      // 吊运-无人机人工
+      '无人机作业人数': ['haulCosts', 'droneWorkers', parseFloat],
+      '无人机作业天数': ['haulCosts', 'droneDays', parseFloat],
+      // 吊运-采摘
+      '采摘每斤单价': ['haulCosts', 'pickupPricePerJin', parseFloat],
+      // 吊运-收入
+      '吊运每斤单价': ['haulIncome', 'pricePerJin', parseFloat]
+    };
+
+    // 布尔字段映射
+    const boolMap = {
+      '使用三相电': ['costs', 'useThreePhase'],
+      '包药': ['costs', 'pesticideIncluded'],
+      '包采摘': ['haulCosts', 'pickupIncluded']
+    };
+
+    // 通用字段（两种模式都有，需根据模式分配）
+    const commonFields = ['distance', 'fuelConsumption', 'fuelPrice', 'tolls', 'vehicleDepreciation', 'miscCost'];
+    const commonLabels = {
+      '单程路程': 'distance',
+      '油耗': 'fuelConsumption',
+      '油价': 'fuelPrice',
+      '路桥费': 'tolls',
+      '车辆折旧': 'vehicleDepreciation'
+    };
+
+    const lines = text.split('\n');
+    lines.forEach(line => {
+      // 匹配 "  字段名: 值 单位" 形式
+      const m = line.match(/^\s*([^:：【】]+)[:：]\s*([^\s\n]+)/);
+      if (!m) return;
+      const key = m[1].trim();
+      const valStr = m[2].trim();
+
+      // 布尔字段
+      if (boolMap[key]) {
+        const [group, field] = boolMap[key];
+        result[group][field] = (valStr === '是' || valStr === 'true');
+        return;
+      }
+
+      // 数值字段
+      if (fieldMap[key]) {
+        const [group, field, parser] = fieldMap[key];
+        result[group][field] = parser(valStr);
+        return;
+      }
+
+      // 通用字段（根据模式分配）
+      if (commonLabels[key]) {
+        const fieldName = commonLabels[key];
+        if (result.mode === 'haul') {
+          result.haulCosts[fieldName] = parseFloat(valStr) || 0;
+        } else {
+          result.costs[fieldName] = parseFloat(valStr) || 0;
+        }
+        return;
+      }
+
+      // 通用其他字段（杂费、防护、清洗等需要根据上下文判断）
+      // 如果在吊运模式且字段名匹配打药的字段名，赋给 haulCosts
+      if (result.mode === 'haul') {
+        // 住宿费/住宿天数 在吊运模式属于无人机人工
+        if (key === '住宿费') result.haulCosts.droneAccommodation = parseFloat(valStr) || 0;
+        if (key === '住宿天数') result.haulCosts.droneAccommodationDays = parseFloat(valStr) || 0;
+        if (key === '每人日薪') result.haulCosts.droneDailyWage = parseFloat(valStr) || 0;
+        if (key === '每人每天餐费') result.haulCosts.droneMealCost = parseFloat(valStr) || 0;
+        if (key === '防护装备') result.haulCosts.protectiveGear = parseFloat(valStr) || 0;
+        if (key === '清洗费用') result.haulCosts.cleaningCost = parseFloat(valStr) || 0;
+        if (key === '其他杂费') result.haulCosts.miscCost = parseFloat(valStr) || 0;
+        if (key === '维修保养储备') result.haulCosts.maintenanceReserve = parseFloat(valStr) || 0;
+        if (key === '保险分摊') result.haulCosts.insurance = parseFloat(valStr) || 0;
+        if (key === '无人机折旧') result.haulCosts.droneDepreciation = parseFloat(valStr) || 0;
+      }
+    });
+
+    // 提取植物名（打药模式）
+    if (result.mode === 'spray') {
+      const plantNameMatch = text.match(/【植物】\s*(\S+)/);
+      if (plantNameMatch) {
+        const name = plantNameMatch[1].replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').trim();
+        const found = Object.values(window.PLANT_DATABASE).find(p => p.name === name);
+        if (found) result.plant = { ...found };
+        else result.plant.name = name;
+      }
+    }
+
+    return result;
+  }
+};
+
+window.Storage = Storage;
+
+</script>
+  <script>
+/* ============================================================
+   ui.js — UI 渲染与交互（支持打药/吊运双模式）
+   ============================================================ */
+
+const UI = {
+  state: {
+    mode: 'spray',              // 'spray' | 'haul'
+    // 打药模式状态
+    plant: null,
+    field: { ...DEFAULT_FIELD },
+    costs: { ...DEFAULT_COSTS },
+    income: { ...DEFAULT_INCOME },
+    timing: { ...DEFAULT_TIMING },     // 作业时间参数
+    // 吊运模式状态（完全独立）
+    haulField: { ...DEFAULT_HAUL_FIELD },
+    haulCosts: { ...DEFAULT_HAUL_COSTS },
+    haulIncome: { ...DEFAULT_HAUL_INCOME }
+  },
+
+  /* ---------- 初始化 ---------- */
+  init() {
+    this.loadState();
+    this.bindModeSwitcher();
+    this.bindEvents();
+    this.applyMode(this.state.mode);
+    this.applyTheme(Storage.getTheme());
+  },
+
+  /* ---------- 模式切换 ---------- */
+  bindModeSwitcher() {
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.switchMode(btn.dataset.mode);
+      });
+    });
+  },
+
+  switchMode(mode) {
+    if (mode !== 'spray' && mode !== 'haul') return;
+    this.state.mode = mode;
+    this.applyMode(mode);
+    this.save();
+    this.compute();
+  },
+
+  applyMode(mode) {
+    this.state.mode = mode;
+    // 切换按钮高亮
+    document.querySelectorAll('.mode-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.mode === mode);
+    });
+    // 切换结果显示
+    document.getElementById('sprayResults').style.display = mode === 'spray' ? '' : 'none';
+    document.getElementById('haulResults').style.display = mode === 'haul' ? '' : 'none';
+    // 模式标签
+    document.getElementById('modeTag').textContent = mode === 'spray' ? '打药模式' : '吊运模式';
+    // 植物面板和预设栏：仅打药模式显示
+    const plantPanel = document.querySelector('.plant-panel');
+    if (plantPanel) plantPanel.style.display = mode === 'spray' ? '' : 'none';
+    // 作业时间面板和时间参数面板：仅打药模式显示
+    const timingPanel = document.getElementById('timingPanel');
+    const timingParamPanel = document.getElementById('timingParamPanel');
+    if (timingPanel) timingPanel.style.display = mode === 'spray' ? '' : 'none';
+    if (timingParamPanel) timingParamPanel.style.display = mode === 'spray' ? '' : 'none';
+    // 重新渲染表单和结果
+    this.renderAll();
+    // 渲染完后立即计算一次，确保结果区域有值
+    this.compute();
+  },
+
+  renderAll() {
+    if (this.state.mode === 'spray') {
+      this.renderPlantGrid();
+      this.updatePlantInfo();
+      this.renderParamForm();
+      this.renderCostTabs();
+      this.renderIncomeForm();
+      this.renderTimingForm();
+    } else {
+      this.renderHaulParamForm();
+      this.renderHaulCostTabs();
+      this.renderHaulIncomeForm();
+    }
+  },
+
+  /* ---------- 加载已保存状态 ---------- */
+  loadState() {
+    const saved = Storage.getState();
+    if (saved) {
+      this.state.mode = saved.mode || 'spray';
+      if (saved.plant) this.state.plant = { ...saved.plant };
+      else this.state.plant = { ...PLANT_DATABASE[this.state.field.plantKey || 'fruit_tree'] };
+      if (saved.field) this.state.field = { ...this.state.field, ...saved.field };
+      if (saved.costs) this.state.costs = { ...this.state.costs, ...saved.costs };
+      if (saved.income) this.state.income = { ...this.state.income, ...saved.income };
+      if (saved.timing) this.state.timing = { ...this.state.timing, ...saved.timing };
+      if (saved.haulField) this.state.haulField = { ...this.state.haulField, ...saved.haulField };
+      if (saved.haulCosts) this.state.haulCosts = { ...this.state.haulCosts, ...saved.haulCosts };
+      if (saved.haulIncome) this.state.haulIncome = { ...this.state.haulIncome, ...saved.haulIncome };
+    } else {
+      this.state.plant = { ...PLANT_DATABASE[this.state.field.plantKey || 'fruit_tree'] };
+    }
+  },
+
+  /* ============================================================
+     ★★ 打药模式（沿用原逻辑）★★
+     ============================================================ */
+
+  renderPlantGrid() {
+    const grid = document.getElementById('plantGrid');
+    grid.innerHTML = '';
+    Object.entries(PLANT_DATABASE).forEach(([key, plant]) => {
+      const card = document.createElement('div');
+      card.className = 'plant-card';
+      card.dataset.key = key;
+      if (this.state.plant && this.state.plant.name === plant.name) card.classList.add('active');
+      card.innerHTML = `<span class="p-icon">${plant.icon}</span><span class="p-name">${plant.name}</span>`;
+      card.addEventListener('click', () => this.selectPlant(key));
+      grid.appendChild(card);
+    });
+  },
+
+  selectPlant(key) {
+    const plant = PLANT_DATABASE[key];
+    if (!plant) return;
+    this.state.plant = { ...plant };
+    this.state.field.plantKey = key;
+    document.querySelectorAll('.plant-card').forEach(c => {
+      c.classList.toggle('active', c.dataset.key === key);
+    });
+    this.updatePlantInfo();
+    this.syncParamFormFromPlant();
+    this.compute();
+    this.save();
+  },
+
+  updatePlantInfo() {
+    const p = this.state.plant;
+    if (!p) return;
+    document.getElementById('plantInfoName').textContent = `${p.icon || '🌱'} ${p.name}`;
+    document.getElementById('plantInfoDesc').textContent = p.description || '—';
+    document.getElementById('plantInfoNotes').textContent = p.notes || '';
+  },
+
+  renderParamForm() {
+    const form = document.getElementById('paramForm');
+    form.innerHTML = '';
+    FIELD_ORDER.param.forEach(key => this.appendField(form, key, 'spray'));
+    this.syncParamFormFromPlant();
+  },
+
+  syncParamFormFromPlant() {
+    const p = this.state.plant;
+    if (!p) return;
+    const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+    setVal('inp-flightHeight', p.flightHeight);
+    setVal('inp-waterPerMu', p.waterPerMu);
+    setVal('inp-treesPerMu', p.treesPerMu);
+    setVal('inp-waterPerTree', p.waterPerTree);
+    setVal('inp-pesticideWaterPerSet', p.pesticideWaterPerSet);
+    setVal('inp-droneSavingCoeff', p.droneSavingCoeff);
+    setVal('inp-area', this.state.field.area);
+    setVal('inp-existingPesticideSets', this.state.field.existingPesticideSets);
+  },
+
+  renderCostTabs() {
+    const tabsContainer = document.getElementById('costTabs');
+    const contentContainer = document.getElementById('tabContentContainer');
+    tabsContainer.innerHTML = '';
+    contentContainer.innerHTML = '';
+
+    const tabs = [
+      { key: 'cycle',     label: '🔋 循环成本' },
+      { key: 'transport', label: '🚚 交通' },
+      { key: 'labor',     label: '👥 人工' },
+      { key: 'other',     label: '📦 其他' }
+    ];
+    tabs.forEach((tab, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'tab-btn' + (i === 0 ? ' active' : '');
+      btn.dataset.tab = tab.key;
+      btn.textContent = tab.label;
+      btn.addEventListener('click', () => this.switchCostTab(tab.key, 'spray'));
+      tabsContainer.appendChild(btn);
+
+      const content = document.createElement('div');
+      content.className = 'tab-content' + (i === 0 ? ' active' : '');
+      content.dataset.tab = tab.key;
+      contentContainer.appendChild(content);
+      const wrap = document.createElement('div');
+      wrap.className = 'form-grid';
+      content.appendChild(wrap);
+      FIELD_ORDER[tab.key].forEach(key => this.appendField(wrap, key, 'spray'));
+    });
+    this.syncCostFormFromState();
+  },
+
+  switchCostTab(tabKey, mode) {
+    // costTabs 和 tabContentContainer 是共享 ID（两种模式复用同一组容器）
+    document.querySelectorAll(`#costTabs .tab-btn`).forEach(b => {
+      b.classList.toggle('active', b.dataset.tab === tabKey);
+    });
+    document.querySelectorAll(`#tabContentContainer .tab-content`).forEach(c => {
+      c.classList.toggle('active', c.dataset.tab === tabKey);
+    });
+  },
+
+  syncCostFormFromState() {
+    Object.keys(this.state.costs).forEach(k => {
+      const el = document.getElementById(`inp-${k}`);
+      if (!el) return;
+      if (el.type === 'checkbox') el.checked = !!this.state.costs[k];
+      else el.value = this.state.costs[k];
+    });
+  },
+
+  renderIncomeForm() {
+    const form = document.getElementById('incomeForm');
+    form.innerHTML = '';
+    FIELD_ORDER.income.forEach(key => this.appendField(form, key, 'spray'));
+    this.syncIncomeFormFromState();
+  },
+
+  syncIncomeFormFromState() {
+    Object.keys(this.state.income).forEach(k => {
+      const el = document.getElementById(`inp-${k}`);
+      if (!el) return;
+      el.value = this.state.income[k];
+    });
+  },
+
+  /* ---------- 时间参数表单 ---------- */
+  renderTimingForm() {
+    const form = document.getElementById('timingForm');
+    if (!form) return;
+    form.innerHTML = '';
+    FIELD_ORDER.timing.forEach(key => this.appendField(form, key, 'timing'));
+    this.syncTimingFormFromState();
+  },
+
+  syncTimingFormFromState() {
+    if (!this.state.timing) return;
+    Object.keys(this.state.timing).forEach(k => {
+      const el = document.getElementById(`inp-${k}`);
+      if (!el) return;
+      if (el.type === 'radio') {
+        if (el.value === String(this.state.timing[k])) el.checked = true;
+      } else if (el.tagName === 'INPUT' && el.type !== 'radio') {
+        el.value = this.state.timing[k];
+      }
+    });
+    // 飞行速度/航线间距禁用逻辑（manualFlightTime > 0 时禁用）
+    this.updateFlightFieldsDisabled();
+  },
+
+  /* 飞行速度/航线间距禁用状态更新 */
+  updateFlightFieldsDisabled() {
+    const manualFlightTime = Number(this.state.timing.manualFlightTime) || 0;
+    const disabled = manualFlightTime > 0;
+    ['inp-flightSpeed', 'inp-lineSpacing'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.dataset.disabled = disabled ? 'true' : '';
+        el.readOnly = disabled;
+      }
+    });
+  },
+
+  /* ============================================================
+     ★★ 吊运模式 ★★
+     ============================================================ */
+
+  renderHaulParamForm() {
+    const form = document.getElementById('paramForm');
+    form.innerHTML = '';
+    HAUL_FIELD_ORDER.param.forEach(key => this.appendField(form, key, 'haul'));
+    this.syncHaulParamForm();
+  },
+
+  syncHaulParamForm() {
+    const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+    setVal('inp-totalWeight', this.state.haulField.totalWeight);
+    setVal('inp-flightHeight', this.state.haulField.flightHeight);
+  },
+
+  renderHaulCostTabs() {
+    const tabsContainer = document.getElementById('costTabs');
+    const contentContainer = document.getElementById('tabContentContainer');
+    tabsContainer.innerHTML = '';
+    contentContainer.innerHTML = '';
+
+    HAUL_TAB_CONFIG.forEach((tab, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'tab-btn' + (i === 0 ? ' active' : '');
+      btn.dataset.tab = tab.key;
+      btn.textContent = tab.label;
+      btn.addEventListener('click', () => this.switchCostTab(tab.key, 'haul'));
+      tabsContainer.appendChild(btn);
+
+      const content = document.createElement('div');
+      content.className = 'tab-content' + (i === 0 ? ' active' : '');
+      content.dataset.tab = tab.key;
+      contentContainer.appendChild(content);
+      const wrap = document.createElement('div');
+      wrap.className = 'form-grid';
+      content.appendChild(wrap);
+      HAUL_FIELD_ORDER[tab.key].forEach(key => this.appendField(wrap, key, 'haul'));
+    });
+    this.syncHaulCostFormFromState();
+  },
+
+  syncHaulCostFormFromState() {
+    Object.keys(this.state.haulCosts).forEach(k => {
+      const el = document.getElementById(`inp-${k}`);
+      if (!el) return;
+      if (el.type === 'checkbox') el.checked = !!this.state.haulCosts[k];
+      else el.value = this.state.haulCosts[k];
+    });
+  },
+
+  renderHaulIncomeForm() {
+    const form = document.getElementById('incomeForm');
+    form.innerHTML = '';
+    HAUL_FIELD_ORDER.income.forEach(key => this.appendField(form, key, 'haul'));
+    this.syncHaulIncomeFormFromState();
+  },
+
+  syncHaulIncomeFormFromState() {
+    Object.keys(this.state.haulIncome).forEach(k => {
+      const el = document.getElementById(`inp-${k}`);
+      if (!el) return;
+      el.value = this.state.haulIncome[k];
+    });
+  },
+
+  /* ---------- 通用字段渲染 ---------- */
+  appendField(container, key, mode) {
+    const defs = mode === 'haul' ? HAUL_FIELD_DEFS : FIELD_DEFS;
+    const def = defs[key];
+    if (!def) return;
+
+    if (def.type === 'check') {
+      const lbl = document.createElement('label');
+      lbl.className = 'field-check';
+      const curVal = this.getFieldValue(key, mode);
+      lbl.innerHTML = `<input type="checkbox" id="inp-${key}" ${curVal ? 'checked' : ''}><span>${def.label}</span>`;
+      container.appendChild(lbl);
+    } else if (def.type === 'radio') {
+      // Radio 组（如充电模式选择）
+      const wrap = document.createElement('div');
+      wrap.className = 'field';
+      const curVal = this.getFieldValue(key, mode);
+      const tipHTML = def.tip ? `<i class="tip" data-tip="${this.escapeHtml(def.tip)}">i</i>` : '';
+      let optionsHTML = '';
+      (def.options || []).forEach((opt, i) => {
+        const checked = curVal === opt.value ? 'checked' : '';
+        // 仅第一个 radio 用 id（用于 label for），其他用 data-key
+        const id = i === 0 ? `id="inp-${key}"` : '';
+        optionsHTML += `<label><input type="radio" name="radio-${key}" value="${opt.value}" ${checked} ${id} data-key="${key}"><span>${opt.label}</span></label>`;
+      });
+      wrap.innerHTML = `
+        <label>${def.label} ${tipHTML}</label>
+        <div class="field-radio">${optionsHTML}</div>
+      `;
+      container.appendChild(wrap);
+    } else {
+      const wrap = document.createElement('div');
+      wrap.className = 'field';
+      const stepAttr = def.step ? ` step="${def.step}"` : '';
+      const unitAttr = def.unit ? ` data-unit="${def.unit}"` : '';
+      const unitClass = def.unit ? ' unit-suffix' : '';
+      const tipHTML = def.tip ? `<i class="tip" data-tip="${this.escapeHtml(def.tip)}">i</i>` : '';
+      const priorityAttr = def.priority === 'high' ? ` data-priority="high"` : '';
+
+      wrap.innerHTML = `
+        <label for="inp-${key}">${def.label} ${tipHTML}</label>
+        <div class="${unitClass}"${unitAttr}>
+          <input type="number" id="inp-${key}" value="${this.getFieldValue(key, mode)}"${stepAttr}${priorityAttr}>
+        </div>
+      `;
+      container.appendChild(wrap);
+    }
+
+    // 绑定事件
+    const el = document.getElementById(`inp-${key}`);
+    if (el) {
+      // input 事件：仅更新 state，不计算不警告（避免退格时立即覆盖）
+      el.addEventListener('input', () => this.onFieldInput(key, el, mode));
+      // change 事件（失焦）：触发计算 + 验证
+      el.addEventListener('change', () => this.onFieldChange(key, el, mode));
+    }
+    // radio 组：所有同名 radio 都绑定（立即响应）
+    if (def.type === 'radio') {
+      const radios = container.querySelectorAll(`input[name="radio-${key}"]`);
+      radios.forEach(r => {
+        r.addEventListener('change', () => this.onFieldChange(key, r, mode));
+      });
+    }
+  },
+
+  /* input 事件：仅更新 state，不计算不警告 */
+  onFieldInput(key, el, mode) {
+    // checkbox/radio 不走 input 事件
+    if (el.type === 'checkbox' || el.type === 'radio') return;
+    let val = el.value === '' ? null : parseFloat(el.value);
+    if (val === null) return;  // 退空时不更新 state
+    this.updateState(key, val, mode);
+    // 特殊处理：manualFlightTime 实时更新禁用状态（但不计算）
+    if (key === 'manualFlightTime') {
+      this.updateFlightFieldsDisabled();
+    }
+  },
+
+  /* 更新 state 的通用方法 */
+  updateState(key, val, mode) {
+    if (mode === 'haul') {
+      if (key === 'totalWeight' || key === 'flightHeight') {
+        this.state.haulField[key] = val;
+      } else if (HAUL_FIELD_ORDER.income.includes(key)) {
+        this.state.haulIncome[key] = val;
+      } else {
+        this.state.haulCosts[key] = val;
+      }
+    } else if (mode === 'timing') {
+      this.state.timing[key] = val;
+    } else {
+      if (key === 'area') {
+        this.state.field.area = val;
+      } else if (key === 'existingPesticideSets') {
+        this.state.field.existingPesticideSets = val;
+      } else if (FIELD_ORDER.param.includes(key)) {
+        this.state.plant[key] = val;
+      } else if (FIELD_ORDER.income.includes(key)) {
+        this.state.income[key] = val;
+      } else {
+        this.state.costs[key] = val;
+      }
+    }
+  },
+
+  getFieldValue(key, mode) {
+    if (mode === 'haul') {
+      if (key === 'totalWeight' || key === 'flightHeight') return this.state.haulField[key];
+      if (HAUL_FIELD_ORDER.income.includes(key)) return this.state.haulIncome[key];
+      return this.state.haulCosts[key];
+    } else if (mode === 'timing') {
+      return this.state.timing[key];
+    } else {
+      // field 类参数（不在 plant 内）
+      if (key === 'area') return this.state.field.area;
+      if (key === 'existingPesticideSets') return this.state.field.existingPesticideSets;
+      // plant 类参数
+      if (FIELD_ORDER.param.includes(key)) return this.state.plant[key];
+      if (FIELD_ORDER.income.includes(key)) return this.state.income[key];
+      return this.state.costs[key];
+    }
+  },
+
+  onFieldChange(key, el, mode) {
+    let val;
+    if (el.type === 'checkbox') val = el.checked;
+    else if (el.type === 'radio') val = el.value;
+    else val = el.value === '' ? 0 : parseFloat(el.value);
+
+    // 输入验证（数值字段）
+    if (el.type !== 'checkbox' && el.type !== 'radio') {
+      const def = (mode === 'haul' ? HAUL_FIELD_DEFS : FIELD_DEFS)[key];
+      if (def) {
+        // 整数约束：自动取整
+        if (def.integer && typeof val === 'number' && !isNaN(val)) {
+          val = Math.round(val);
+          if (el.value != val) el.value = val;
+        }
+        // 硬性最小值：拒绝并弹窗
+        if (def.minHard !== undefined && val < def.minHard) {
+          el.value = def.minHard;
+          val = def.minHard;
+          this.toast(`⚠️ ${def.label}不能低于 ${def.minHard}，已自动修正`, 'warn');
+        } else if (def.min !== undefined && val < def.min) {
+          this.toast(`⚠️ ${def.label}=${val} 偏低（建议 ≥ ${def.min}）`, 'warn');
+        }
+        // 视觉警告标记
+        let warn = false;
+        if (def.warnBelow !== undefined && val < def.warnBelow) warn = true;
+        if (def.warnAbove !== undefined && val > def.warnAbove) warn = true;
+        el.dataset.warn = warn ? 'true' : '';
+        el.dataset.invalid = '';
+      }
+    }
+
+    // 更新 state
+    this.updateState(key, val, mode);
+    // 特殊处理：manualFlightTime 变化时更新禁用状态
+    if (key === 'manualFlightTime') {
+      this.updateFlightFieldsDisabled();
+    }
+    this.compute();
+    this.save();
+  },
+
+  /* ---------- 计算 & 渲染结果 ---------- */
+  compute() {
+    if (this.state.mode === 'spray') {
+      const r = Calculator.compute(this.state);
+      this.renderSprayResults(r);
+      this.renderSummary(r, 'spray');
+      this._lastResult = r;
+    } else {
+      const r = Calculator.computeHaul({
+        field: this.state.haulField,
+        costs: this.state.haulCosts,
+        income: this.state.haulIncome
+      });
+      this.renderHaulResults(r);
+      this.renderSummary(r, 'haul');
+      this._lastResult = r;
+    }
+    return this._lastResult;
+  },
+
+  renderSprayResults(r) {
+    const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    const fmt = Calculator.fmt.bind(Calculator);
+
+    /* 药剂卡片：主显示现有药量，参考行显示公式算的参考药量 */
+    setText('rPesticide', r.existingSets);
+    // 库存状态文案（参考药量显示：小数原值 → 取整值）
+    let stockText;
+    if (r.stockStatus === 'none') {
+      stockText = `无库存，参考需 ${fmt(r.pesticide, 2)} → ${r.pesticideRounded} 套（7舍8入）`;
+    } else if (r.stockStatus === 'enough') {
+      const surplus = r.existingSets - r.pesticideRounded;
+      stockText = `库存充足（多 ${surplus} 套）| 参考需 ${fmt(r.pesticide, 2)} → ${r.pesticideRounded} 套`;
+    } else { // short
+      stockText = `库存不足，需补购 ${r.needToBuy} 套 | 参考需 ${fmt(r.pesticide, 2)} → ${r.pesticideRounded} 套`;
+    }
+    document.getElementById('rPesticideDetail').textContent = stockText;
+    document.getElementById('rPesticideFormula').textContent =
+      `主显示=现有 ${r.existingSets} 套 | 参考=亩数×每棵水量×每亩棵数÷一套药水量×省药系数=${fmt(r.pesticide, 2)} → ${r.pesticideRounded} 套（7舍8入）`;
+
+    setText('rWater', fmt(r.water, 1));
+    document.getElementById('rWaterDetail').textContent =
+      `${this.state.plant.waterPerMu} 升/亩 × ${fmt(this.state.field.area,1)} 亩`;
+    document.getElementById('rWaterFormula').textContent =
+      `公式: 亩数 × 每亩水量（无人机喷洒量，独立于药量计算）`;
+
+    setText('rCost', Calculator.fmtMoney(r.totalCost));
+    document.getElementById('rCostDetail').textContent =
+      `每亩 ¥${Calculator.fmtMoney(r.costPerMu)}`;
+    document.getElementById('rCostFormula').textContent =
+      r.pesticideIncluded
+        ? `公式: 循环 + 交通 + 人工 + 药剂(需补购${r.needToBuy}套×¥${Calculator.fmtMoney(Number(this.state.costs.pesticidePrice)||0)}) + 设备折旧 + 其他`
+        : `公式: 循环 + 交通 + 人工 + 设备折旧 + 其他（不包药，无药剂成本）`;
+
+    setText('rProfit', Calculator.fmtMoney(r.profit));
+    const profitCard = document.querySelector('#sprayResults .result-card.profit');
+    profitCard.dataset.loss = r.profit < 0 ? 'true' : 'false';
+    document.getElementById('rProfitDetail').textContent =
+      r.profit >= 0 ? `利润率 ${(r.profit / Math.max(1, r.income) * 100).toFixed(1)}%` : `亏损 ¥${Calculator.fmtMoney(-r.profit)}`;
+    document.getElementById('rProfitFormula').textContent =
+      `公式: 总收入 ¥${Calculator.fmtMoney(r.income)} − 总成本 ¥${Calculator.fmtMoney(r.totalCost)}`;
+
+    setText('rHeight', `${fmt(this.state.plant.flightHeight, 1)} 米`);
+    setText('rCycles', `${r.cycles} 次`);
+    setText('rCostPerMu', `¥${Calculator.fmtMoney(r.costPerMu)}`);
+    setText('rProfitPerMu', `¥${Calculator.fmtMoney(r.profitPerMu)}`);
+    setText('rSprayIncome', `¥${Calculator.fmtMoney(r.income)}`);
+
+    // 浓度：紧凑显示"现有 X / 参考 Y"（单位省略，靠标签说明）
+    const existingConc = r.water > 0 ? (r.existingSets / r.water) * 100 : 0;
+    const refConc = r.concentration || 0;
+    setText('rConcentration',
+      (existingConc > 0 || refConc > 0)
+        ? `${fmt(existingConc, 2)} / ${fmt(refConc, 2)}`
+        : '—');
+
+    setText('rPesticideIncluded', r.pesticideIncluded ? '是（含药剂成本）' : '否（农户自备）');
+
+    // 药剂卡片库存状态视觉提示
+    const pesticideCard = document.querySelector('#sprayResults .result-card.pesticide');
+    if (pesticideCard) {
+      pesticideCard.dataset.stock = r.stockStatus;
+    }
+
+    // 渲染作业时间
+    this.renderTimingResults(r.timing);
+
+    document.querySelectorAll('#sprayResults .result-value').forEach(el => {
+      el.classList.add('flash');
+      setTimeout(() => el.classList.remove('flash'), 600);
+    });
+  },
+
+  /* ---------- 渲染作业时间结果 ---------- */
+  renderTimingResults(t) {
+    if (!t) return;
+    const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    const fmt1 = (n) => Calculator.fmt(n, 1);
+    const fdur = (min) => Calculator.formatDuration(min);
+
+    // 兑水兑药
+    setText('tMixTime', fdur(t.mixTotalTime));
+    document.getElementById('tMixDetail').textContent =
+      t.mixRounds > 0
+        ? `${t.mixRounds}轮 × max(兑水${fmt1(t.perRoundWaterTime)}min, 兑药${fmt1(this.state.timing.baseMixTime)}min)`
+        : '—';
+
+    // 飞行作业
+    setText('tFlightTime', fdur(t.flightTimeMin));
+    const flightLabel = t.flightTimeSource === 'manual' ? '准确时间' : '参考时间';
+    document.getElementById('tFlightDetail').textContent =
+      t.flightTimeSource === 'manual'
+        ? `✓ ${flightLabel}（手动输入）`
+        : (t.flightLength > 0
+            ? `${fmt1(t.flightLength, 0)}米 ÷ ${fmt1(this.state.timing.flightSpeed, 1)}m/s（${flightLabel}）`
+            : '—');
+
+    // 来回升降
+    setText('tRoundTrip', fdur(t.roundTripTotal));
+    document.getElementById('tRoundTripDetail').textContent =
+      `${this.state.timing.roundTripTime}min × 循环数`;
+
+    // 电池等待
+    setText('tBatteryWait', fdur(t.batteryWait));
+    const modeText = { generator: '仅发电机', threePhase: '仅三相电', dual: '三相电+发电机' }[t.chargeMode] || '';
+    document.getElementById('tBatteryDetail').textContent =
+      `${t.batteryCount}块电池 | ${modeText}`;
+
+    // 总时间：50min+9min 格式（主显示）
+    let totalTimeDisplay = fdur(t.totalTime);
+    if (t.chargeAfterWork && t.afterWorkCharge > 0) {
+      totalTimeDisplay += '+' + fdur(t.afterWorkCharge);
+    }
+    setText('tTotalTime', totalTimeDisplay);
+    // 下方小字注明
+    let totalDetailText;
+    if (t.chargeAfterWork && t.afterWorkCharge > 0) {
+      totalDetailText = `估算${fdur(t.totalTime)} + 结束充电${fdur(t.afterWorkCharge)}`;
+    } else if (t.chargeAfterWork) {
+      totalDetailText = `⏱️ 估算（结束充电0min）`;
+    } else {
+      totalDetailText = `⏱️ 估算（不充满）`;
+    }
+    document.getElementById('tTotalDetail').textContent = totalDetailText;
+
+    // 公式注释
+    let formulaText = `估算总时间 = 兑水兑药 ${fdur(t.mixTotalTime)} + 飞行作业 ${fdur(t.flightTimeMin)}(${t.flightTimeSource === 'manual' ? '手动' : '估算'}) + 来回升降 ${fdur(t.roundTripTotal)} + 电池等待 ${fdur(t.batteryWait)} = ${fdur(t.totalTime)}`;
+    if (t.chargeAfterWork && t.afterWorkCharge > 0) {
+      formulaText += ` + 结束后充电 ${fdur(t.afterWorkCharge)} = ${fdur(t.totalTimeWithCharge)}`;
+    }
+    document.getElementById('timingFormula').textContent = formulaText;
+
+    // 模式提示
+    document.getElementById('timingModeHint').textContent =
+      `⏱️ 估算 · ${t.batteryCount}块电池 · ${modeText}`;
+
+    // 同步到结果区的作业时间小框（含结束后充电用 + 链接）
+    const rTiming = document.getElementById('rTiming');
+    if (rTiming) {
+      let timingText = fdur(t.totalTime);
+      if (t.chargeAfterWork && t.afterWorkCharge > 0) {
+        timingText += ` +${fdur(t.afterWorkCharge)}`;
+      }
+      rTiming.textContent = timingText;
+    }
+
+    // 循环数小框副文案：与浓度一致的同行格式 "5次 | 2次无等待"
+    const rCyclesSub = document.getElementById('rCyclesSub');
+    if (rCyclesSub) {
+      const noWait = t.noWaitCount || 0;
+      const total = t.batteryCycles ? t.batteryCycles.length : 0;
+      rCyclesSub.textContent = total > 0 ? `| ${noWait}次无等待` : '';
+    }
+
+    // 渲染电池循环可视化色块条
+    this.renderBatteryViz(t);
+  },
+
+  /* ---------- 渲染电池循环可视化色块条 ---------- */
+  renderBatteryViz(t) {
+    const bar = document.getElementById('batteryVizBar');
+    const summary = document.getElementById('batteryVizSummary');
+    if (!bar || !t.batteryCycles) return;
+
+    const cycles = t.batteryCycles;
+    const totalCycles = cycles.length;
+    const noWait = t.noWaitCount || 0;
+    const totalWait = t.batteryWait || 0;
+
+    // 单次循环时间 T = 来回升降 + 飞行作业/循环数
+    const T = t.T || (Number(this.state.timing.roundTripTime) || 3);
+    const genTime = Number(this.state.timing.generatorChargeTime) || 8;
+    const threeTime = Number(this.state.timing.threePhaseChargeTime) || 5;
+
+    bar.innerHTML = '';
+
+    // 渲染作业循环色块
+    cycles.forEach((c, i) => {
+      const block = document.createElement('div');
+      block.className = 'viz-block';
+      block.dataset.idx = c.idx;
+
+      // 用该轮实际充电时间算瓶颈
+      const actualChgTime = c.chargeTime || (c.charger === 'generator' ? genTime : threeTime);
+      const bottleneck = Math.max(0, actualChgTime - T);
+      const maxActualWait = Math.max(...cycles.map(cc => cc.wait), 0);
+      const denominator = Math.max(bottleneck, maxActualWait, 0.01);
+
+      const color = this.getWaitColor(c.wait, denominator);
+
+      block.style.background = color;
+      const waitText = c.wait > 0 ? '+' + Calculator.formatDuration(c.wait) : '';
+      const bottleneckText = `瓶颈${bottleneck.toFixed(1)}m`;
+      const chargerLabel = c.charger === 'generator' ? '发电机' : '三相电';
+      block.innerHTML = `
+        <div class="viz-block-num">#${c.idx}</div>
+        ${waitText ? `<div class="viz-block-wait">${waitText}</div>` : `<div class="viz-block-wait" style="opacity:0.6">${bottleneckText}</div>`}
+        <div class="viz-block-tooltip">循环#${c.idx}: ${c.wait > 0 ? '等' + Calculator.formatDuration(c.wait) : '无等待'} | 瓶颈${bottleneck.toFixed(1)}min | 电池${c.battery + 1} | ${chargerLabel}充${actualChgTime}min | ${c.tStart.toFixed(1)}→${c.tEnd.toFixed(1)}min</div>
+      `;
+
+      block.addEventListener('click', () => {
+        document.querySelectorAll('.viz-block').forEach(b => b.classList.remove('active'));
+        block.classList.add('active');
+        this.showBatteryCycleDetail(c, t, T, bottleneck);
+      });
+
+      bar.appendChild(block);
+    });
+
+    // 作业完成虚线分隔
+    if (t.chargeAfterWork && t.afterWorkBlocks && t.afterWorkBlocks.length > 0) {
+      const divider = document.createElement('div');
+      divider.className = 'viz-divider';
+      divider.innerHTML = '<div class="viz-divider-text">作业完成</div>';
+      bar.appendChild(divider);
+
+      // 渲染结束后充电蓝色块（每块电池一个）
+      t.afterWorkBlocks.forEach(b => {
+        const block = document.createElement('div');
+        block.className = 'viz-block viz-block-after';
+        block.style.background = '#1976d2';  // 蓝色
+        const chgLabel = b.charger === 'threePhase-1' || b.charger === 'threePhase-2' ? '三相电' : '三相电';
+        block.innerHTML = `
+          <div class="viz-block-num">🔋${b.idx + 1}</div>
+          <div class="viz-block-wait">${Calculator.formatDuration(b.time)}</div>
+          <div class="viz-block-tooltip">结束后充电: 电池${b.idx + 1} | ${chgLabel} | ${b.startAt.toFixed(1)}→${b.endAt.toFixed(1)}min</div>
+        `;
+        block.addEventListener('click', () => {
+          document.querySelectorAll('.viz-block').forEach(bb => bb.classList.remove('active'));
+          block.classList.add('active');
+          this.showAfterWorkDetail(b, t);
+        });
+        bar.appendChild(block);
+      });
+    }
+
+    // 汇总文案
+    let summaryText = totalCycles > 0
+      ? `共 ${totalCycles} 轮循环：${noWait} 轮无等待，${totalCycles - noWait} 轮等待，总等待 ${Calculator.formatDuration(totalWait)}`
+      : '—';
+    if (t.chargeAfterWork && t.afterWorkCharge > 0) {
+      summaryText += `；结束后充电 ${Calculator.formatDuration(t.afterWorkCharge)}（${t.afterWorkBlocks.length} 块电池）`;
+    } else if (t.chargeAfterWork) {
+      summaryText += `；结束后充电 0min（所有电池已满）`;
+    } else {
+      summaryText += `；不充满电直接走`;
+    }
+    summaryText += `。点击色块查看详情`;
+    summary.textContent = summaryText;
+
+    // 算法公式说明（精简版，只展示核心电池充电/等待算法）
+    const formulaEl = document.getElementById('batteryVizFormula');
+    if (formulaEl) {
+      const modeLabel = { generator: '发电机', threePhase: '三相电', dual: '三相电+发电机' }[t.chargeMode] || '';
+      const afterWorkText = t.chargeAfterWork
+        ? `<div class="bv-formula-line">• 结束后充电：单充电器串行，有三相电用三相电（成本低），无则用发电机</div>`
+        : `<div class="bv-formula-line">• 结束后不充电，作业完成即走</div>`;
+      formulaEl.innerHTML = `
+        <div class="bv-formula-title">📋 电池充电/等待算法</div>
+        <div class="bv-formula-line">• 单次循环时间 T = ${T.toFixed(1)}min（来回升降 + 飞行作业÷循环数）</div>
+        <div class="bv-formula-line">• 瓶颈 = 充电时间 − T（飞行期间电池在充电，可抵消部分）</div>
+        <div class="bv-formula-line">• 等待比例 = 该轮等待 ÷ 瓶颈 → 颜色：0=绿(无等待), 1=红(满瓶颈)</div>
+        <div class="bv-formula-line">• ${modeLabel}模式：${t.chargeMode === 'dual' ? '两个充电器并行，每轮记录实际充电器' : '单充电器，电池需排队'}</div>
+        ${afterWorkText}
+      `;
+    }
+  },
+
+  /* 等待时间 → 颜色映射
+     denominator = 理论瓶颈(Chg - T) 或实际最大等待
+     ratio = wait / denominator
+     0 → 绿(无等待), 1 → 红(满瓶颈)
+  */
+  getWaitColor(wait, denominator) {
+    if (wait <= 0) return '#2e7d32';  // 绿：无等待
+    const ratio = Math.min(1, wait / Math.max(denominator, 0.01));
+    if (ratio < 0.3) {
+      // 0~30%: 绿黄渐变（少量等待）
+      return this.lerpColor('#2e7d32', '#ff9800', ratio / 0.3);
+    } else if (ratio < 0.7) {
+      // 30%~70%: 黄（中等等待）
+      return '#ff9800';
+    } else {
+      // 70%~100%: 黄红渐变（充电瓶颈）
+      return this.lerpColor('#ff9800', '#c62828', (ratio - 0.7) / 0.3);
+    }
+  },
+
+  /* 颜色插值 */
+  lerpColor(c1, c2, t) {
+    const r1 = parseInt(c1.slice(1, 3), 16), g1 = parseInt(c1.slice(3, 5), 16), b1 = parseInt(c1.slice(5, 7), 16);
+    const r2 = parseInt(c2.slice(1, 3), 16), g2 = parseInt(c2.slice(3, 5), 16), b2 = parseInt(c2.slice(5, 7), 16);
+    const r = Math.round(r1 + (r2 - r1) * t);
+    const g = Math.round(g1 + (g2 - g1) * t);
+    const b = Math.round(b1 + (b2 - b1) * t);
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+  },
+
+  /* 显示单轮详情面板 */
+  showBatteryCycleDetail(c, t, T, bottleneck) {
+    const detail = document.getElementById('batteryVizDetail');
+    const content = document.getElementById('batteryVizDetailContent');
+    if (!detail || !content) return;
+
+    const chargerText = { generator: '发电机', threePhase: '三相电', dual: '双充' }[c.charger] || c.charger;
+    const status = c.wait > 0 ? `等待 ${Calculator.formatDuration(c.wait)}` : '无等待';
+
+    content.innerHTML = `
+      <table>
+        <tr><td>循环编号</td><td>#${c.idx}</td></tr>
+        <tr><td>状态</td><td style="color:${c.wait > 0 ? '#ef6c00' : '#2e7d32'}">${status}</td></tr>
+        <tr><td>使用电池</td><td>第 ${c.battery + 1} 块</td></tr>
+        <tr><td>单次循环T</td><td>${T.toFixed(1)} min</td></tr>
+        <tr><td>该轮瓶颈</td><td>${bottleneck.toFixed(1)} min</td></tr>
+        <tr><td>开始时刻</td><td>${c.tStart.toFixed(1)} min</td></tr>
+        <tr><td>结束时刻</td><td>${c.tEnd.toFixed(1)} min</td></tr>
+        <tr><td>充电器</td><td>${chargerText}（${c.chargeTime || '-'}min）</td></tr>
+        <tr><td>充电时段</td><td>${c.chargeStart.toFixed(1)} → ${c.chargeEnd.toFixed(1)} min</td></tr>
+      </table>
+    `;
+    detail.style.display = 'block';
+  },
+
+  /* 显示结束后充电详情 */
+  showAfterWorkDetail(b, t) {
+    const detail = document.getElementById('batteryVizDetail');
+    const content = document.getElementById('batteryVizDetailContent');
+    if (!detail || !content) return;
+
+    const chgLabel = b.charger === 'threePhase-1' || b.charger === 'threePhase-2' ? '三相电（双充）' : '三相电';
+
+    content.innerHTML = `
+      <table>
+        <tr><td>类型</td><td style="color:#1976d2">🔋 结束后充电</td></tr>
+        <tr><td>电池编号</td><td>第 ${b.idx + 1} 块</td></tr>
+        <tr><td>充电器</td><td>${chgLabel}</td></tr>
+        <tr><td>开始时刻</td><td>${b.startAt.toFixed(1)} min</td></tr>
+        <tr><td>结束时刻</td><td>${b.endAt.toFixed(1)} min</td></tr>
+        <tr><td>充电时长</td><td>${Calculator.formatDuration(b.time)}</td></tr>
+        <tr><td>说明</td><td>作业完成后继续充满此电池</td></tr>
+      </table>
+    `;
+    detail.style.display = 'block';
+  },
+
+  renderHaulResults(r) {
+    const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    const fmt = Calculator.fmt.bind(Calculator);
+
+    // 总躺数
+    setText('rTrips', r.totalTrips);
+    document.getElementById('rTripsDetail').textContent =
+      `${fmt(this.state.haulField.totalWeight, 0)} 斤 ÷ ${fmt(this.state.haulCosts.weightPerTrip, 0)} 斤/躺`;
+    document.getElementById('rTripsFormula').textContent =
+      `公式: ⌈总斤数 ÷ 一躺多少斤⌉ （一躺=一个来回）`;
+
+    // 电池循环
+    setText('rBatteryCycles', r.batteryCycles);
+    document.getElementById('rBatteryCyclesDetail').textContent =
+      `${r.totalTrips} 躺 ÷ ${this.state.haulCosts.tripsPerBatteryCycle} 躺/组`;
+    document.getElementById('rBatteryCyclesFormula').textContent =
+      `公式: ⌈总躺数 ÷ 多少躺一组电池⌉`;
+
+    // 总成本
+    setText('rHaulCost', Calculator.fmtMoney(r.totalCost));
+    document.getElementById('rHaulCostDetail').textContent =
+      `每斤 ¥${Calculator.fmtMoney(r.costPerJin)}`;
+    document.getElementById('rHaulCostFormula').textContent =
+      `公式: 电池循环 + 无人机人工 + 采摘人工 + 交通 + 设备折旧 + 其他`;
+
+    // 粗利润
+    setText('rHaulProfit', Calculator.fmtMoney(r.profit));
+    const profitCard = document.querySelector('#haulResults .result-card.profit');
+    profitCard.dataset.loss = r.profit < 0 ? 'true' : 'false';
+    document.getElementById('rHaulProfitDetail').textContent =
+      r.profit >= 0 ? `利润率 ${(r.profit / Math.max(1, r.income) * 100).toFixed(1)}%` : `亏损 ¥${Calculator.fmtMoney(-r.profit)}`;
+    document.getElementById('rHaulProfitFormula').textContent =
+      `公式: 总收入 ¥${Calculator.fmtMoney(r.income)} − 总成本 ¥${Calculator.fmtMoney(r.totalCost)}`;
+
+    // 额外信息
+    setText('rHaulHeight', `${fmt(this.state.haulField.flightHeight, 1)} 米`);
+    setText('rTotalWeight', `${fmt(this.state.haulField.totalWeight, 0)} 斤`);
+    setText('rCostPerJin', `¥${Calculator.fmtMoney(r.costPerJin)}`);
+    setText('rProfitPerJin', `¥${Calculator.fmtMoney(r.profitPerJin)}`);
+    setText('rHaulIncome', `¥${Calculator.fmtMoney(r.income)}`);
+    setText('rPickupIncluded', r.pickupIncluded ? '是（含采摘人工）' : '否（农户自采）');
+
+    document.querySelectorAll('#haulResults .result-value').forEach(el => {
+      el.classList.add('flash');
+      setTimeout(() => el.classList.remove('flash'), 600);
+    });
+  },
+
+  renderSummary(r, mode) {
+    const tbody = document.getElementById('summaryBody');
+    const c = r.costBreakdown;
+    const total = r.totalCost || 1;
+    let items, totalFormulaText, summaryFormulaText;
+
+    if (mode === 'haul') {
+      items = [
+        { name: '🔋 电池循环', val: c.battery || 0, color: '#ab47bc' },
+        { name: '🚁 无人机人工', val: c.droneLabor || 0, color: '#ffa726' },
+        { name: '🧺 采摘人工', val: c.pickupLabor || 0, color: '#ef5350' },
+        { name: '🚚 交通(油费/折旧/路桥)', val: c.transport || 0, color: '#29b6f6' },
+        { name: '🛠 设备折旧/维修/保险', val: c.equipment || 0, color: '#8d6e63' },
+        { name: '📦 其他(防护/清洗/杂)', val: c.other || 0, color: '#78909c' }
+      ];
+      totalFormulaText = `总成本 = 电池循环 + 无人机人工 + 采摘人工 + 交通 + 设备折旧 + 其他 = ¥${Calculator.fmtMoney(r.totalCost)}`;
+      summaryFormulaText = '粗利润 = 总收入 − 总成本';
+    } else {
+      items = [
+        { name: '🔋 循环(电池/充电/油)', val: c.cycle || 0, color: '#ab47bc' },
+        { name: '🚚 交通(油费/折旧/路桥)', val: c.transport || 0, color: '#29b6f6' },
+        { name: '👥 人工(工资/餐/宿)', val: c.labor || 0, color: '#ffa726' },
+        { name: '💊 药剂', val: c.pesticide || 0, color: '#66bb6a' },
+        { name: '🛠 设备折旧/维修/保险', val: c.equipment || 0, color: '#8d6e63' },
+        { name: '📦 其他(防护/清洗/杂)', val: c.other || 0, color: '#78909c' }
+      ];
+      totalFormulaText = `总成本 = 循环 + 交通 + 人工 + 药剂 + 设备折旧 + 其他 = ¥${Calculator.fmtMoney(r.totalCost)}`;
+      summaryFormulaText = '粗利润 = 总收入 − 总成本';
+    }
+
+    document.getElementById('summaryFormula').textContent = summaryFormulaText;
+    document.getElementById('totalFormula').textContent = totalFormulaText;
+
+    tbody.innerHTML = items.map(it => {
+      const pct = (it.val / total * 100).toFixed(1);
+      const barW = Math.max(2, it.val / total * 100);
+      return `<tr>
+        <td>${it.name}</td>
+        <td>${Calculator.fmtMoney(it.val)}</td>
+        <td><span class="cost-bar" style="width:${barW}%;background:${it.color}"></span>${pct}%</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('summaryTotal').textContent = Calculator.fmtMoney(r.totalCost);
+  },
+
+  /* ---------- 保存状态 ---------- */
+  save() {
+    Storage.saveState({
+      mode: this.state.mode,
+      plant: this.state.plant,
+      field: this.state.field,
+      costs: this.state.costs,
+      income: this.state.income,
+      timing: this.state.timing,
+      haulField: this.state.haulField,
+      haulCosts: this.state.haulCosts,
+      haulIncome: this.state.haulIncome
+    });
+  },
+
+  /* ---------- 恢复默认（打药/吊运独立）---------- */
+  resetDefaults() {
+    if (this.state.mode === 'spray') {
+      if (!confirm('确定恢复打药模式所有参数为默认值？当前打药模式的所有参数将被重置。')) return;
+      // 保留植物选择，重置其他打药参数
+      const keepPlant = this.state.plant;
+      this.state.field = { ...DEFAULT_FIELD };
+      this.state.costs = { ...DEFAULT_COSTS };
+      this.state.income = { ...DEFAULT_INCOME };
+      this.state.timing = { ...DEFAULT_TIMING };
+      this.state.plant = keepPlant || { ...PLANT_DATABASE.fruit_tree };
+      this.toast('打药模式已恢复默认', 'success');
+    } else {
+      if (!confirm('确定恢复吊运模式所有参数为默认值？当前吊运模式的所有参数将被重置。')) return;
+      this.state.haulField = { ...DEFAULT_HAUL_FIELD };
+      this.state.haulCosts = { ...DEFAULT_HAUL_COSTS };
+      this.state.haulIncome = { ...DEFAULT_HAUL_INCOME };
+      this.toast('吊运模式已恢复默认', 'success');
+    }
+    this.applyMode(this.state.mode);
+    this.save();
+  },
+
+  /* ---------- 事件绑定 ---------- */
+  bindEvents() {
+    document.getElementById('themeBtn').addEventListener('click', () => this.toggleTheme());
+
+    // 恢复默认按钮
+    const resetBtn = document.getElementById('resetBtn');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => this.resetDefaults());
+    }
+
+    // 电池循环可视化关闭按钮
+    const batteryVizClose = document.getElementById('batteryVizClose');
+    if (batteryVizClose) {
+      batteryVizClose.addEventListener('click', () => {
+        document.getElementById('batteryVizDetail').style.display = 'none';
+        document.querySelectorAll('.viz-block').forEach(b => b.classList.remove('active'));
+      });
+    }
+
+    document.getElementById('calcBtn').addEventListener('click', () => {
+      this.flyDrone();
+      this.compute();
+      this.toast('计算完成 ✈️', 'success');
+      const r = this._lastResult;
+      Storage.addHistory({
+        mode: this.state.mode,
+        plant: this.state.mode === 'spray' ? this.state.plant.name : '吊运',
+        area: this.state.mode === 'spray' ? this.state.field.area : this.state.haulField.totalWeight,
+        pesticide: r.pesticide || r.totalTrips || 0,
+        water: r.water || 0,
+        totalCost: r.totalCost,
+        profit: r.profit
+      });
+    });
+
+    document.getElementById('presetBtn').addEventListener('click', () => this.openPresetModal());
+    document.getElementById('savePresetBtn').addEventListener('click', () => this.savePresetPrompt());
+    document.getElementById('loadPresetBtn').addEventListener('click', () => this.openPresetModal());
+    document.getElementById('deletePresetBtn').addEventListener('click', () => this.openPresetModal());
+
+    document.getElementById('importBtn').addEventListener('click', () => this.openModal('importModal'));
+    document.getElementById('exportBtn').addEventListener('click', () => this.openExportModal());
+    document.getElementById('importConfirm').addEventListener('click', () => this.doImport());
+
+    document.getElementById('historyBtn').addEventListener('click', () => this.openHistoryModal());
+    document.getElementById('clearHistoryBtn').addEventListener('click', () => {
+      Storage.clearHistory();
+      this.renderHistoryList();
+      this.toast('历史已清空', 'warn');
+    });
+
+    document.querySelectorAll('[data-close]').forEach(el => {
+      el.addEventListener('click', () => this.closeModal(el.closest('.modal').id));
+    });
+    document.querySelectorAll('.modal').forEach(m => {
+      m.addEventListener('click', e => { if (e.target === m) this.closeModal(m.id); });
+    });
+
+    document.querySelectorAll('.export-tabs .tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.export-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.updateExportText(btn.dataset.exp);
+      });
+    });
+
+    document.getElementById('copyExport').addEventListener('click', () => {
+      const txt = document.getElementById('exportText').value;
+      this.copyToClipboard(txt).then(ok => {
+        this.toast(ok ? '已复制到剪贴板 📋' : '复制失败，请手动选择', ok ? 'success' : 'error');
+      });
+    });
+
+    document.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'V') {
+        e.preventDefault();
+        navigator.clipboard.readText().then(text => {
+          this.applyImportText(text);
+        }).catch(() => this.openModal('importModal'));
+      }
+    });
+  },
+
+  /* ---------- 主题 ---------- */
+  applyTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    document.getElementById('themeBtn').textContent = theme === 'day' ? '☀️' : '🌙';
+    Storage.setTheme(theme);
+  },
+  toggleTheme() {
+    const cur = Storage.getTheme();
+    const next = cur === 'day' ? 'night' : 'day';
+    this.applyTheme(next);
+    this.toast(next === 'day' ? '已切换为日间模式 ☀️' : '已切换为夜间模式 🌙', 'success');
+  },
+
+  flyDrone() {
+    const d = document.getElementById('flyingDrone');
+    d.classList.remove('flying');
+    void d.offsetWidth;
+    d.classList.add('flying');
+    setTimeout(() => d.classList.remove('flying'), 5100);
+  },
+
+  openModal(id) {
+    document.getElementById(id).classList.add('show');
+    document.getElementById(id).setAttribute('aria-hidden', 'false');
+  },
+  closeModal(id) {
+    document.getElementById(id).classList.remove('show');
+    document.getElementById(id).setAttribute('aria-hidden', 'true');
+  },
+
+  openExportModal() {
+    this.openModal('exportModal');
+    this.updateExportText('text');
+  },
+  updateExportText(type) {
+    const txt = type === 'json'
+      ? Storage.exportJSON(this.state, this.state.mode)
+      : Storage.exportText(this.state, this.state.mode);
+    document.getElementById('exportText').value = txt;
+  },
+
+  doImport() {
+    const text = document.getElementById('importText').value;
+    if (!text.trim()) {
+      this.toast('请粘贴配置文本', 'warn');
+      return;
+    }
+    if (this.applyImportText(text)) {
+      document.getElementById('importText').value = '';
+      this.closeModal('importModal');
+    }
+  },
+
+  applyImportText(text) {
+    const imported = Storage.importText(text);
+    if (!imported) {
+      this.toast('无法识别配置文本，请检查格式', 'error');
+      return false;
+    }
+    // 应用导入的数据
+    if (imported.mode) this.state.mode = imported.mode;
+    if (imported.plant) this.state.plant = imported.plant;
+    if (imported.field) this.state.field = imported.field;
+    if (imported.costs) this.state.costs = imported.costs;
+    if (imported.income) this.state.income = imported.income;
+    if (imported.haulField) this.state.haulField = imported.haulField;
+    if (imported.haulCosts) this.state.haulCosts = imported.haulCosts;
+    if (imported.haulIncome) this.state.haulIncome = imported.haulIncome;
+
+    this.applyMode(this.state.mode);
+    this.compute();
+    this.save();
+    this.toast('配置已成功导入 ✅', 'success');
+    return true;
+  },
+
+  savePresetPrompt() {
+    const label = this.state.mode === 'spray'
+      ? `${this.state.plant.name}_${new Date().toLocaleDateString('zh-CN')}`
+      : `吊运_${new Date().toLocaleDateString('zh-CN')}`;
+    const name = prompt('请输入预设名称：', label);
+    if (!name) return;
+    Storage.savePreset(name, this.state.mode, this.state);
+    this.toast(`预设「${name}」已保存`, 'success');
+  },
+
+  openPresetModal() {
+    this.renderPresetList();
+    this.openModal('presetModal');
+  },
+  renderPresetList() {
+    const list = document.getElementById('presetList');
+    const presets = Storage.getPresets();
+    if (presets.length === 0) {
+      list.innerHTML = '<li style="text-align:center;color:var(--text-muted);cursor:default;">暂无预设，点击「存为预设」创建</li>';
+      return;
+    }
+    list.innerHTML = presets.map((p, i) => {
+      const modeLabel = p.mode === 'haul' ? '📦 吊运' : `🚁 ${p.plant ? p.plant.name : ''}`;
+      const sizeInfo = p.mode === 'haul'
+        ? `${p.state.haulField.totalWeight} 斤`
+        : `${p.state.field.area} 亩`;
+      return `
+        <li data-idx="${i}">
+          <div>
+            <div><b>${this.escapeHtml(p.name)}</b> <span style="margin-left:6px">${modeLabel}</span></div>
+            <div class="preset-meta">${new Date(p.savedAt).toLocaleString('zh-CN')} · ${sizeInfo}</div>
+          </div>
+          <span class="preset-meta">点击加载</span>
+        </li>`;
+    }).join('');
+    list.querySelectorAll('li').forEach(li => {
+      li.addEventListener('click', () => {
+        const idx = parseInt(li.dataset.idx);
+        this.loadPreset(idx);
+      });
+      li.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        const idx = parseInt(li.dataset.idx);
+        if (confirm(`删除预设「${presets[idx].name}」？`)) {
+          Storage.deletePreset(presets[idx].name);
+          this.renderPresetList();
+          this.toast('预设已删除', 'warn');
+        }
+      });
+    });
+  },
+  loadPreset(idx) {
+    const presets = Storage.getPresets();
+    const p = presets[idx];
+    if (!p) return;
+    this.state.mode = p.mode || 'spray';
+    if (p.plant) this.state.plant = { ...p.plant };
+    if (p.field) this.state.field = { ...p.field };
+    if (p.costs) this.state.costs = { ...p.costs };
+    if (p.income) this.state.income = { ...p.income };
+    if (p.haulField) this.state.haulField = { ...p.haulField };
+    if (p.haulCosts) this.state.haulCosts = { ...p.haulCosts };
+    if (p.haulIncome) this.state.haulIncome = { ...p.haulIncome };
+    this.applyMode(this.state.mode);
+    this.compute();
+    this.save();
+    this.closeModal('presetModal');
+    this.toast(`已加载预设「${p.name}」`, 'success');
+  },
+
+  openHistoryModal() {
+    this.renderHistoryList();
+    this.openModal('historyModal');
+  },
+  renderHistoryList() {
+    const list = document.getElementById('historyList');
+    const history = Storage.getHistory();
+    if (history.length === 0) {
+      list.innerHTML = '<li style="text-align:center;color:var(--text-muted);cursor:default;">暂无历史记录</li>';
+      return;
+    }
+    list.innerHTML = history.map(h => {
+      const modeTag = h.mode === 'haul' ? '📦 吊运' : '🚁 打药';
+      const sizeTag = h.mode === 'haul' ? `${h.area} 斤` : `${h.area} 亩`;
+      const extraInfo = h.mode === 'haul'
+        ? `躺数 ${h.pesticide}`
+        : `药 ${h.pesticide.toFixed(2)} 套 · 水 ${h.water.toFixed(1)} 升`;
+      return `
+        <li>
+          <div>
+            <b>${modeTag}</b> · ${sizeTag}
+            <div class="hist-meta">${new Date(h.time).toLocaleString('zh-CN')} · ${extraInfo} · 成本 ¥${h.totalCost.toFixed(2)} · 利润 ¥${h.profit.toFixed(2)}</div>
+          </div>
+        </li>`;
+    }).join('');
+  },
+
+  toast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast show ' + type;
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => { el.className = 'toast ' + type; }, 2400);
+  },
+
+  copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(() => true).catch(() => this._fallbackCopy(text));
+    }
+    return Promise.resolve(this._fallbackCopy(text));
+  },
+  _fallbackCopy(text) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch (e) { return false; }
+  },
+
+  escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+  }
+};
+
+window.UI = UI;
+
+</script>
+  <script>
+/* ============================================================
+   app.js — 主入口
+   ============================================================ */
+
+(function() {
+  'use strict';
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // 应用初始主题
+    UI.applyTheme(Storage.getTheme());
+
+    // 初始化 UI
+    UI.init();
+
+    // 全局错误捕获
+    window.addEventListener('error', e => {
+      console.error('App error:', e.error);
+      UI.toast('发生错误：' + (e.message || '未知错误'), 'error');
+    });
+
+    // 友好的首次访问提示
+    if (!localStorage.getItem('drone_spray_visited')) {
+      setTimeout(() => {
+        UI.toast('👋 欢迎使用！点击右上角 i 图标查看每个参数说明', 'success');
+        localStorage.setItem('drone_spray_visited', '1');
+      }, 800);
+    }
+
+    // 控制台彩蛋
+    console.log('%c🚁 无人机打药计算器 v1.0', 'font-size:20px;color:#2e7d32;font-weight:bold;');
+    console.log('%c本地存储不上传 · 可打包 APK · GitHub 友好', 'color:#1565c0;');
+    console.log('快捷键：Ctrl/Cmd + Shift + V 一键粘贴导入配置');
+  });
+})();
+
+</script>
+
+  <!-- PWA Service Worker 在独立文件中已禁用（file:// 协议不支持） -->
+</body>
+</html>

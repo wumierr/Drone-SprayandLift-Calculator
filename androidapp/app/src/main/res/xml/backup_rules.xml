@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- 备份 WebView 缓存（数据本身在 LocalStorage 中，会被自动备份） -->
+    <include domain="database" path="."/>
+    <include domain="sharedpref" path="."/>
+    <include domain="file" path="."/>
+</full-backup-content>

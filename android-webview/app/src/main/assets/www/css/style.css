@@ -1,0 +1,757 @@
+/* ============================================================
+   无人机打药计算器 - 样式表
+   设计语言：田野绿 + 天空蓝 + 大地暖色，圆润友好，工程化模块
+   ============================================================ */
+
+/* ---------- 1. CSS 变量 / 主题 ---------- */
+:root {
+  --font-sans: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.08);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.10);
+  --shadow-lg: 0 10px 40px rgba(0,0,0,.18);
+
+  --transition: 0.25s cubic-bezier(.4,0,.2,1);
+}
+
+[data-theme="day"] {
+  --bg-grad-start: #e8f5e9;
+  --bg-grad-end:   #f1f8e9;
+  --bg-page: linear-gradient(180deg, var(--bg-grad-start) 0%, #fff 40%, var(--bg-grad-end) 100%);
+  --text-primary: #1f3d1f;
+  --text-secondary: #5a6b5a;
+  --text-muted: #8a9a8a;
+  --panel-bg: rgba(255,255,255,.92);
+  --panel-border: rgba(59,125,59,.15);
+  --accent: #2e7d32;
+  --accent-2: #1565c0;
+  --accent-soft: #e8f5e9;
+  --warn: #ef6c00;
+  --danger: #c62828;
+  --input-bg: #fff;
+  --input-border: #c8d6c8;
+  --input-focus: #2e7d32;
+  --table-stripe: #f5f9f5;
+  --mountain-far: #b8d0b8;
+  --mountain-mid: #8bb58b;
+  --cloud: rgba(255,255,255,.85);
+  --field-color: #aed581;
+}
+
+[data-theme="night"] {
+  --bg-grad-start: #0d1f0d;
+  --bg-grad-end:   #0a141a;
+  --bg-page: linear-gradient(180deg, var(--bg-grad-start) 0%, #121a22 50%, var(--bg-grad-end) 100%);
+  --text-primary: #e8f5e9;
+  --text-secondary: #b0c4b0;
+  --text-muted: #7a8a7a;
+  --panel-bg: rgba(30,40,30,.78);
+  --panel-border: rgba(120,180,120,.18);
+  --accent: #66bb6a;
+  --accent-2: #42a5f5;
+  --accent-soft: rgba(102,187,106,.12);
+  --warn: #ffa726;
+  --danger: #ef5350;
+  --input-bg: rgba(20,28,20,.85);
+  --input-border: #3d523d;
+  --input-focus: #66bb6a;
+  --table-stripe: rgba(40,55,40,.5);
+  --mountain-far: #2a3a2a;
+  --mountain-mid: #1f2e1f;
+  --cloud: rgba(180,200,180,.18);
+  --field-color: #3b5e3b;
+}
+
+/* ---------- 2. 基础重置 ---------- */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-page);
+  color: var(--text-primary);
+  line-height: 1.5;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  transition: background var(--transition), color var(--transition);
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, select, textarea { font-family: inherit; }
+ul { list-style: none; }
+a { color: var(--accent-2); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ---------- 3. 背景场景 ---------- */
+.scene-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.mountain {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 35%;
+  clip-path: polygon(0% 100%, 8% 55%, 18% 75%, 28% 40%, 40% 65%, 52% 30%, 65% 60%, 78% 45%, 90% 70%, 100% 50%, 100% 100%);
+  background: var(--mountain-far);
+  opacity: 0.6;
+}
+.mountain.mid {
+  height: 28%;
+  bottom: 0;
+  clip-path: polygon(0% 100%, 12% 60%, 25% 80%, 38% 50%, 50% 70%, 62% 40%, 75% 65%, 88% 55%, 100% 75%, 100% 100%);
+  background: var(--mountain-mid);
+  opacity: 0.7;
+}
+.field-strip {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 12%;
+  background: linear-gradient(180deg, transparent 0%, var(--field-color) 60%);
+  opacity: 0.4;
+}
+.cloud {
+  position: absolute;
+  background: var(--cloud);
+  border-radius: 50%;
+  filter: blur(8px);
+  animation: drift 80s linear infinite;
+}
+.cloud-1 { width: 180px; height: 50px; top: 8%; left: -200px; animation-duration: 90s; }
+.cloud-2 { width: 240px; height: 60px; top: 14%; left: -300px; animation-duration: 120s; animation-delay: -30s; }
+.cloud-3 { width: 150px; height: 45px; top: 20%; left: -180px; animation-duration: 75s; animation-delay: -50s; }
+@keyframes drift {
+  from { transform: translateX(0); }
+  to   { transform: translateX(calc(100vw + 300px)); }
+}
+
+/* ---------- 4. 飞行无人机动画 ---------- */
+.flying-drone {
+  position: fixed;
+  top: 80px;
+  left: -150px;
+  z-index: 5;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+.flying-drone.flying {
+  animation: flyAcross 5s linear forwards;
+  opacity: 1;
+}
+@keyframes flyAcross {
+  0%   { transform: translateX(0) translateY(0) rotate(-2deg); }
+  25%  { transform: translateX(25vw) translateY(-30px) rotate(2deg); }
+  50%  { transform: translateX(50vw) translateY(0) rotate(-2deg); }
+  75%  { transform: translateX(75vw) translateY(-20px) rotate(2deg); }
+  100% { transform: translateX(calc(100vw + 150px)) translateY(0) rotate(0); }
+}
+.drone-body { fill: #37474f; }
+.drone-arm { stroke: #455a64; stroke-width: 2; }
+.rotor-ring { fill: none; stroke: #607d8b; stroke-width: 1.5; }
+.rotor-blade { stroke: #90a4ae; stroke-width: 2; stroke-linecap: round; transform-origin: center; }
+.rotor-group { transform-origin: center; }
+.flying-drone.flying .r1 { animation: spin 0.08s linear infinite; }
+.flying-drone.flying .r2 { animation: spin 0.08s linear infinite reverse; }
+.flying-drone.flying .r3 { animation: spin 0.08s linear infinite reverse; }
+.flying-drone.flying .r4 { animation: spin 0.08s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.drop { fill: #4fc3f7; opacity: 0.8; }
+.flying-drone.flying .drop { animation: drip 0.4s linear infinite; }
+@keyframes drip {
+  0% { transform: translateY(0); opacity: 0.9; }
+  100% { transform: translateY(30px); opacity: 0; }
+}
+
+/* ---------- 5. 顶部 Header ---------- */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--panel-border);
+  box-shadow: var(--shadow-sm);
+}
+.header-left { display: flex; align-items: baseline; gap: 10px; }
+.app-logo { font-size: 28px; animation: hover 3s ease-in-out infinite; }
+@keyframes hover {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.app-header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+}
+.app-version {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 2px 6px;
+  background: var(--accent-soft);
+  border-radius: 4px;
+}
+.header-actions { display: flex; gap: 8px; }
+.icon-btn {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  transition: var(--transition);
+  border: 1px solid transparent;
+}
+.icon-btn:hover {
+  background: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.icon-btn:active { transform: translateY(0); }
+
+/* ---------- 6. 主区域布局 ---------- */
+.app-main {
+  position: relative;
+  z-index: 10;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 16px;
+}
+.panel {
+  background: var(--panel-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition), transform var(--transition);
+}
+.panel:hover { box-shadow: var(--shadow-md); }
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--accent-soft);
+}
+.panel-title .hint {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+/* 植物面板跨两行 */
+.plant-panel { grid-row: span 2; }
+.result-panel { grid-column: 2; }
+.param-panel,
+.cost-panel,
+.income-panel,
+.summary-panel { grid-column: 1 / -1; }
+
+/* ---------- 7. 植物选择网格 ---------- */
+.plant-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.plant-card {
+  padding: 12px 6px;
+  border: 2px solid var(--input-border);
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.plant-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+.plant-card.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 3px rgba(46,125,50,.15);
+}
+.plant-card .p-icon { font-size: 28px; display: block; }
+.plant-card .p-name { font-size: 12px; font-weight: 600; margin-top: 4px; }
+.plant-card.active::after {
+  content: "✓";
+  position: absolute;
+  top: 4px; right: 6px;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.plant-info {
+  background: var(--accent-soft);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 12px;
+  min-height: 80px;
+}
+.plant-info-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.plant-info-desc { font-size: 13px; color: var(--text-secondary); }
+.plant-info-notes {
+  font-size: 12px;
+  color: var(--warn);
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--input-border);
+}
+
+.preset-bar { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ---------- 8. 结果卡片 ---------- */
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.result-card {
+  background: var(--input-bg);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  position: relative;
+  overflow: hidden;
+  border-left: 4px solid var(--accent);
+  transition: var(--transition);
+}
+.result-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.result-card.pesticide { border-left-color: #ab47bc; }
+.result-card.water     { border-left-color: #29b6f6; }
+.result-card.cost      { border-left-color: #ef5350; }
+.result-card.profit    { border-left-color: #66bb6a; }
+.result-card.profit[data-loss="true"] { border-left-color: var(--danger); }
+.result-icon { font-size: 22px; position: absolute; top: 10px; right: 12px; opacity: 0.5; }
+.result-label { font-size: 12px; color: var(--text-muted); }
+.result-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 4px 0;
+  font-family: var(--font-mono);
+}
+.result-value .unit {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-left: 4px;
+}
+.result-sub { font-size: 11px; color: var(--text-muted); }
+
+.result-extra {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.extra-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 8px 12px;
+  background: var(--input-bg);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--panel-border);
+}
+.extra-row b { color: var(--accent); font-family: var(--font-mono); }
+
+/* ---------- 9. 表单 ---------- */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: help;
+}
+.field label .tip {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 10px;
+  text-align: center;
+  line-height: 14px;
+  font-weight: 700;
+  cursor: help;
+  position: relative;
+  font-style: normal;
+}
+.field label .tip:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 400;
+  z-index: 100;
+  margin-bottom: 4px;
+  max-width: 280px;
+  white-space: normal;
+  width: max-content;
+}
+.field input,
+.field select {
+  padding: 8px 10px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: var(--transition);
+}
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--input-focus);
+  box-shadow: 0 0 0 3px rgba(46,125,50,.15);
+}
+.field .unit-suffix {
+  position: relative;
+}
+.field .unit-suffix input { padding-right: 50px; }
+.field .unit-suffix::after {
+  content: attr(data-unit);
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+/* 复选框 */
+.field-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--input-bg);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--input-border);
+  cursor: pointer;
+  font-size: 13px;
+}
+.field-check input { width: 18px; height: 18px; accent-color: var(--accent); }
+
+/* ---------- 10. 成本 Tabs ---------- */
+.cost-tabs, .export-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid var(--accent-soft);
+  flex-wrap: wrap;
+}
+.tab-btn {
+  padding: 8px 14px;
+  font-size: 13px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  color: var(--text-secondary);
+  transition: var(--transition);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+.tab-btn:hover { color: var(--accent); }
+.tab-btn.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 700;
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ---------- 11. 按钮 ---------- */
+.btn {
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), #43a047);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(46,125,50,.3);
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(46,125,50,.4); }
+.btn-primary:active { transform: translateY(0); }
+.btn-secondary {
+  background: var(--input-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--input-border);
+}
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.btn-sm { padding: 6px 10px; font-size: 12px; }
+.btn-block { width: 100%; padding: 14px; font-size: 16px; }
+.btn.danger { color: var(--danger); border-color: var(--danger); }
+.btn.danger:hover { background: var(--danger); color: #fff; }
+
+/* ---------- 12. 汇总表 ---------- */
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.summary-table th, .summary-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--panel-border);
+}
+.summary-table th {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+}
+.summary-table tbody tr:nth-child(even) { background: var(--table-stripe); }
+.summary-table tfoot td {
+  font-weight: 800;
+  color: var(--accent);
+  border-top: 2px solid var(--accent);
+  border-bottom: none;
+}
+.summary-table td:nth-child(2),
+.summary-table td:nth-child(3) { font-family: var(--font-mono); text-align: right; }
+.cost-bar {
+  display: inline-block;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 4px;
+  vertical-align: middle;
+  margin-right: 6px;
+  min-width: 2px;
+}
+
+/* ---------- 13. 模态框 ---------- */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+.modal.show { display: flex; animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal-box {
+  background: var(--panel-bg);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  animation: slideUp 0.25s ease;
+}
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-close {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  font-size: 14px;
+  background: var(--accent-soft);
+  transition: var(--transition);
+}
+.modal-close:hover { background: var(--danger); color: #fff; }
+.modal-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.modal-box textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  resize: vertical;
+  min-height: 120px;
+}
+.modal-box textarea:focus {
+  outline: none;
+  border-color: var(--input-focus);
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+.preset-list, .history-list {
+  max-height: 380px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+}
+.preset-list li, .history-list li {
+  padding: 10px 12px;
+  background: var(--input-bg);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: var(--transition);
+  border: 1px solid var(--input-border);
+}
+.preset-list li:hover, .history-list li:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.preset-list li.selected {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.preset-list .preset-meta, .history-list .hist-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ---------- 14. Toast ---------- */
+.toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: #333;
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+  opacity: 0;
+  transition: all 0.3s ease;
+  max-width: 90vw;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.toast.success { background: #2e7d32; }
+.toast.error { background: #c62828; }
+.toast.warn { background: #ef6c00; }
+
+/* ---------- 15. Footer ---------- */
+.app-footer {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  padding: 20px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--panel-border);
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ---------- 16. 响应式 ---------- */
+@media (max-width: 900px) {
+  .app-main {
+    grid-template-columns: 1fr;
+  }
+  .plant-panel { grid-row: auto; }
+  .result-panel { grid-column: auto; }
+  .app-header h1 { font-size: 16px; }
+  .header-actions .icon-btn { width: 36px; height: 36px; font-size: 16px; }
+}
+@media (max-width: 500px) {
+  .plant-grid { grid-template-columns: repeat(2, 1fr); }
+  .result-grid { grid-template-columns: 1fr; }
+  .result-extra { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+  .app-main { padding: 12px; }
+  .panel { padding: 14px; }
+  .app-version { display: none; }
+}
+
+/* ---------- 17. 数字滚动动画 ---------- */
+.result-value span {
+  display: inline-block;
+  transition: color 0.3s;
+}
+.result-value.flash span { animation: flash 0.6s; }
+@keyframes flash {
+  0% { transform: scale(1); color: var(--text-primary); }
+  50% { transform: scale(1.15); color: var(--accent); }
+  100% { transform: scale(1); color: var(--text-primary); }
+}
+
+/* 打印样式 */
+@media print {
+  .scene-bg, .flying-drone, .app-header, .app-footer,
+  .header-actions, .preset-bar, .calcBtn, .cost-tabs, .tab-btn { display: none !important; }
+  body { background: #fff; color: #000; }
+  .panel { box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+}

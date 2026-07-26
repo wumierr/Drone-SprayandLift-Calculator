@@ -1,0 +1,53 @@
+# OS 生成文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node（如果未来引入构建工具）
+node_modules/
+npm-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Android Studio / Gradle 构建产物
+android-webview/.gradle/
+android-webview/build/
+android-webview/app/build/
+android-webview/local.properties
+android-webview/*.iml
+android-webview/app/*.iml
+android-webview/captures/
+android-webview/.externalNativeBuild/
+
+# APK 输出
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# 备份
+*.bak
+*.tmp
+~$*
+
+# 日志
+*.log
+
+# Android 签名文件（敏感，禁止上传）
+*.keystore
+*.jks
+keystore.properties
+androidapp/build-output/
+androidapp/.gradle/
+androidapp/build/
+androidapp/app/build/
+androidapp/local.properties
+androidapp/*.iml
+androidapp/app/*.iml

@@ -1,0 +1,42 @@
+{
+  "name": "无人机打药计算器",
+  "short_name": "无人机打药",
+  "description": "药量/水量/成本/粗略利润计算器，含多植物预设、配置分享、本地存储",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#e8f5e9",
+  "theme_color": "#2e7d32",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "categories": ["productivity", "utilities", "agriculture"],
+  "icons": [
+    {
+      "src": "assets/icons/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "开始计算",
+      "short_name": "计算",
+      "url": "./index.html?action=calc",
+      "icons": [{ "src": "assets/icons/favicon.svg", "sizes": "any" }]
+    }
+  ]
+}
