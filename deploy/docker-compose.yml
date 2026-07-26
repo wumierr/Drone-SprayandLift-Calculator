@@ -1,0 +1,53 @@
+# ============================================================
+#  docker-compose.yml — 一条命令跑起来
+#
+#  用法（在项目根目录执行）:
+#    docker compose -f deploy/docker-compose.yml up -d --build
+#    docker compose -f deploy/docker-compose.yml logs -f
+#    docker compose -f deploy/docker-compose.yml down
+#
+#  默认只起 nginx（8080 端口）。想要自动 HTTPS，把下面 caddy 服务
+#  取消注释，并把 web 的端口映射注释掉（由 caddy 反代）。
+# ============================================================
+
+services:
+  web:
+    build:
+      context: ..                    # 构建上下文 = 项目根目录
+      dockerfile: deploy/Dockerfile
+    image: drone-spray-calculator:latest
+    container_name: drone-spray
+    restart: unless-stopped
+    ports:
+      - "8080:80"                    # 宿主机 8080 -> 容器 80
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+  # ---------- 可选：Caddy 自动 HTTPS（有域名时启用）----------
+  # 启用步骤:
+  #   1. 把上面 web 的 ports 整段注释掉
+  #   2. 取消下面 caddy 的注释
+  #   3. 改 deploy/Caddyfile 里的域名，并把域名 A 记录指向本机公网 IP
+  #   4. docker compose -f deploy/docker-compose.yml up -d
+  #
+  # caddy:
+  #   image: caddy:2-alpine
+  #   container_name: drone-spray-caddy
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #     - "443:443/udp"
+  #   volumes:
+  #     - ./Caddyfile:/etc/caddy/Caddyfile:ro
+  #     - caddy_data:/data
+  #     - caddy_config:/config
+  #   depends_on:
+  #     - web
+
+# volumes:
+#   caddy_data:
+#   caddy_config:

@@ -16,6 +16,7 @@ import android.widget.FrameLayout;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -123,9 +124,10 @@ public class MainActivity extends AppCompatActivity {
         s.setLoadWithOverviewMode(true);
         s.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
         // 缓存
+        // 注：setAppCacheEnabled/setAppCachePath 对应的 Application Cache 标准已废弃，
+        // 相关 API 在 API 33 中被移除（compileSdk 34 下不存在）。离线能力由页面自带的
+        // Service Worker（sw.js）负责，此处仅保留标准 HTTP 缓存策略。
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
-        s.setAppCacheEnabled(true);
-        s.setAppCachePath(getCacheDir().getAbsolutePath());
         // 编码
         s.setDefaultTextEncodingName("UTF-8");
         // 禁止 WebView 复制粘贴长按菜单（让 Web 自己处理）
@@ -151,7 +153,7 @@ public class MainActivity extends AppCompatActivity {
         webView.setWebChromeClient(new WebChromeClient());
 
         // 让 WebView 自身处理 WindowInsets，避免内容被状态栏遮挡
-        WindowCompat.setOnApplyWindowInsetsListener(webView, (v, insets) -> {
+        ViewCompat.setOnApplyWindowInsetsListener(webView, (v, insets) -> {
             int top = insets.getInsets(WindowInsetsCompat.Type.systemBars()).top;
             int bottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom;
             v.setPadding(0, top, 0, bottom);

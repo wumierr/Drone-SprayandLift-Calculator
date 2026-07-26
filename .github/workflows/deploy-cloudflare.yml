@@ -1,0 +1,49 @@
+# ============================================================
+#  Cloudflare Pages 自动部署
+#
+#  启用方法:
+#    1. Cloudflare 控制台 -> 我的个人资料 -> API 令牌 -> 创建令牌
+#       模板选 "编辑 Cloudflare Workers"，或自定义权限:
+#         账户 -> Cloudflare Pages -> 编辑
+#    2. 复制账户 ID（Workers & Pages 概览页右侧）
+#    3. GitHub 仓库 Settings -> Secrets and variables -> Actions -> New secret
+#         CLOUDFLARE_API_TOKEN   = 上面创建的令牌
+#         CLOUDFLARE_ACCOUNT_ID  = 账户 ID
+#    4. 推一次代码到 main
+#
+#  站点地址: https://drone-spray-calculator.pages.dev
+#  国内访问速度明显优于 GitHub Pages / Vercel。
+#
+#  ⚠ 另一条更省事的路: 在 Cloudflare Pages 控制台直接 "Connect to Git"，
+#    连上仓库后连本文件都不需要。构建命令填 bash scripts/build-web.sh，
+#    输出目录填 dist。
+# ============================================================
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cloudflare-pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 构建静态目录 dist/
+        run: bash scripts/build-web.sh
+
+      - name: 上传到 Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=drone-spray-calculator --branch=main

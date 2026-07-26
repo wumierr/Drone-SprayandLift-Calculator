@@ -1,0 +1,53 @@
+# ============================================================
+#  netlify.toml — Netlify 部署配置
+#
+#  用法 A（连 Git，全自动）:
+#    1. 把本文件复制到项目根目录:  cp deploy/netlify.toml ./netlify.toml
+#    2. app.netlify.com -> Add new site -> Import an existing project
+#    3. 选中本仓库，其余保持默认（配置已由本文件提供）
+#    4. 之后每次 git push 自动重新部署
+#
+#  用法 B（命令行直传，不用连 Git）:
+#    npx netlify-cli deploy --dir=dist --prod
+# ============================================================
+
+[build]
+  # 纯静态项目，"构建"就是挑文件
+  command = "bash scripts/build-web.sh"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# ---------- 响应头 ----------
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"

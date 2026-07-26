@@ -1,0 +1,47 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "_comment": [
+    "vercel.json — Vercel 部署配置",
+    "",
+    "用法 A（连 Git，全自动）:",
+    "  1. 复制到项目根目录:  cp deploy/vercel.json ./vercel.json",
+    "  2. vercel.com -> Add New -> Project -> 选中本仓库 -> Deploy",
+    "  3. 之后每次 git push 自动部署",
+    "",
+    "用法 B（命令行直传）:",
+    "  npx vercel --prod",
+    "",
+    "注意: Vercel 在中国大陆访问不稳定，国内用户优先选 Cloudflare Pages。"
+  ],
+  "buildCommand": "bash scripts/build-web.sh",
+  "outputDirectory": "dist",
+  "framework": null,
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    },
+    {
+      "source": "/(css|js)/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }]
+    },
+    {
+      "source": "/sw.js",
+      "headers": [{ "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }]
+    },
+    {
+      "source": "/index.html",
+      "headers": [{ "key": "Cache-Control", "value": "no-cache, must-revalidate" }]
+    }
+  ]
+}

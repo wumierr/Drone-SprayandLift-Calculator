@@ -38,6 +38,11 @@ android-webview/.externalNativeBuild/
 
 # 日志
 *.log
+logs/
+
+# 本地脚本运行时产物
+.server.pid
+dist/
 
 # Android 签名文件（敏感，禁止上传）
 *.keystore

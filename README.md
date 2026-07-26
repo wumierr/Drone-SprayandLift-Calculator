@@ -5,6 +5,30 @@
 
 ![license](https://img.shields.io/badge/license-MIT-green) ![platform](https://img.shields.io/badge/platform-Win10%20%7C%20Android%20%7C%20Web-blue) ![tech](https://img.shields.io/badge/pure-vanilla%20JS-orange)
 
+---
+
+## ⚡ 一键操作（Windows 双击即可）
+
+| 双击这个 | 干什么 |
+|---|---|
+| **`0-一键菜单.bat`** | **菜单式入口，所有功能都在里面（推荐从这里开始）** |
+| `1-启动服务并打开网页.bat` | 起本地服务 + 自动开浏览器（8080 端口） |
+| `2-打开网页.bat` | 只开浏览器（服务没起会自动起） |
+| `3-停止服务.bat` | 关服务、释放端口 |
+| `4-推送GitHub.bat` | 一键提交 + 推送（冲突时保留本地版本） |
+| `5-打包APK.bat` | 打安卓安装包（首次自动装 Android SDK） |
+| `6-部署Cloudflare.bat` | 一键发布到公网 |
+
+Linux / macOS 用 `scripts/*.sh`，行为与 Windows 版一致。
+
+> 📖 **公网部署完整说明（服务器配置要求 + 8 条部署路线 + 常见问题）→ [docs/DEPLOY.md](docs/DEPLOY.md)**
+>
+> - 最快上公网：双击 `6-部署Cloudflare.bat`，5 分钟拿到 `https://xxx.pages.dev`，免费 + 自动 HTTPS
+> - 有自己的服务器：`sudo bash deploy/install-linux.sh` 一条命令搞定（Caddy / nginx / Docker / systemd 四选一）
+> - 最低配置要求：**1 核 128MB 内存**（纯静态站点，树莓派都能跑）
+
+---
+
 ## ✨ 功能特性
 
 ### 📊 计算能力

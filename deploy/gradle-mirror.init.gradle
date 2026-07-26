@@ -1,0 +1,55 @@
+// ============================================================
+//  gradle-mirror.init.gradle — 把 Gradle 依赖源换成阿里云镜像
+//
+//  国内直连 dl.google.com / repo.maven.apache.org 经常超时，
+//  加上这个 init 脚本能把首次构建从"半小时超时失败"变成"两三分钟"。
+//
+//  用法（scripts\build-apk.ps1 -Mirror 会自动加上）:
+//    gradle assembleDebug --init-script deploy/gradle-mirror.init.gradle
+//
+//  注意: 本项目 settings.gradle 里设了 FAIL_ON_PROJECT_REPOS，
+//        所以必须在 settingsEvaluated 阶段替换，不能用 allprojects。
+// ============================================================
+
+def ALIYUN_GOOGLE = 'https://maven.aliyun.com/repository/google'
+def ALIYUN_PUBLIC = 'https://maven.aliyun.com/repository/public'
+def ALIYUN_CENTRAL = 'https://maven.aliyun.com/repository/central'
+def ALIYUN_PLUGIN = 'https://maven.aliyun.com/repository/gradle-plugin'
+
+settingsEvaluated { settings ->
+    // ---- 插件仓库（Android Gradle Plugin 从这里下载）----
+    settings.pluginManagement {
+        repositories {
+            clear()
+            maven { url ALIYUN_PLUGIN }
+            maven { url ALIYUN_GOOGLE }
+            maven { url ALIYUN_PUBLIC }
+            gradlePluginPortal()
+            google()
+            mavenCentral()
+        }
+    }
+
+    // ---- 依赖仓库（androidx 等）----
+    settings.dependencyResolutionManagement {
+        repositories {
+            clear()
+            maven { url ALIYUN_GOOGLE }
+            maven { url ALIYUN_PUBLIC }
+            maven { url ALIYUN_CENTRAL }
+            google()
+            mavenCentral()
+        }
+    }
+}
+
+// 兼容没有 dependencyResolutionManagement 的老工程
+allprojects {
+    buildscript {
+        repositories {
+            maven { url ALIYUN_PLUGIN }
+            maven { url ALIYUN_GOOGLE }
+            maven { url ALIYUN_PUBLIC }
+        }
+    }
+}

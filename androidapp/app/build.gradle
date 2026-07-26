@@ -50,6 +50,12 @@ android {
 }
 
 dependencies {
+    // Kotlin BOM：对齐所有 kotlin-stdlib* 版本。
+    // 不加会构建失败——androidx annotation 拉 kotlin-stdlib:1.8.22，而 androidx lifecycle
+    // 经 kotlinx-coroutines:1.6.4 拉 kotlin-stdlib-jdk8:1.6.21；Kotlin 1.8 起 jdk7/jdk8
+    // 的类已合并进主 stdlib，两者同时存在会报 "Duplicate class kotlin.*"。
+    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.22')
+
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.activity:activity:1.8.2'
     implementation 'androidx.core:core:1.12.0'

@@ -1,0 +1,59 @@
+# ============================================================
+#  drone-spray.service — systemd 服务单元
+#
+#  适用场景: Linux 服务器上不想装 nginx / docker，直接用项目自带的
+#            零依赖 Node 静态服务器常驻（配合 Caddy/nginx 反代更佳）
+#
+#  安装:
+#    sudo cp deploy/drone-spray.service /etc/systemd/system/
+#    sudo useradd -r -s /usr/sbin/nologin webapp   # 若还没有该用户
+#    sudo mkdir -p /opt/drone-spray && sudo cp -r . /opt/drone-spray/
+#    sudo chown -R webapp:webapp /opt/drone-spray
+#    sudo systemctl daemon-reload
+#    sudo systemctl enable --now drone-spray
+#
+#  常用:
+#    sudo systemctl status  drone-spray
+#    sudo systemctl restart drone-spray
+#    sudo journalctl -u drone-spray -f
+# ============================================================
+
+[Unit]
+Description=Drone Spray Calculator - static web service
+Documentation=https://github.com/wumierr/Drone-SprayandLift-Calculator
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=webapp
+Group=webapp
+WorkingDirectory=/opt/drone-spray
+
+# 端口与监听地址：本机反代时用 127.0.0.1，直接对公网暴露时用 0.0.0.0
+Environment=BIND_HOST=127.0.0.1
+ExecStart=/usr/bin/node /opt/drone-spray/scripts/static-server.cjs 8080
+
+Restart=always
+RestartSec=3
+
+# ---- 安全加固（静态服务不需要任何写权限）----
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/opt/drone-spray
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+LockPersonality=true
+MemoryMax=128M
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=drone-spray
+
+[Install]
+WantedBy=multi-user.target

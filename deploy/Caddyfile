@@ -1,0 +1,62 @@
+# ============================================================
+#  Caddyfile — 最省事的公网部署方案：自动申请并续期 HTTPS 证书
+#
+#  前置条件:
+#    1. 有一个域名，A 记录指向服务器公网 IP
+#    2. 服务器 80 / 443 端口对公网开放
+#
+#  用法 A（宿主机直接跑，不用 Docker）:
+#    sudo caddy run --config deploy/Caddyfile
+#    或装成服务: sudo cp deploy/Caddyfile /etc/caddy/Caddyfile && sudo systemctl reload caddy
+#
+#  用法 B（配合 docker-compose 的 caddy 服务）:
+#    见 deploy/docker-compose.yml 里的说明
+# ============================================================
+
+# ---------- 场景 1: 有域名，Caddy 直接托管静态文件（推荐）----------
+calc.example.com {
+	root * /var/www/drone-spray        # 换成 dist/ 的绝对路径
+	encode gzip zstd
+	file_server
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# Service Worker 不缓存
+	@sw path /sw.js
+	header @sw Cache-Control "no-cache, no-store, must-revalidate"
+
+	# 入口页不缓存
+	@html path /index.html /
+	header @html Cache-Control "no-cache, must-revalidate"
+
+	# 静态资源长缓存
+	@static path /assets/*
+	header @static Cache-Control "public, max-age=31536000, immutable"
+
+	@semi path /css/* /js/*
+	header @semi Cache-Control "public, max-age=604800"
+
+	log {
+		output file /var/log/caddy/drone-spray.log
+		format console
+	}
+}
+
+# ---------- 场景 2: 没有域名，用 IP + 端口先跑起来 ----------
+# 把上面整段注释掉，改用这段（无 HTTPS）:
+# :8080 {
+# 	root * /var/www/drone-spray
+# 	encode gzip
+# 	file_server
+# }
+
+# ---------- 场景 3: 反代 docker-compose 里的 web 容器 ----------
+# calc.example.com {
+# 	encode gzip zstd
+# 	reverse_proxy web:80
+# }
