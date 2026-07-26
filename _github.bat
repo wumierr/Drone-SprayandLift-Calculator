@@ -35,9 +35,9 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: Pull latest, rebase local on top
+:: ========== 关键修改：添加 -X ours 自动使用本地版本解决冲突 ==========
 echo Syncing with remote...
-git pull origin main --rebase --autostash
+git pull origin main --rebase --autostash -X ours
 
 if %errorlevel% neq 0 (
     echo Pull failed — check for conflicts.
