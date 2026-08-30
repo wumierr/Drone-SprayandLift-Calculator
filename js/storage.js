@@ -110,11 +110,10 @@ const Storage = {
       lines.push(`  飞行高度: ${state.haulField.flightHeight} 米`);
       lines.push('');
       lines.push('【电池循环】');
-      lines.push(`  电池循环成本: ${state.haulCosts.batteryCycleCost} 元`);
-      lines.push(`  三相电循环成本: ${state.haulCosts.batteryCycleCostThreePhase} 元`);
+      lines.push(`  电池折旧: ${state.haulCosts.batteryDepreciation != null ? state.haulCosts.batteryDepreciation : 3} 元/次`);
+      lines.push(`  本次油费: ${state.haulCosts.fuelExpense != null ? state.haulCosts.fuelExpense : 150} 元`);
       lines.push(`  一躺多少斤: ${state.haulCosts.weightPerTrip} 斤`);
       lines.push(`  多少躺一组电池: ${state.haulCosts.tripsPerBatteryCycle} 躺`);
-      lines.push(`  使用三相电: ${state.haulCosts.useThreePhase ? '是' : '否'}`);
       lines.push('');
       lines.push('【无人机人工】');
       lines.push(`  无人机作业人数: ${state.haulCosts.droneWorkers}`);
@@ -127,13 +126,6 @@ const Storage = {
       lines.push('【采摘人工】');
       lines.push(`  包采摘: ${state.haulCosts.pickupIncluded ? '是' : '否'}`);
       lines.push(`  采摘每斤单价: ${state.haulCosts.pickupPricePerJin} 毛`);
-      lines.push('');
-      lines.push('【交通成本】');
-      lines.push(`  单程路程: ${state.haulCosts.distance} 公里`);
-      lines.push(`  油耗: ${state.haulCosts.fuelConsumption} 升/100km`);
-      lines.push(`  油价: ${state.haulCosts.fuelPrice} 元/升`);
-      lines.push(`  路桥费: ${state.haulCosts.tolls} 元`);
-      lines.push(`  车辆折旧: ${state.haulCosts.vehicleDepreciation} 元/公里`);
       lines.push('');
       lines.push('【其他成本】');
       lines.push(`  无人机折旧: ${state.haulCosts.droneDepreciation} 元/100斤`);
@@ -176,18 +168,10 @@ const Storage = {
         });
       }
       lines.push('');
-      lines.push('【循环成本】');
-      lines.push(`  单次循环成本: ${state.costs.cycleCost} 元`);
-      lines.push(`  三相电循环成本: ${state.costs.cycleCostThreePhase} 元`);
+      lines.push('【循环与油费】');
+      lines.push(`  电池折旧: ${state.costs.batteryDepreciation != null ? state.costs.batteryDepreciation : 7} 元/次`);
+      lines.push(`  本次油费: ${state.costs.fuelExpense != null ? state.costs.fuelExpense : 150} 元`);
       lines.push(`  单循环亩数: ${state.costs.cycleArea} 亩`);
-      lines.push(`  使用三相电: ${state.costs.useThreePhase ? '是' : '否'}`);
-      lines.push('');
-      lines.push('【交通成本】');
-      lines.push(`  单程路程: ${state.costs.distance} 公里`);
-      lines.push(`  油耗: ${state.costs.fuelConsumption} 升/100km`);
-      lines.push(`  油价: ${state.costs.fuelPrice} 元/升`);
-      lines.push(`  路桥费: ${state.costs.tolls} 元`);
-      lines.push(`  车辆折旧: ${state.costs.vehicleDepreciation} 元/公里`);
       lines.push('');
       lines.push('【人工成本】');
       lines.push(`  作业人数: ${state.costs.workers}`);
@@ -348,9 +332,9 @@ const Storage = {
       '机载装药上限': ['field', 'droneTank', parseFloat],
       '组间移动时间': ['field', 'groupMoveTime', parseFloat],
       '现有药剂套数': ['field', 'existingPesticideSets', parseFloat],
-      // 打药-循环
-      '单次循环成本': ['costs', 'cycleCost', parseFloat],
-      '三相电循环成本': ['costs', 'cycleCostThreePhase', parseFloat],
+      // 打药-循环与油费（旧的 单次循环成本/三相电循环成本 行自动忽略）
+      '电池折旧': ['costs', 'batteryDepreciation', parseFloat],
+      '本次油费': ['costs', 'fuelExpense', parseFloat],
       '单循环亩数': ['costs', 'cycleArea', parseFloat],
       // 打药-人工
       '作业人数': ['costs', 'workers', parseFloat],
@@ -393,7 +377,6 @@ const Storage = {
       // 吊运-作业
       '总斤数': ['haulField', 'totalWeight', parseFloat],
       // 吊运-电池循环
-      '电池循环成本': ['haulCosts', 'batteryCycleCost', parseFloat],
       '一躺多少斤': ['haulCosts', 'weightPerTrip', parseFloat],
       '多少躺一组电池': ['haulCosts', 'tripsPerBatteryCycle', parseFloat],
       // 吊运-无人机人工
@@ -407,7 +390,6 @@ const Storage = {
 
     // 布尔字段映射
     const boolMap = {
-      '使用三相电': ['costs', 'useThreePhase'],
       '包药': ['costs', 'pesticideIncluded'],
       '包采摘': ['haulCosts', 'pickupIncluded'],
       '作业结束充满电': ['timing', 'chargeAfterWork']
@@ -418,7 +400,8 @@ const Storage = {
     // 把吊运数值误写入 costs 并丢失 haulCosts 的真实值（历史 bug）。
     if (result.mode === 'haul') {
       Object.assign(fieldMap, {
-        '三相电循环成本': ['haulCosts', 'batteryCycleCostThreePhase', parseFloat],
+        '电池折旧': ['haulCosts', 'batteryDepreciation', parseFloat],
+        '本次油费': ['haulCosts', 'fuelExpense', parseFloat],
         '每人日薪': ['haulCosts', 'droneDailyWage', parseFloat],
         '每人每天餐费': ['haulCosts', 'droneMealCost', parseFloat],
         '住宿费': ['haulCosts', 'droneAccommodation', parseFloat],
@@ -433,13 +416,10 @@ const Storage = {
     }
 
     // 通用字段（两种模式都有，需根据模式分配）
-    const commonFields = ['distance', 'fuelConsumption', 'fuelPrice', 'tolls', 'vehicleDepreciation', 'miscCost'];
+    const commonFields = ['batteryDepreciation', 'fuelExpense', 'miscCost'];
     const commonLabels = {
-      '单程路程': 'distance',
-      '油耗': 'fuelConsumption',
-      '油价': 'fuelPrice',
-      '路桥费': 'tolls',
-      '车辆折旧': 'vehicleDepreciation'
+      '电池折旧': 'batteryDepreciation',
+      '本次油费': 'fuelExpense'
     };
 
     const lines = text.split('\n');

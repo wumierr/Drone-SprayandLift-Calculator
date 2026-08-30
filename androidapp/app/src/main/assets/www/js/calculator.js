@@ -14,8 +14,8 @@
      实际用水量(升) = 亩数 × 每亩水量（无人机喷洒量）
      参考浓度(套/100升) = 取整后药量(套) ÷ 实际水量(升) × 100
      循环数 = ceil(亩数 / 单循环亩数)
-     循环成本 = 循环数 × (三相电 ? cycleCostThreePhase : cycleCost)
-     交通 = (单程×2) × 油耗/100 × 油价 + 路桥费 + 车辆折旧×(单程×2)
+     循环成本 = 电池折旧 × 循环数；本次油费整笔计入
+     每次充电油钱 = 本次油费 ÷ 循环数（发电机模式=充电油耗参考）
      人工 = 人数 × 作业天数 × (日薪 + 餐费) + 住宿费 × 住宿天数
      药剂成本 = 取整后药量(套) × 一套药价  （仅 pesticideIncluded=true 时计入）
      设备折旧 = 亩数 × (无人机折旧 + 维修储备 + 保险分摊)
@@ -413,13 +413,15 @@ const Calculator = {
     const mixTotalTime = mixRounds * baseMixTime;
     const firstMixTime = mixRounds > 0 ? baseMixTime : 0;
 
-    /* 电池循环成本：改按趟数（每次落地装药=一次电池竞争事件，比按亩更贴近实际） */
+    /* 电池循环成本：按趟数（每次落地装药=一次电池竞争事件）×电池折旧；
+       本次油费整笔计入；每次充电油钱 = 油费 ÷ 充电次数（发电机模式=充电油耗参考） */
     const tripsPerCycle = Math.max(1, Number(costs.tripsPerBatteryCyclePlot) || 6);
     result.cycles = Math.ceil(totalTrips / tripsPerCycle);
-    const cycleUnitCost = costs.useThreePhase
-      ? Number(costs.cycleCostThreePhase) || 0
-      : Number(costs.cycleCost) || 0;
-    result.costBreakdown.cycle = result.cycles * cycleUnitCost;
+    const batteryDepreciation = Math.max(0, Number(costs.batteryDepreciation) || 0);
+    const fuelExpense = Math.max(0, Number(costs.fuelExpense) || 0);
+    result.costBreakdown.cycle = result.cycles * batteryDepreciation;
+    result.costBreakdown.fuel = fuelExpense;
+    result.perChargeOil = result.cycles > 0 ? fuelExpense / result.cycles : 0;
 
     /* 电池等待：按总趟数模拟（跨组合并排队），T 取加权平均单趟时间 */
     const avgT = totalTrips > 0 ? weightedTSum / totalTrips : 0;
@@ -483,10 +485,6 @@ const Calculator = {
     };
 
     /* 成本/收入（与单地块同口径，面积取总面积） */
-    const distance = Number(costs.distance) || 0;
-    const roundTripKm = distance * 2;
-    result.costBreakdown.transport = roundTripKm * ((Number(costs.fuelConsumption) || 0) / 100) * (Number(costs.fuelPrice) || 0)
-      + roundTripKm * (Number(costs.vehicleDepreciation) || 0) + (Number(costs.tolls) || 0);
     result.costBreakdown.labor = (Number(costs.workers) || 0) * (Number(costs.days) || 0)
       * ((Number(costs.dailyWage) || 0) + (Number(costs.mealCost) || 0))
       + (Number(costs.accommodation) || 0) * (Number(costs.accommodationDays) || 0);
@@ -594,17 +592,6 @@ const Calculator = {
   /**
    * 生成成本明细文案
    */
-  costBreakdownText(r) {
-    const c = r.costBreakdown;
-    return [
-      `循环(电池/充电/油): ¥${this.fmtMoney(c.cycle)}`,
-      `交通(油费/折旧/路桥): ¥${this.fmtMoney(c.transport)}`,
-      `人工(工资/餐/宿): ¥${this.fmtMoney(c.labor)}`,
-      `药剂: ¥${this.fmtMoney(c.pesticide)}`,
-      `设备折旧/维修/保险: ¥${this.fmtMoney(c.equipment)}`,
-      `其他(防护/清洗/杂): ¥${this.fmtMoney(c.other)}`
-    ].join('；');
-  },
 
   /* ============================================================
      ★★★ 吊运模式计算（HAUL）—— 与打药模式完全独立 ★★★
@@ -665,11 +652,12 @@ const Calculator = {
     const tripsPerCycle = Math.max(1, Number(haul.costs.tripsPerBatteryCycle) || 1);
     result.batteryCycles = Math.ceil(result.totalTrips / tripsPerCycle);
 
-    /* 3. 电池循环成本 */
-    const cycleUnitCost = haul.costs.useThreePhase
-      ? Number(haul.costs.batteryCycleCostThreePhase) || 0
-      : Number(haul.costs.batteryCycleCost) || 0;
-    result.costBreakdown.cycle = result.batteryCycles * cycleUnitCost;
+    /* 3. 电池循环成本：电池折旧×循环数；油费整笔计入 */
+    const batteryDepreciation = Math.max(0, Number(haul.costs.batteryDepreciation) || 0);
+    const fuelExpense = Math.max(0, Number(haul.costs.fuelExpense) || 0);
+    result.costBreakdown.cycle = result.batteryCycles * batteryDepreciation;
+    result.costBreakdown.fuel = fuelExpense;
+    result.perChargeOil = result.batteryCycles > 0 ? fuelExpense / result.batteryCycles : 0;
 
     /* 4. 无人机人工（按天） */
     const dWorkers = Number(haul.costs.droneWorkers) || 0;
@@ -688,15 +676,6 @@ const Calculator = {
     } else {
       result.costBreakdown.pickupLabor = 0;
     }
-
-    /* 6. 交通 */
-    const distance = Number(haul.costs.distance) || 0;
-    const fuelConsumption = Number(haul.costs.fuelConsumption) || 0;
-    const fuelPrice = Number(haul.costs.fuelPrice) || 0;
-    const roundTripKm = distance * 2;
-    const fuelCost = roundTripKm * (fuelConsumption / 100) * fuelPrice;
-    const vehicleDep = roundTripKm * (Number(haul.costs.vehicleDepreciation) || 0);
-    result.costBreakdown.transport = fuelCost + vehicleDep + (Number(haul.costs.tolls) || 0);
 
     /* 7. 设备折旧（按100斤） */
     const per100JinCost = (Number(haul.costs.droneDepreciation) || 0)

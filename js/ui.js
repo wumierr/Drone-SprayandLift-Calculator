@@ -927,8 +927,7 @@ const UI = {
     contentContainer.innerHTML = '';
 
     const tabs = [
-      { key: 'cycle',     label: '🔋 循环成本' },
-      { key: 'transport', label: '🚚 交通' },
+      { key: 'cycle',     label: '🔋 循环与油费' },
       { key: 'labor',     label: '👥 人工' },
       { key: 'other',     label: '📦 其他' }
     ];
@@ -1330,8 +1329,8 @@ const UI = {
       `每亩 ¥${Calculator.fmtMoney(r.costPerMu)}`;
     document.getElementById('rCostFormula').textContent =
       r.pesticideIncluded
-        ? `公式: 循环 + 交通 + 人工 + 药剂(需补购${r.needToBuy}套×¥${Calculator.fmtMoney(Number(this.state.costs.pesticidePrice)||0)}) + 设备折旧 + 其他`
-        : `公式: 循环 + 交通 + 人工 + 设备折旧 + 其他（不包药，无药剂成本）`;
+        ? `公式: 电池折旧×${r.cycles}次充电 + 油费 + 人工 + 药剂(${r.needToBuy}套补购×¥${Calculator.fmtMoney(Number(this.state.costs.pesticidePrice)||0)}) + 设备折旧 + 其他`
+        : `公式: 电池折旧×${r.cycles}次充电 + 油费 + 人工 + 设备折旧 + 其他（不包药，无药剂成本）`;
 
     setText('rProfit', Calculator.fmtMoney(r.profit));
     const profitCard = document.querySelector('#sprayResults .result-card.profit');
@@ -1356,6 +1355,7 @@ const UI = {
         : '—');
 
     setText('rPesticideIncluded', r.pesticideIncluded ? '是（含药剂成本）' : '否（农户自备）');
+    setText('rChargeOil', r.perChargeOil != null ? `¥${fmt(r.perChargeOil, 2)} / 次` : '—');
 
     // 药剂卡片库存状态视觉提示
     const pesticideCard = document.querySelector('#sprayResults .result-card.pesticide');
@@ -1673,7 +1673,7 @@ const UI = {
     document.getElementById('rHaulCostDetail').textContent =
       `每斤 ¥${Calculator.fmtMoney(r.costPerJin)}`;
     document.getElementById('rHaulCostFormula').textContent =
-      `公式: 电池循环 + 无人机人工 + 采摘人工 + 交通 + 设备折旧 + 其他`;
+      `公式: 电池折旧×${r.batteryCycles}次充电 + 油费 + 无人机人工 + 采摘人工 + 设备折旧 + 其他`;
 
     // 粗利润
     setText('rHaulProfit', Calculator.fmtMoney(r.profit));
@@ -1706,25 +1706,25 @@ const UI = {
 
     if (mode === 'haul') {
       items = [
-        { name: '🔋 电池循环', val: c.battery || 0, color: '#ab47bc' },
+        { name: '🔋 电池循环(折旧)', val: c.cycle || 0, color: '#ab47bc' },
+        { name: '⛽ 油费(本次)', val: c.fuel || 0, color: '#29b6f6' },
         { name: '🚁 无人机人工', val: c.droneLabor || 0, color: '#ffa726' },
         { name: '🧺 采摘人工', val: c.pickupLabor || 0, color: '#ef5350' },
-        { name: '🚚 交通(油费/折旧/路桥)', val: c.transport || 0, color: '#29b6f6' },
         { name: '🛠 设备折旧/维修/保险', val: c.equipment || 0, color: '#8d6e63' },
         { name: '📦 其他(防护/清洗/杂)', val: c.other || 0, color: '#78909c' }
       ];
-      totalFormulaText = `总成本 = 电池循环 + 无人机人工 + 采摘人工 + 交通 + 设备折旧 + 其他 = ¥${Calculator.fmtMoney(r.totalCost)}`;
+      totalFormulaText = `总成本 = 电池折旧×循环数 + 本次油费 + 无人机人工 + 采摘人工 + 设备折旧 + 其他 = ¥${Calculator.fmtMoney(r.totalCost)}`;
       summaryFormulaText = '粗利润 = 总收入 − 总成本';
     } else {
       items = [
-        { name: '🔋 循环(电池/充电/油)', val: c.cycle || 0, color: '#ab47bc' },
-        { name: '🚚 交通(油费/折旧/路桥)', val: c.transport || 0, color: '#29b6f6' },
+        { name: '🔋 循环(电池折旧)', val: c.cycle || 0, color: '#ab47bc' },
+        { name: '⛽ 油费(本次)', val: c.fuel || 0, color: '#29b6f6' },
         { name: '👥 人工(工资/餐/宿)', val: c.labor || 0, color: '#ffa726' },
         { name: '💊 药剂', val: c.pesticide || 0, color: '#66bb6a' },
         { name: '🛠 设备折旧/维修/保险', val: c.equipment || 0, color: '#8d6e63' },
         { name: '📦 其他(防护/清洗/杂)', val: c.other || 0, color: '#78909c' }
       ];
-      totalFormulaText = `总成本 = 循环 + 交通 + 人工 + 药剂 + 设备折旧 + 其他 = ¥${Calculator.fmtMoney(r.totalCost)}`;
+      totalFormulaText = `总成本 = 电池折旧×充电次数 + 本次油费 + 人工 + 药剂 + 设备折旧 + 其他 = ¥${Calculator.fmtMoney(r.totalCost)}${r.perChargeOil != null ? ` ｜ 每次充电油钱 ¥${Calculator.fmtMoney(r.perChargeOil)}` : ''}`;
       summaryFormulaText = '粗利润 = 总收入 − 总成本';
     }
 

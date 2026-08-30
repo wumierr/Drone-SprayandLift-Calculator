@@ -209,7 +209,7 @@ test('吊运计算基本公式', () => {
   eq(r.income, 800, '1000斤×8毛×0.1=800元');
   eq(r.pickupIncluded, false, '默认不包采摘');
   eq(Object.keys(r.costBreakdown).sort().join(','),
-     'cycle,droneLabor,equipment,other,pickupLabor,transport', '成本项齐全');
+     'cycle,droneLabor,equipment,fuel,other,pickupLabor', '成本项齐全（交通已并入油费）');
 });
 
 test('computeHaul 兼容 { haul: {...} } 完整 state 形式', () => {
@@ -543,7 +543,8 @@ test('打药文本往返保留时间参数（manualFlightTime/chargeAfterWork �
   eq(back.timing.batchCapacity, 800, '单批兑水量');
   eq(back.timing.loadTime, 1.5, '加药装载时间');
   eq(back.field.area, 10, '亩数');
-  eq(back.costs.cycleCost, 14, '循环成本');
+  eq(back.costs.batteryDepreciation, 7, '电池折旧');
+  eq(back.costs.fuelExpense, 150, '本次油费');
 });
 
 test('旧版文本（含已废弃的兑水速度行）仍可导入', () => {
@@ -565,7 +566,7 @@ test('吊运文本导入：人工/住宿/折旧/三相电 路由到 haulCosts �
   const text = [
     '===== 无人机作业配置 =====', '版本: 2.0', '模式: 吊运', '',
     '【作业参数】', '  总斤数: 1200 斤', '  飞行高度: 5 米', '',
-    '【电池循环】', '  电池循环成本: 5 元', '  三相电循环成本: 9 元', '  一躺多少斤: 50 斤', '  多少躺一组电池: 6 躺', '  使用三相电: 否', '',
+    '【电池循环】', '  电池折旧: 4 元/次', '  本次油费: 180 元', '  一躺多少斤: 50 斤', '  多少躺一组电池: 6 躺', '',
     '【无人机人工】', '  无人机作业人数: 2', '  无人机作业天数: 1', '  每人日薪: 600 元', '  每人每天餐费: 60 元', '  住宿费: 200 元/天', '  住宿天数: 1', '',
     '【其他成本】', '  无人机折旧: 0.6 元/100斤', '  维修保养储备: 0.4 元/100斤', '  防护装备: 8 元/次', '  清洗费用: 6 元/次', '  保险分摊: 0.08 元/100斤', '  其他杂费: 3 元', ''
   ].join('\n');
@@ -575,12 +576,13 @@ test('吊运文本导入：人工/住宿/折旧/三相电 路由到 haulCosts �
   eq(back.haulCosts.droneDailyWage, 600, '日薪→haulCosts');
   eq(back.haulCosts.droneMealCost, 60, '餐费→haulCosts');
   eq(back.haulCosts.droneAccommodation, 200, '住宿→haulCosts');
-  eq(back.haulCosts.batteryCycleCostThreePhase, 9, '三相电循环成本→haulCosts');
+  eq(back.haulCosts.batteryDepreciation, 4, '电池折旧→haulCosts');
+  eq(back.haulCosts.fuelExpense, 180, '本次油费→haulCosts');
   eq(back.haulCosts.droneDepreciation, 0.6, '无人机折旧→haulCosts');
   eq(back.haulCosts.miscCost, 3, '杂费→haulCosts');
   // costs 不被污染（保持默认）
   eq(back.costs.dailyWage, 300, 'costs.dailyWage 保持默认 300');
-  eq(back.costs.cycleCostThreePhase, 7, 'costs.cycleCostThreePhase 保持默认 7');
+  eq(back.costs.batteryDepreciation, 7, 'costs.batteryDepreciation 保持默认 7');
 });
 
 /* ============================================================

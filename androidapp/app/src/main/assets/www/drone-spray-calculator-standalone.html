@@ -1751,6 +1751,7 @@ html, body {
           <div class="extra-row"><span>💰 总收入</span><b id="rSprayIncome">—</b></div>
           <div class="extra-row"><span>🧪 浓度 现有/参考</span><b id="rConcentration">—</b></div>
           <div class="extra-row"><span>💊 是否包药</span><b id="rPesticideIncluded">—</b></div>
+          <div class="extra-row"><span>⛽ 每次充电油钱</span><b id="rChargeOil">—</b></div>
         </div>
         <!-- 多地块明细表（仅多地块模式显示） -->
         <div id="plotsTableWrap" style="display:none;"></div>
@@ -2084,18 +2085,10 @@ const PLANT_DATABASE = {
 
 /* 默认成本参数（用户可全量修改） */
 const DEFAULT_COSTS = {
-  // 循环成本
-  cycleCost: 14,          // 单次循环费用：电池折旧7元+发电机油钱7元（元）
-  cycleCostThreePhase: 7, // 三相电模式下：仅电池折旧（元）
-  cycleArea: 2,           // 单次循环作业亩数（亩）
-  useThreePhase: false,   // 是否使用三相电（true 则只用电池折旧费）
-
-  // 交通成本
-  distance: 20,           // 单程路程（公里），本地作业通常 10-30km
-  fuelConsumption: 12,    // 满载小型厢式货车油耗（升/100公里）
-  fuelPrice: 8,           // 油价（元/升）
-  tolls: 0,               // 路桥费（元）
-  vehicleDepreciation: 0.5, // 车辆折旧（元/公里）
+  // 循环成本：电池折旧按次、油费整次直填（出发加满回家加满的差价）
+  batteryDepreciation: 7, // 电池折旧（元/次充电）
+  fuelExpense: 150,       // 本次油费（元）：含行车与发电机用油
+  cycleArea: 2,           // 单次循环作业亩数（亩，单地块按亩口径时用）
 
   // 人工成本
   workers: 3,             // 作业人数（含飞手）
@@ -2178,17 +2171,9 @@ const FIELD_DEFS = {
   droneSavingCoeff: { label: '无人机省药系数', unit: '', tip: '无人机相比人工打药节省的药量比例，0.7 表示省 30%（可超过1，表示更费药；建议 0.5-1.5）', group: 'param', default: 0.7, step: 0.05, min: 0, warnBelow: 0.1, warnAbove: 3 },
 
   // 循环成本
-  cycleCost: { label: '单次循环成本', unit: '元', tip: '一个循环的电池折旧(7元)+发电机油钱(7元)=14元', group: 'cycle', default: 14, step: 0.1, min: 0 },
-  cycleCostThreePhase: { label: '三相电循环成本', unit: '元', tip: '使用三相电时仅需电池折旧费(7元)', group: 'cycle', default: 7, step: 0.1, min: 0 },
+  batteryDepreciation: { label: '电池折旧', unit: '元/次充电', tip: '一组电池每充一次电分摊的折旧费（建议 5-10）', group: 'cycle', default: 7, step: 0.5, min: 0 },
+  fuelExpense: { label: '本次油费', unit: '元', tip: '出发加满、回家加满的加油差价（含行车与发电机用油）。每次充电油钱=油费÷充电次数，自动算出', group: 'cycle', default: 150, step: 10, min: 0 },
   cycleArea: { label: '单循环亩数', unit: '亩', tip: '一个循环（一组电池）能完成的作业亩数（建议 0.5-30）', group: 'cycle', default: 2, step: 0.1, min: 0.1, warnBelow: 0.1, warnAbove: 100 },
-  useThreePhase: { label: '使用三相电（仅电池折旧）', unit: '', tip: '勾选后循环成本改为仅电池折旧费', group: 'cycle', type: 'check', default: false },
-
-  // 交通
-  distance: { label: '单程路程', unit: '公里', tip: '从驻地到作业地块的单程距离（建议 0-500km）', group: 'transport', default: 20, step: 1, min: 0, warnAbove: 1000 },
-  fuelConsumption: { label: '满载油耗', unit: '升/100km', tip: '小型厢式货车满载（无人机+发电机+水桶+人员）的油耗（建议 8-20）', group: 'transport', default: 12, step: 0.5, min: 0, warnBelow: 3, warnAbove: 50 },
-  fuelPrice: { label: '油价', unit: '元/升', tip: '当前柴油/汽油价格（建议 5-10）', group: 'transport', default: 8, step: 0.05, min: 0, warnBelow: 1, warnAbove: 20 },
-  tolls: { label: '路桥费', unit: '元', tip: '来回过路过桥费总和', group: 'transport', default: 0, step: 1, min: 0 },
-  vehicleDepreciation: { label: '车辆折旧', unit: '元/公里', tip: '车辆磨损分摊，建议 0.3-0.6 元/公里', group: 'transport', default: 0.5, step: 0.05, min: 0, warnAbove: 5 },
 
   // 人工
   workers: { label: '作业人数', unit: '人', tip: '含飞手、配药、搬运等所有人员。填0可剔除人工成本', group: 'labor', default: 3, step: 1, integer: true, min: 0 },
@@ -2234,8 +2219,7 @@ const FIELD_DEFS = {
 /* 顺序字段分组（控制表单渲染顺序） */
 const FIELD_ORDER = {
   param: ['calcBasis', 'droneTank', 'existingPesticideSets', 'flightHeight', 'waterPerMu', 'treesPerMu', 'waterPerTree', 'pesticideWaterPerSet', 'droneSavingCoeff'],
-  cycle: ['cycleCost', 'cycleCostThreePhase', 'cycleArea', 'useThreePhase'],
-  transport: ['distance', 'fuelConsumption', 'fuelPrice', 'tolls', 'vehicleDepreciation'],
+  cycle: ['batteryDepreciation', 'fuelExpense', 'cycleArea'],
   labor: ['workers', 'days', 'dailyWage', 'mealCost', 'accommodation', 'accommodationDays'],
   other: ['pesticidePrice', 'pesticideIncluded', 'droneDepreciation', 'maintenanceReserve', 'protectiveGear', 'cleaningCost', 'insurance', 'miscCost'],
   income: ['pricePerMu', 'subsidy'],
@@ -2261,12 +2245,11 @@ window.FIELD_ORDER = FIELD_ORDER;
 
 /* 吊运模式默认成本参数 */
 const DEFAULT_HAUL_COSTS = {
-  // 电池循环
-  batteryCycleCost: 5,             // 单次电池循环成本（元）：充电+电池折旧+发电机油钱
-  batteryCycleCostThreePhase: 3,   // 三相电模式：仅电池折旧（元）
+  // 电池循环：电池折旧按次、油费整次直填
+  batteryDepreciation: 3,          // 电池折旧（元/次充电）
+  fuelExpense: 150,                // 本次油费（元）
   weightPerTrip: 50,               // 一躺多少斤（斤/躺）：单次吊运重量，T40约50-60斤
   tripsPerBatteryCycle: 6,         // 多少躺一组电池：满电到换电能跑的来回数
-  useThreePhase: false,            // 是否使用三相电
 
   // 无人机人工（按天计算，与采摘独立）
   droneWorkers: 1,                 // 无人机作业人数（飞手，地面辅助由采摘工兼任或另算）
@@ -2279,13 +2262,6 @@ const DEFAULT_HAUL_COSTS = {
   // 采摘人工（按斤计算，可选）
   pickupIncluded: false,           // 是否包采摘（true=作业方负责采摘并承担成本）
   pickupPricePerJin: 5,            // 采摘每斤单价（毛，5毛=0.5元/斤）
-
-  // 交通成本（与打药模式逻辑相同，数值独立）
-  distance: 20,                    // 单程路程（公里）
-  fuelConsumption: 12,             // 满载油耗（升/100km）
-  fuelPrice: 8,                    // 油价（元/升）
-  tolls: 0,                        // 路桥费（元）
-  vehicleDepreciation: 0.5,        // 车辆折旧（元/公里）
 
   // 设备折旧（按100斤分摊，吊运按重量计损更合理）
   droneDepreciation: 0.5,          // 无人机折旧（元/100斤）
@@ -2314,12 +2290,10 @@ const HAUL_FIELD_DEFS = {
   flightHeight: { label: '飞行高度', unit: '米', tip: '无人机吊运时的飞行高度，根据地形和障碍物调整。山区吊运通常 5-15 米', group: 'param', default: 5, step: 0.5 },
 
   // 电池循环
-  batteryCycleCost: { label: '电池循环成本', unit: '元', tip: '一组电池的充电+电池折旧+发电机油钱。一个循环指一组电池从满电用到换电', group: 'cycle', default: 5, step: 0.5 },
-  batteryCycleCostThreePhase: { label: '三相电循环成本', unit: '元', tip: '使用三相电时仅需电池折旧费', group: 'cycle', default: 3, step: 0.5 },
+  batteryDepreciation: { label: '电池折旧', unit: '元/次充电', tip: '一组电池每充一次电分摊的折旧费', group: 'cycle', default: 3, step: 0.5, min: 0 },
+  fuelExpense: { label: '本次油费', unit: '元', tip: '出发加满、回家加满的加油差价。每次充电油钱=油费÷充电次数，自动算出', group: 'cycle', default: 150, step: 10, min: 0 },
   weightPerTrip: { label: '一躺多少斤', unit: '斤', tip: '单次吊运（一个来回）的重量。受无人机载重限制，T40约50-60斤，T30约30-40斤', group: 'cycle', default: 50, step: 5 },
   tripsPerBatteryCycle: { label: '多少躺一组电池', unit: '躺', tip: '一组电池能完成的来回数（满电到换电）。载重越大越少，通常4-8躺', group: 'cycle', default: 6 },
-  useThreePhase: { label: '使用三相电（仅电池折旧）', unit: '', tip: '勾选后循环成本改为仅电池折旧费', group: 'cycle', type: 'check', default: false },
-
   // 无人机人工（按天）
   droneWorkers: { label: '无人机作业人数', unit: '人', tip: '含飞手、地面辅助人员（装货/卸货）', group: 'droneLabor', default: 2 },
   droneDays: { label: '无人机作业天数', unit: '天', tip: '无人机作业预计所需天数', group: 'droneLabor', default: 1, step: 0.5 },
@@ -2331,13 +2305,6 @@ const HAUL_FIELD_DEFS = {
   // 采摘人工（按斤）
   pickupIncluded: { label: '包采摘（作业方负责采摘）', unit: '', tip: '勾选=作业方负责采摘并承担采摘人工成本；不勾选=农户自采，作业方只负责吊运（默认不包采摘）', group: 'pickupLabor', type: 'check', default: false },
   pickupPricePerJin: { label: '采摘每斤单价', unit: '毛', tip: '采摘工每斤的工钱（毛）。5毛=0.5元/斤。仅包采摘时计入', group: 'pickupLabor', default: 5, step: 0.5 },
-
-  // 交通（与打药相同字段名，但独立存储）
-  distance: { label: '单程路程', unit: '公里', tip: '从驻地到作业地块的单程距离', group: 'transport', default: 20, step: 1 },
-  fuelConsumption: { label: '满载油耗', unit: '升/100km', tip: '小型厢式货车满载（无人机+发电机+人员+果筐）的油耗', group: 'transport', default: 12, step: 0.5 },
-  fuelPrice: { label: '油价', unit: '元/升', tip: '当前柴油/汽油价格', group: 'transport', default: 8, step: 0.05 },
-  tolls: { label: '路桥费', unit: '元', tip: '来回过路过桥费总和', group: 'transport', default: 0, step: 1 },
-  vehicleDepreciation: { label: '车辆折旧', unit: '元/公里', tip: '车辆磨损分摊，建议 0.3-0.6 元/公里', group: 'transport', default: 0.5, step: 0.05 },
 
   // 设备折旧（按100斤）
   droneDepreciation: { label: '无人机折旧', unit: '元/100斤', tip: '无人机机身分摊到每100斤的折旧费（吊运损耗比打药大）', group: 'other', default: 0.5, step: 0.05 },
@@ -2354,10 +2321,9 @@ const HAUL_FIELD_DEFS = {
 /* 吊运模式字段顺序（控制表单渲染顺序和 Tab 分组） */
 const HAUL_FIELD_ORDER = {
   param: ['totalWeight', 'flightHeight'],
-  cycle: ['batteryCycleCost', 'batteryCycleCostThreePhase', 'weightPerTrip', 'tripsPerBatteryCycle', 'useThreePhase'],
+  cycle: ['batteryDepreciation', 'fuelExpense', 'weightPerTrip', 'tripsPerBatteryCycle'],
   droneLabor: ['droneWorkers', 'droneDays', 'droneDailyWage', 'droneMealCost', 'droneAccommodation', 'droneAccommodationDays'],
   pickupLabor: ['pickupIncluded', 'pickupPricePerJin'],
-  transport: ['distance', 'fuelConsumption', 'fuelPrice', 'tolls', 'vehicleDepreciation'],
   other: ['droneDepreciation', 'maintenanceReserve', 'protectiveGear', 'cleaningCost', 'insurance', 'miscCost'],
   income: ['pricePerJin']
 };
@@ -2367,7 +2333,6 @@ const HAUL_TAB_CONFIG = [
   { key: 'cycle',      label: '🔋 电池循环' },
   { key: 'droneLabor', label: '🚁 无人机人工' },
   { key: 'pickupLabor',label: '🧺 采摘人工' },
-  { key: 'transport',  label: '🚚 交通' },
   { key: 'other',      label: '📦 其他' }
 ];
 
@@ -2397,8 +2362,8 @@ window.HAUL_TAB_CONFIG = HAUL_TAB_CONFIG;
      实际用水量(升) = 亩数 × 每亩水量（无人机喷洒量）
      参考浓度(套/100升) = 取整后药量(套) ÷ 实际水量(升) × 100
      循环数 = ceil(亩数 / 单循环亩数)
-     循环成本 = 循环数 × (三相电 ? cycleCostThreePhase : cycleCost)
-     交通 = (单程×2) × 油耗/100 × 油价 + 路桥费 + 车辆折旧×(单程×2)
+     循环成本 = 电池折旧 × 循环数；本次油费整笔计入
+     每次充电油钱 = 本次油费 ÷ 循环数（发电机模式=充电油耗参考）
      人工 = 人数 × 作业天数 × (日薪 + 餐费) + 住宿费 × 住宿天数
      药剂成本 = 取整后药量(套) × 一套药价  （仅 pesticideIncluded=true 时计入）
      设备折旧 = 亩数 × (无人机折旧 + 维修储备 + 保险分摊)
@@ -2796,13 +2761,15 @@ const Calculator = {
     const mixTotalTime = mixRounds * baseMixTime;
     const firstMixTime = mixRounds > 0 ? baseMixTime : 0;
 
-    /* 电池循环成本：改按趟数（每次落地装药=一次电池竞争事件，比按亩更贴近实际） */
+    /* 电池循环成本：按趟数（每次落地装药=一次电池竞争事件）×电池折旧；
+       本次油费整笔计入；每次充电油钱 = 油费 ÷ 充电次数（发电机模式=充电油耗参考） */
     const tripsPerCycle = Math.max(1, Number(costs.tripsPerBatteryCyclePlot) || 6);
     result.cycles = Math.ceil(totalTrips / tripsPerCycle);
-    const cycleUnitCost = costs.useThreePhase
-      ? Number(costs.cycleCostThreePhase) || 0
-      : Number(costs.cycleCost) || 0;
-    result.costBreakdown.cycle = result.cycles * cycleUnitCost;
+    const batteryDepreciation = Math.max(0, Number(costs.batteryDepreciation) || 0);
+    const fuelExpense = Math.max(0, Number(costs.fuelExpense) || 0);
+    result.costBreakdown.cycle = result.cycles * batteryDepreciation;
+    result.costBreakdown.fuel = fuelExpense;
+    result.perChargeOil = result.cycles > 0 ? fuelExpense / result.cycles : 0;
 
     /* 电池等待：按总趟数模拟（跨组合并排队），T 取加权平均单趟时间 */
     const avgT = totalTrips > 0 ? weightedTSum / totalTrips : 0;
@@ -2866,10 +2833,6 @@ const Calculator = {
     };
 
     /* 成本/收入（与单地块同口径，面积取总面积） */
-    const distance = Number(costs.distance) || 0;
-    const roundTripKm = distance * 2;
-    result.costBreakdown.transport = roundTripKm * ((Number(costs.fuelConsumption) || 0) / 100) * (Number(costs.fuelPrice) || 0)
-      + roundTripKm * (Number(costs.vehicleDepreciation) || 0) + (Number(costs.tolls) || 0);
     result.costBreakdown.labor = (Number(costs.workers) || 0) * (Number(costs.days) || 0)
       * ((Number(costs.dailyWage) || 0) + (Number(costs.mealCost) || 0))
       + (Number(costs.accommodation) || 0) * (Number(costs.accommodationDays) || 0);
@@ -2977,17 +2940,6 @@ const Calculator = {
   /**
    * 生成成本明细文案
    */
-  costBreakdownText(r) {
-    const c = r.costBreakdown;
-    return [
-      `循环(电池/充电/油): ¥${this.fmtMoney(c.cycle)}`,
-      `交通(油费/折旧/路桥): ¥${this.fmtMoney(c.transport)}`,
-      `人工(工资/餐/宿): ¥${this.fmtMoney(c.labor)}`,
-      `药剂: ¥${this.fmtMoney(c.pesticide)}`,
-      `设备折旧/维修/保险: ¥${this.fmtMoney(c.equipment)}`,
-      `其他(防护/清洗/杂): ¥${this.fmtMoney(c.other)}`
-    ].join('；');
-  },
 
   /* ============================================================
      ★★★ 吊运模式计算（HAUL）—— 与打药模式完全独立 ★★★
@@ -3048,11 +3000,12 @@ const Calculator = {
     const tripsPerCycle = Math.max(1, Number(haul.costs.tripsPerBatteryCycle) || 1);
     result.batteryCycles = Math.ceil(result.totalTrips / tripsPerCycle);
 
-    /* 3. 电池循环成本 */
-    const cycleUnitCost = haul.costs.useThreePhase
-      ? Number(haul.costs.batteryCycleCostThreePhase) || 0
-      : Number(haul.costs.batteryCycleCost) || 0;
-    result.costBreakdown.cycle = result.batteryCycles * cycleUnitCost;
+    /* 3. 电池循环成本：电池折旧×循环数；油费整笔计入 */
+    const batteryDepreciation = Math.max(0, Number(haul.costs.batteryDepreciation) || 0);
+    const fuelExpense = Math.max(0, Number(haul.costs.fuelExpense) || 0);
+    result.costBreakdown.cycle = result.batteryCycles * batteryDepreciation;
+    result.costBreakdown.fuel = fuelExpense;
+    result.perChargeOil = result.batteryCycles > 0 ? fuelExpense / result.batteryCycles : 0;
 
     /* 4. 无人机人工（按天） */
     const dWorkers = Number(haul.costs.droneWorkers) || 0;
@@ -3071,15 +3024,6 @@ const Calculator = {
     } else {
       result.costBreakdown.pickupLabor = 0;
     }
-
-    /* 6. 交通 */
-    const distance = Number(haul.costs.distance) || 0;
-    const fuelConsumption = Number(haul.costs.fuelConsumption) || 0;
-    const fuelPrice = Number(haul.costs.fuelPrice) || 0;
-    const roundTripKm = distance * 2;
-    const fuelCost = roundTripKm * (fuelConsumption / 100) * fuelPrice;
-    const vehicleDep = roundTripKm * (Number(haul.costs.vehicleDepreciation) || 0);
-    result.costBreakdown.transport = fuelCost + vehicleDep + (Number(haul.costs.tolls) || 0);
 
     /* 7. 设备折旧（按100斤） */
     const per100JinCost = (Number(haul.costs.droneDepreciation) || 0)
@@ -3225,11 +3169,10 @@ const Storage = {
       lines.push(`  飞行高度: ${state.haulField.flightHeight} 米`);
       lines.push('');
       lines.push('【电池循环】');
-      lines.push(`  电池循环成本: ${state.haulCosts.batteryCycleCost} 元`);
-      lines.push(`  三相电循环成本: ${state.haulCosts.batteryCycleCostThreePhase} 元`);
+      lines.push(`  电池折旧: ${state.haulCosts.batteryDepreciation != null ? state.haulCosts.batteryDepreciation : 3} 元/次`);
+      lines.push(`  本次油费: ${state.haulCosts.fuelExpense != null ? state.haulCosts.fuelExpense : 150} 元`);
       lines.push(`  一躺多少斤: ${state.haulCosts.weightPerTrip} 斤`);
       lines.push(`  多少躺一组电池: ${state.haulCosts.tripsPerBatteryCycle} 躺`);
-      lines.push(`  使用三相电: ${state.haulCosts.useThreePhase ? '是' : '否'}`);
       lines.push('');
       lines.push('【无人机人工】');
       lines.push(`  无人机作业人数: ${state.haulCosts.droneWorkers}`);
@@ -3242,13 +3185,6 @@ const Storage = {
       lines.push('【采摘人工】');
       lines.push(`  包采摘: ${state.haulCosts.pickupIncluded ? '是' : '否'}`);
       lines.push(`  采摘每斤单价: ${state.haulCosts.pickupPricePerJin} 毛`);
-      lines.push('');
-      lines.push('【交通成本】');
-      lines.push(`  单程路程: ${state.haulCosts.distance} 公里`);
-      lines.push(`  油耗: ${state.haulCosts.fuelConsumption} 升/100km`);
-      lines.push(`  油价: ${state.haulCosts.fuelPrice} 元/升`);
-      lines.push(`  路桥费: ${state.haulCosts.tolls} 元`);
-      lines.push(`  车辆折旧: ${state.haulCosts.vehicleDepreciation} 元/公里`);
       lines.push('');
       lines.push('【其他成本】');
       lines.push(`  无人机折旧: ${state.haulCosts.droneDepreciation} 元/100斤`);
@@ -3291,18 +3227,10 @@ const Storage = {
         });
       }
       lines.push('');
-      lines.push('【循环成本】');
-      lines.push(`  单次循环成本: ${state.costs.cycleCost} 元`);
-      lines.push(`  三相电循环成本: ${state.costs.cycleCostThreePhase} 元`);
+      lines.push('【循环与油费】');
+      lines.push(`  电池折旧: ${state.costs.batteryDepreciation != null ? state.costs.batteryDepreciation : 7} 元/次`);
+      lines.push(`  本次油费: ${state.costs.fuelExpense != null ? state.costs.fuelExpense : 150} 元`);
       lines.push(`  单循环亩数: ${state.costs.cycleArea} 亩`);
-      lines.push(`  使用三相电: ${state.costs.useThreePhase ? '是' : '否'}`);
-      lines.push('');
-      lines.push('【交通成本】');
-      lines.push(`  单程路程: ${state.costs.distance} 公里`);
-      lines.push(`  油耗: ${state.costs.fuelConsumption} 升/100km`);
-      lines.push(`  油价: ${state.costs.fuelPrice} 元/升`);
-      lines.push(`  路桥费: ${state.costs.tolls} 元`);
-      lines.push(`  车辆折旧: ${state.costs.vehicleDepreciation} 元/公里`);
       lines.push('');
       lines.push('【人工成本】');
       lines.push(`  作业人数: ${state.costs.workers}`);
@@ -3463,9 +3391,9 @@ const Storage = {
       '机载装药上限': ['field', 'droneTank', parseFloat],
       '组间移动时间': ['field', 'groupMoveTime', parseFloat],
       '现有药剂套数': ['field', 'existingPesticideSets', parseFloat],
-      // 打药-循环
-      '单次循环成本': ['costs', 'cycleCost', parseFloat],
-      '三相电循环成本': ['costs', 'cycleCostThreePhase', parseFloat],
+      // 打药-循环与油费（旧的 单次循环成本/三相电循环成本 行自动忽略）
+      '电池折旧': ['costs', 'batteryDepreciation', parseFloat],
+      '本次油费': ['costs', 'fuelExpense', parseFloat],
       '单循环亩数': ['costs', 'cycleArea', parseFloat],
       // 打药-人工
       '作业人数': ['costs', 'workers', parseFloat],
@@ -3508,7 +3436,6 @@ const Storage = {
       // 吊运-作业
       '总斤数': ['haulField', 'totalWeight', parseFloat],
       // 吊运-电池循环
-      '电池循环成本': ['haulCosts', 'batteryCycleCost', parseFloat],
       '一躺多少斤': ['haulCosts', 'weightPerTrip', parseFloat],
       '多少躺一组电池': ['haulCosts', 'tripsPerBatteryCycle', parseFloat],
       // 吊运-无人机人工
@@ -3522,7 +3449,6 @@ const Storage = {
 
     // 布尔字段映射
     const boolMap = {
-      '使用三相电': ['costs', 'useThreePhase'],
       '包药': ['costs', 'pesticideIncluded'],
       '包采摘': ['haulCosts', 'pickupIncluded'],
       '作业结束充满电': ['timing', 'chargeAfterWork']
@@ -3533,7 +3459,8 @@ const Storage = {
     // 把吊运数值误写入 costs 并丢失 haulCosts 的真实值（历史 bug）。
     if (result.mode === 'haul') {
       Object.assign(fieldMap, {
-        '三相电循环成本': ['haulCosts', 'batteryCycleCostThreePhase', parseFloat],
+        '电池折旧': ['haulCosts', 'batteryDepreciation', parseFloat],
+        '本次油费': ['haulCosts', 'fuelExpense', parseFloat],
         '每人日薪': ['haulCosts', 'droneDailyWage', parseFloat],
         '每人每天餐费': ['haulCosts', 'droneMealCost', parseFloat],
         '住宿费': ['haulCosts', 'droneAccommodation', parseFloat],
@@ -3548,13 +3475,10 @@ const Storage = {
     }
 
     // 通用字段（两种模式都有，需根据模式分配）
-    const commonFields = ['distance', 'fuelConsumption', 'fuelPrice', 'tolls', 'vehicleDepreciation', 'miscCost'];
+    const commonFields = ['batteryDepreciation', 'fuelExpense', 'miscCost'];
     const commonLabels = {
-      '单程路程': 'distance',
-      '油耗': 'fuelConsumption',
-      '油价': 'fuelPrice',
-      '路桥费': 'tolls',
-      '车辆折旧': 'vehicleDepreciation'
+      '电池折旧': 'batteryDepreciation',
+      '本次油费': 'fuelExpense'
     };
 
     const lines = text.split('\n');
@@ -4619,8 +4543,7 @@ const UI = {
     contentContainer.innerHTML = '';
 
     const tabs = [
-      { key: 'cycle',     label: '🔋 循环成本' },
-      { key: 'transport', label: '🚚 交通' },
+      { key: 'cycle',     label: '🔋 循环与油费' },
       { key: 'labor',     label: '👥 人工' },
       { key: 'other',     label: '📦 其他' }
     ];
@@ -5022,8 +4945,8 @@ const UI = {
       `每亩 ¥${Calculator.fmtMoney(r.costPerMu)}`;
     document.getElementById('rCostFormula').textContent =
       r.pesticideIncluded
-        ? `公式: 循环 + 交通 + 人工 + 药剂(需补购${r.needToBuy}套×¥${Calculator.fmtMoney(Number(this.state.costs.pesticidePrice)||0)}) + 设备折旧 + 其他`
-        : `公式: 循环 + 交通 + 人工 + 设备折旧 + 其他（不包药，无药剂成本）`;
+        ? `公式: 电池折旧×${r.cycles}次充电 + 油费 + 人工 + 药剂(${r.needToBuy}套补购×¥${Calculator.fmtMoney(Number(this.state.costs.pesticidePrice)||0)}) + 设备折旧 + 其他`
+        : `公式: 电池折旧×${r.cycles}次充电 + 油费 + 人工 + 设备折旧 + 其他（不包药，无药剂成本）`;
 
     setText('rProfit', Calculator.fmtMoney(r.profit));
     const profitCard = document.querySelector('#sprayResults .result-card.profit');
@@ -5048,6 +4971,7 @@ const UI = {
         : '—');
 
     setText('rPesticideIncluded', r.pesticideIncluded ? '是（含药剂成本）' : '否（农户自备）');
+    setText('rChargeOil', r.perChargeOil != null ? `¥${fmt(r.perChargeOil, 2)} / 次` : '—');
 
     // 药剂卡片库存状态视觉提示
     const pesticideCard = document.querySelector('#sprayResults .result-card.pesticide');
@@ -5365,7 +5289,7 @@ const UI = {
     document.getElementById('rHaulCostDetail').textContent =
       `每斤 ¥${Calculator.fmtMoney(r.costPerJin)}`;
     document.getElementById('rHaulCostFormula').textContent =
-      `公式: 电池循环 + 无人机人工 + 采摘人工 + 交通 + 设备折旧 + 其他`;
+      `公式: 电池折旧×${r.batteryCycles}次充电 + 油费 + 无人机人工 + 采摘人工 + 设备折旧 + 其他`;
 
     // 粗利润
     setText('rHaulProfit', Calculator.fmtMoney(r.profit));
@@ -5398,25 +5322,25 @@ const UI = {
 
     if (mode === 'haul') {
       items = [
-        { name: '🔋 电池循环', val: c.battery || 0, color: '#ab47bc' },
+        { name: '🔋 电池循环(折旧)', val: c.cycle || 0, color: '#ab47bc' },
+        { name: '⛽ 油费(本次)', val: c.fuel || 0, color: '#29b6f6' },
         { name: '🚁 无人机人工', val: c.droneLabor || 0, color: '#ffa726' },
         { name: '🧺 采摘人工', val: c.pickupLabor || 0, color: '#ef5350' },
-        { name: '🚚 交通(油费/折旧/路桥)', val: c.transport || 0, color: '#29b6f6' },
         { name: '🛠 设备折旧/维修/保险', val: c.equipment || 0, color: '#8d6e63' },
         { name: '📦 其他(防护/清洗/杂)', val: c.other || 0, color: '#78909c' }
       ];
-      totalFormulaText = `总成本 = 电池循环 + 无人机人工 + 采摘人工 + 交通 + 设备折旧 + 其他 = ¥${Calculator.fmtMoney(r.totalCost)}`;
+      totalFormulaText = `总成本 = 电池折旧×循环数 + 本次油费 + 无人机人工 + 采摘人工 + 设备折旧 + 其他 = ¥${Calculator.fmtMoney(r.totalCost)}`;
       summaryFormulaText = '粗利润 = 总收入 − 总成本';
     } else {
       items = [
-        { name: '🔋 循环(电池/充电/油)', val: c.cycle || 0, color: '#ab47bc' },
-        { name: '🚚 交通(油费/折旧/路桥)', val: c.transport || 0, color: '#29b6f6' },
+        { name: '🔋 循环(电池折旧)', val: c.cycle || 0, color: '#ab47bc' },
+        { name: '⛽ 油费(本次)', val: c.fuel || 0, color: '#29b6f6' },
         { name: '👥 人工(工资/餐/宿)', val: c.labor || 0, color: '#ffa726' },
         { name: '💊 药剂', val: c.pesticide || 0, color: '#66bb6a' },
         { name: '🛠 设备折旧/维修/保险', val: c.equipment || 0, color: '#8d6e63' },
         { name: '📦 其他(防护/清洗/杂)', val: c.other || 0, color: '#78909c' }
       ];
-      totalFormulaText = `总成本 = 循环 + 交通 + 人工 + 药剂 + 设备折旧 + 其他 = ¥${Calculator.fmtMoney(r.totalCost)}`;
+      totalFormulaText = `总成本 = 电池折旧×充电次数 + 本次油费 + 人工 + 药剂 + 设备折旧 + 其他 = ¥${Calculator.fmtMoney(r.totalCost)}${r.perChargeOil != null ? ` ｜ 每次充电油钱 ¥${Calculator.fmtMoney(r.perChargeOil)}` : ''}`;
       summaryFormulaText = '粗利润 = 总收入 − 总成本';
     }
 
