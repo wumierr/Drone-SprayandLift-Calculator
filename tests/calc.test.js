@@ -530,9 +530,6 @@ test('迁移用户（plotMode=false 但有地块）地块仍随文本导出', ()
   ok(text.includes('[地块]'), '地块列表随导出');
   vm.runInContext('DEFAULT_FIELD.plots = []', ctx);  // 清共享累积（测试环境现象）
   const back = S.importText(text);
-  const dbgL = text.split('\n').filter(l => l.includes('地块')).slice(0, 6);
-  console.log('DEBUG 地块行:', JSON.stringify(dbgL));
-  console.log('DEBUG back.plots:', (back.field.plots || []).map(x => x.name + '/' + x.area));
   const pl = (back.field.plots || []).find(x => x.name === '地块1');
   ok(pl, '地块往返');
   ok(Math.abs(pl.area - 10) < 1e-9, '面积保留');
