@@ -161,6 +161,8 @@ drone-spray-calculator/
 │   ├── storage.js          # LocalStorage + 预设 + 导入导出
 │   ├── ui.js               # UI 渲染与交互
 │   └── app.js              # 主入口
+├── tests/
+│   └── calc.test.js        # 无依赖测试套件（运行：node tests/calc.test.js）
 ├── assets/
 │   └── icons/
 │       ├── favicon.svg         # 矢量图标
@@ -246,6 +248,19 @@ custom_crop: {
 
 ### 自定义主题
 编辑 `css/style.css` 顶部的 `[data-theme="day"]` 和 `[data-theme="night"]` 中的 CSS 变量即可。
+
+---
+
+## 🧪 开发与测试
+
+项目无任何依赖、无构建步骤。修改 `js/` 后运行测试确认计算与导入导出逻辑未被破坏：
+
+```bash
+node tests/calc.test.js
+```
+
+覆盖范围：7舍8入取整、打药/吊运计算公式、电池等待模拟、文本与 JSON 导入导出往返、预设结构。
+改动 `sw.js` 的 `CACHE_VERSION` 才能让 PWA 用户拿到新版本。
 
 ---
 
