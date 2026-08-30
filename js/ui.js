@@ -14,7 +14,9 @@ const UI = {
     // 吊运模式状态（完全独立）
     haulField: { ...DEFAULT_HAUL_FIELD },
     haulCosts: { ...DEFAULT_HAUL_COSTS },
-    haulIncome: { ...DEFAULT_HAUL_INCOME }
+    haulIncome: { ...DEFAULT_HAUL_INCOME },
+    // 作业工单覆盖层（已完成量/实际用药/备注）
+    workOrder: { completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' }
   },
 
   /* ---------- 初始化 ---------- */
@@ -54,6 +56,9 @@ const UI = {
     document.getElementById('haulResults').style.display = mode === 'haul' ? '' : 'none';
     // 模式标签
     document.getElementById('modeTag').textContent = mode === 'spray' ? '打药模式' : '吊运模式';
+    // 工单按钮仅打药模式可用
+    const woBtn = document.getElementById('workOrderBtn');
+    if (woBtn) woBtn.style.display = mode === 'spray' ? '' : 'none';
     // 植物面板和预设栏：仅打药模式显示
     const plantPanel = document.querySelector('.plant-panel');
     if (plantPanel) plantPanel.style.display = mode === 'spray' ? '' : 'none';
@@ -101,6 +106,12 @@ const UI = {
       if (saved.haulField) this.state.haulField = { ...this.state.haulField, ...saved.haulField };
       if (saved.haulCosts) this.state.haulCosts = { ...this.state.haulCosts, ...saved.haulCosts };
       if (saved.haulIncome) this.state.haulIncome = { ...this.state.haulIncome, ...saved.haulIncome };
+      if (saved.workOrder) {
+        this.state.workOrder = {
+          ...{ completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' },
+          ...saved.workOrder
+        };
+      }
     } else {
       this.state.plant = { ...PLANT_DATABASE[this.state.field.plantKey || 'fruit_tree'] };
     }
@@ -258,6 +269,130 @@ const UI = {
         <tbody>${rows}</tbody>
         <tfoot><tr><td>合计</td><td>${basis === 'tree' ? fmt(r.plots.reduce((s, p) => s + p.treeCount, 0), 0) : fmt(r.area, 1)}</td><td>${fmt(r.water, 1)}</td><td>—</td><td>${r.totalTrips}</td><td>—</td><td>${fmt(r.totalTransfer, 1)}</td><td>${r.pesticideRounded}</td></tr></tfoot>
       </table>`;
+  },
+
+  /* ============================================================
+     ★★★ 作业工单（快捷修改 + 纯文本输出）★★★
+     - 快捷修改区：已完成量（按地块）、实际用药套数、备注，
+       任一输入即时重算剩余量/续药并保存（state.workOrder 覆盖层）
+     - 纯文本工单：等宽高可读，可整段复制留存或发给现场人员
+     ============================================================ */
+  getWorkOrder() {
+    if (!this.state.workOrder || typeof this.state.workOrder !== 'object') {
+      this.state.workOrder = { completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' };
+    }
+    const wo = this.state.workOrder;
+    if (!wo.completedByPlot) wo.completedByPlot = {};
+    if (wo.completedSingle == null) wo.completedSingle = 0;
+    if (wo.actualSets == null) wo.actualSets = 0;
+    if (wo.note == null) wo.note = '';
+    return wo;
+  },
+
+  openWorkOrder() {
+    if (this.state.mode !== 'spray') {
+      this.toast('工单暂仅支持打药模式', 'warn');
+      return;
+    }
+    this.renderWorkOrderQuick();
+    this.renderWorkOrderText();
+    this.openModal('workOrderModal');
+  },
+
+  renderWorkOrderQuick() {
+    const wrap = document.getElementById('workOrderQuick');
+    if (!wrap) return;
+    const r = this._lastResult;
+    const wo = this.getWorkOrder();
+    let html = '';
+    if (r && r.plotMode) {
+      (r.plots || []).forEach(p => {
+        const done = Number(wo.completedByPlot[p.id]) || 0;
+        const rest = Math.max(0, p.water - done);
+        html += `
+          <div class="field">
+            <label>${this.escapeHtml(p.name)} 已完成(升)</label>
+            <input type="number" class="wo-completed" data-id="${p.id}" min="0" step="1" value="${done || ''}" placeholder="0">
+            <span class="wo-rest hint" data-id="${p.id}">剩余 ${Calculator.fmt(rest, 1)} 升 ≈ ${p.perTripWater > 0 ? Math.ceil(rest / p.perTripWater) : 0} 趟</span>
+          </div>`;
+      });
+    } else {
+      const done = Number(wo.completedSingle) || 0;
+      const rest = Math.max(0, (r ? r.water : 0) - done);
+      html += `
+        <div class="field">
+          <label>已完成水量(升)</label>
+          <input type="number" class="wo-single" min="0" step="1" value="${done || ''}" placeholder="0">
+          <span class="hint" id="woRestSingle">剩余 ${Calculator.fmt(rest, 1)} 升</span>
+        </div>`;
+    }
+    html += `
+      <div class="field">
+        <label>实际用药(套)</label>
+        <input type="number" class="wo-sets" min="0" step="1" value="${wo.actualSets || ''}" placeholder="参考 ${r ? r.pesticideRounded : 0}">
+      </div>
+      <div class="field" style="grid-column: 1 / -1;">
+        <label>备注</label>
+        <input type="text" class="wo-note" value="${this.escapeHtml(wo.note)}" placeholder="如：农户自备2套 / 下午续药">
+      </div>`;
+    wrap.innerHTML = html;
+  },
+
+  renderWorkOrderText() {
+    const el = document.getElementById('workOrderText');
+    if (el) el.textContent = this.buildWorkOrderText();
+  },
+
+  buildWorkOrderText() {
+    const r = this._lastResult;
+    if (!r || this.state.mode !== 'spray') return '';
+    const wo = this.getWorkOrder();
+    const fmt = Calculator.fmt.bind(Calculator);
+    const fdur = Calculator.formatDuration.bind(Calculator);
+    const plant = this.state.plant;
+    const LINE = '──────────────────────';
+    const L = [];
+    const basisText = r.plotMode ? '多地块' : (r.calcBasis === 'tree' ? '按棵数' : '按亩数');
+    L.push('🚁 无人机作业工单');
+    L.push(`日期: ${new Date().toLocaleString('zh-CN')}`);
+    L.push(`作物: ${plant.icon || ''}${plant.name} · ${basisText}${r.plotMode ? ` · 机载上限 ${r.droneTank}升/趟` : ''}`);
+    L.push(LINE);
+
+    if (r.plotMode) {
+      (r.plots || []).forEach(p => {
+        const done = Number(wo.completedByPlot[p.id]) || 0;
+        const rest = Math.max(0, p.water - done);
+        L.push(`【${p.name}】`);
+        L.push(`  ${r.calcBasis === 'tree' ? fmt(p.treeCount, 0) + '棵' : fmt(p.area, 1) + '亩'} | 水量 ${fmt(p.water, 1)}升 | 趟数 ${p.trips} | 每趟 ${fmt(p.perTripWater, 1)}升 | 转场 ${fmt(p.transferMin, 1)}min`);
+        L.push(`  已完成 ${fmt(done, 1)}升 (${p.water > 0 ? fmt(done / p.water * 100, 0) : 0}%) | 剩余 ${fmt(rest, 1)}升 ≈ ${p.perTripWater > 0 ? Math.ceil(rest / p.perTripWater) : 0}趟 | 药量 ${p.pesticideRounded}套`);
+      });
+    } else {
+      const done = Number(wo.completedSingle) || 0;
+      const rest = Math.max(0, r.water - done);
+      L.push('【当前地块】');
+      L.push(`  水量 ${fmt(r.water, 1)}升 | 循环数 ${r.cycles} | 兑药 ${r.timing.mixRounds}批(单批${fmt(r.timing.batchCapacity, 0)}升)`);
+      L.push(`  已完成 ${fmt(done, 1)}升 (${r.water > 0 ? fmt(done / r.water * 100, 0) : 0}%) | 剩余 ${fmt(rest, 1)}升`);
+    }
+
+    L.push(LINE);
+    const doneTotal = r.plotMode
+      ? (r.plots || []).reduce((s, p) => s + (Number(wo.completedByPlot[p.id]) || 0), 0)
+      : (Number(wo.completedSingle) || 0);
+    const restTotal = Math.max(0, r.water - doneTotal);
+    const actualSets = Number(wo.actualSets) > 0 ? Number(wo.actualSets) : r.pesticideRounded;
+    const refillSets = Calculator.computeRefillSets(restTotal, plant.pesticideWaterPerSet, plant.droneSavingCoeff);
+    L.push('【汇总】');
+    L.push(`  总水量 ${fmt(r.water, 1)}升 | 已完成 ${fmt(doneTotal, 1)}升 | 剩余 ${fmt(restTotal, 1)}升`);
+    if (r.plotMode) L.push(`  总趟数 ${r.totalTrips} | 兑药 ${r.timing.mixRounds}批(单批${fmt(r.timing.batchCapacity, 0)}升)`);
+    let timeText = `预计总时长 ${fdur(r.timing.totalTime)}`;
+    if (r.timing.chargeAfterWork && r.timing.afterWorkCharge > 0) timeText += `（另结束后充电 ${fdur(r.timing.afterWorkCharge)}）`;
+    L.push(`  ${timeText}`);
+    L.push(`  药量: 参考 ${r.pesticideRounded}套 | 实际 ${actualSets}套${Number(wo.actualSets) > 0 ? '（手填）' : ''} | 需补购 ${r.needToBuy}套`);
+    if (restTotal > 0) L.push(`  续药提醒: 剩余 ${fmt(restTotal, 1)}升 ≈ 还需 ${refillSets}套（7舍8入）`);
+    L.push(`  成本 ¥${Calculator.fmtMoney(r.totalCost)} | 收入 ¥${Calculator.fmtMoney(r.income)} | 利润 ¥${Calculator.fmtMoney(r.profit)}`);
+    if (wo.note) L.push(`【备注】${wo.note}`);
+    L.push(LINE);
+    return L.join('\n');
   },
 
   updatePlantInfo() {
@@ -1120,7 +1255,8 @@ const UI = {
       timing: this.state.timing,
       haulField: this.state.haulField,
       haulCosts: this.state.haulCosts,
-      haulIncome: this.state.haulIncome
+      haulIncome: this.state.haulIncome,
+      workOrder: this.state.workOrder
     });
   },
 
@@ -1245,6 +1381,53 @@ const UI = {
       });
     });
 
+    // 作业工单
+    document.getElementById('workOrderBtn').addEventListener('click', () => this.openWorkOrder());
+    document.getElementById('copyWorkOrder').addEventListener('click', () => {
+      const txt = document.getElementById('workOrderText').textContent || '';
+      if (!txt) {
+        this.toast('工单内容为空', 'warn');
+        return;
+      }
+      this.copyToClipboard(txt).then(ok => {
+        this.toast(ok ? '工单已复制到剪贴板 📋' : '复制失败，请长按文本手动选择', ok ? 'success' : 'error');
+      });
+    });
+
+    // 工单快捷修改（事件委托：重渲染后依然有效）
+    const woQuick = document.getElementById('workOrderQuick');
+    if (woQuick) {
+      woQuick.addEventListener('input', e => {
+        const wo = this.getWorkOrder();
+        const r = this._lastResult;
+        if (e.target.classList.contains('wo-completed')) {
+          const v = parseFloat(e.target.value);
+          wo.completedByPlot[e.target.dataset.id] = isNaN(v) ? 0 : Math.max(0, v);
+          const restEl = woQuick.querySelector(`.wo-rest[data-id="${e.target.dataset.id}"]`);
+          const plot = r && r.plots ? r.plots.find(p => String(p.id) === String(e.target.dataset.id)) : null;
+          if (restEl && plot) {
+            const done = wo.completedByPlot[plot.id] || 0;
+            const rest = Math.max(0, plot.water - done);
+            restEl.textContent = `剩余 ${Calculator.fmt(rest, 1)} 升 ≈ ${plot.perTripWater > 0 ? Math.ceil(rest / plot.perTripWater) : 0} 趟`;
+          }
+        } else if (e.target.classList.contains('wo-single')) {
+          const v = parseFloat(e.target.value);
+          wo.completedSingle = isNaN(v) ? 0 : Math.max(0, v);
+          const restEl = document.getElementById('woRestSingle');
+          if (restEl && r) restEl.textContent = `剩余 ${Calculator.fmt(Math.max(0, r.water - wo.completedSingle), 1)} 升`;
+        } else if (e.target.classList.contains('wo-sets')) {
+          const v = parseFloat(e.target.value);
+          wo.actualSets = isNaN(v) ? 0 : Math.max(0, v);
+        } else if (e.target.classList.contains('wo-note')) {
+          wo.note = e.target.value;
+        } else {
+          return;
+        }
+        this.renderWorkOrderText();
+        this.save();
+      });
+    }
+
     document.getElementById('presetBtn').addEventListener('click', () => this.openPresetModal());
     document.getElementById('savePresetBtn').addEventListener('click', () => this.savePresetPrompt());
     document.getElementById('loadPresetBtn').addEventListener('click', () => this.openPresetModal());
@@ -1365,6 +1548,10 @@ const UI = {
     if (imported.haulField) this.state.haulField = imported.haulField;
     if (imported.haulCosts) this.state.haulCosts = imported.haulCosts;
     if (imported.haulIncome) this.state.haulIncome = imported.haulIncome;
+    // 工单覆盖值（实际用药套数/备注/已完成量）
+    if (imported.workOrder) {
+      this.state.workOrder = { ...this.getWorkOrder(), ...imported.workOrder };
+    }
 
     this.applyMode(this.state.mode);
     this.compute();

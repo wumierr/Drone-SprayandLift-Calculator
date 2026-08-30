@@ -204,6 +204,14 @@ const Storage = {
         lines.push(`  充电模式: ${state.timing.chargeMode} （${modeLabels[state.timing.chargeMode] || ''}）`);
         lines.push(`  作业结束充满电: ${state.timing.chargeAfterWork ? '是' : '否'}`);
       }
+      // 工单覆盖值（已完成量在 JSON 中精确往返；文本段仅保留套数与备注）
+      const wo = state.workOrder;
+      if (wo && (wo.actualSets || wo.note)) {
+        lines.push('');
+        lines.push('【工单】');
+        if (wo.actualSets) lines.push(`  实际用药套数: ${wo.actualSets}`);
+        if (wo.note) lines.push(`  工单备注: ${wo.note}`);
+      }
     }
 
     lines.push('');
@@ -225,7 +233,8 @@ const Storage = {
       timing: state.timing ? { ...state.timing } : null,
       haulField: { ...state.haulField },
       haulCosts: { ...state.haulCosts },
-      haulIncome: { ...state.haulIncome }
+      haulIncome: { ...state.haulIncome },
+      workOrder: state.workOrder ? { ...state.workOrder } : null
     }, null, 2);
   },
 
@@ -251,6 +260,7 @@ const Storage = {
   },
 
   _normalizeImport(obj) {
+    const woDefaults = { completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' };
     const result = {
       mode: obj.mode || 'spray',
       plant: obj.plant || { ...window.PLANT_DATABASE.fruit_tree },
@@ -260,7 +270,8 @@ const Storage = {
       timing: Object.assign({}, window.DEFAULT_TIMING, obj.timing || {}),
       haulField: Object.assign({}, window.DEFAULT_HAUL_FIELD, obj.haulField || {}),
       haulCosts: Object.assign({}, window.DEFAULT_HAUL_COSTS, obj.haulCosts || {}),
-      haulIncome: Object.assign({}, window.DEFAULT_HAUL_INCOME, obj.haulIncome || {})
+      haulIncome: Object.assign({}, window.DEFAULT_HAUL_INCOME, obj.haulIncome || {}),
+      workOrder: Object.assign({}, woDefaults, obj.workOrder || {})
     };
     return result;
   },
@@ -275,7 +286,8 @@ const Storage = {
       timing: { ...window.DEFAULT_TIMING },
       haulField: { ...window.DEFAULT_HAUL_FIELD },
       haulCosts: { ...window.DEFAULT_HAUL_COSTS },
-      haulIncome: { ...window.DEFAULT_HAUL_INCOME }
+      haulIncome: { ...window.DEFAULT_HAUL_INCOME },
+      workOrder: { completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' }
     };
 
     // 检测模式
@@ -318,6 +330,9 @@ const Storage = {
       // 打药-收入
       '每亩收费': ['income', 'pricePerMu', parseFloat],
       '补贴': ['income', 'subsidy', parseFloat],
+      // 工单
+      '实际用药套数': ['workOrder', 'actualSets', parseFloat],
+      '工单备注': ['workOrder', 'note', (v) => v],
       // 时间参数
       '飞行速度': ['timing', 'flightSpeed', parseFloat],
       '航线间距': ['timing', 'lineSpacing', parseFloat],

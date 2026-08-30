@@ -732,6 +732,16 @@ const Calculator = {
     };
   },
 
+  /**
+   * 续药计算：剩余水量 ÷ 一套药需水量 × 省药系数 → 7舍8入
+   */
+  computeRefillSets(restWater, pesticideWaterPerSet, savingCoeff) {
+    if (!(restWater > 0)) return 0;
+    return this.round78(
+      (restWater / Math.max(0.01, Number(pesticideWaterPerSet) || 1)) * (Number(savingCoeff) || 1)
+    );
+  },
+
   /* ============================================================
      ★★★ 吊运模式计算（HAUL）—— 与打药模式完全独立 ★★★
      ※ 历史上本文件曾有两个 computeHaul 定义（后定义覆盖前定义），

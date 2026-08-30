@@ -182,6 +182,7 @@
 
       <div class="btn-row">
         <button id="calcBtn" class="btn btn-primary">🚁 开始计算</button>
+        <button id="workOrderBtn" class="btn btn-secondary">🧾 生成工单</button>
         <button id="resetBtn" class="btn btn-secondary">🔄 恢复默认</button>
       </div>
     </section>
@@ -341,6 +342,20 @@
       <div class="modal-actions">
         <button class="btn btn-secondary danger" id="clearHistoryBtn">🗑 清空历史</button>
         <button class="btn btn-secondary" data-close>关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：作业工单 -->
+  <div class="modal" id="workOrderModal" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-title">🧾 作业工单 <button class="modal-close" data-close>✕</button></div>
+      <p class="modal-hint">上方可快捷修改实际变动的数值（即时重算并保存），下方纯文本工单可一键复制留存或发给现场人员。</p>
+      <div class="workorder-quick" id="workOrderQuick"><!-- JS 注入 --></div>
+      <div id="workOrderText" class="workorder-text" tabindex="0"><!-- JS 注入 --></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="copyWorkOrder">📋 复制全文</button>
+        <button class="btn btn-primary" data-close>完成</button>
       </div>
     </div>
   </div>

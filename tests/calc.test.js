@@ -327,6 +327,28 @@ test('多地块文本往返：地块列表与机载上限保留', () => {
 });
 
 /* ============================================================
+   工单续药计算（二期）
+   ============================================================ */
+test('computeRefillSets 续药套数（剩余水量÷一套药需水量×系数，7舍8入）', () => {
+  eq(C.computeRefillSets(350, 100, 0.7), 2, '350÷100×0.7=2.45 → 首位小数4 → 2');
+  eq(C.computeRefillSets(300, 100, 0.7), 2, '2.1 → 2');
+  eq(C.computeRefillSets(200, 100, 0.7), 1, '1.4 → 1');
+  eq(C.computeRefillSets(280, 100, 0.7), 2, '1.96 → 首位小数9 → 2');
+  eq(C.computeRefillSets(70, 100, 0.7), 0, '0.49 → 0');
+  eq(C.computeRefillSets(0, 100, 0.7), 0, '无剩余 0');
+  eq(C.computeRefillSets(-5, 100, 0.7), 0, '负数 0');
+});
+
+test('JSON 导入携带工单覆盖值', () => {
+  const s = freshState();
+  s.workOrder = { completedByPlot: { a: 120 }, completedSingle: 50, actualSets: 4, note: '下午续药' };
+  const back = S.importText(S.exportJSON(s, 'spray'));
+  ok(back.workOrder && back.workOrder.actualSets === 4, '实际用药套数');
+  ok(back.workOrder.note === '下午续药', '备注');
+  ok(back.workOrder.completedByPlot && back.workOrder.completedByPlot.a === 120, '按地块已完成量');
+});
+
+/* ============================================================
    Storage：文本导出 → 导入 往返（打药）
    ============================================================ */
 test('打药文本往返保留时间参数（manualFlightTime/chargeAfterWork 曾丢失）', () => {
