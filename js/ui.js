@@ -16,13 +16,16 @@ const UI = {
     haulCosts: { ...DEFAULT_HAUL_COSTS },
     haulIncome: { ...DEFAULT_HAUL_INCOME },
     // 作业工单覆盖层（已完成量/实际用药/备注）
-    workOrder: { completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' }
+    workOrder: { completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' },
+    // 农户档案库（独立存储键，不随作业状态保存）
+    farmers: []
   },
 
   /* ---------- 初始化 ---------- */
   init() {
     this.loadTypes();
     this.loadState();
+    this.loadFarmers();
     this.bindModeSwitcher();
     this.bindEvents();
     this.applyMode(this.state.mode);
@@ -321,6 +324,168 @@ const UI = {
     this.toast(`类型「${t.name}」已删除`, 'warn');
   },
 
+  /* ============================================================
+     ★★★ 农户档案库 ★★★
+     - 独立存储键 drone_spray_farmers_v1，不随作业状态保存
+     - 迁移：工单里已填的 farmerName 自动建为同名档案；
+       地块 farmerId 缺失/失效时归入"默认农户"
+     ============================================================ */
+  loadFarmers() {
+    const saved = Storage.getFarmers();
+    this.state.farmers = (Array.isArray(saved) && saved.length)
+      ? saved
+      : [{ id: 'farmer_default', name: '默认农户', phone: '', pricePerMu: 0, typeId: '', notes: '', enabled: true }];
+    const fn = (this.state.field.farmerName || '').trim();
+    if (fn && !this.state.farmers.find(f => f.name === fn)) {
+      this.state.farmers.push({
+        id: 'farmer_' + Date.now().toString(36),
+        name: fn, phone: '', pricePerMu: 0, typeId: '',
+        notes: '（从工单自动导入）', enabled: true
+      });
+      this.state.field.farmerName = '';
+      this.state.workOrder.farmerNameDone = true;
+    }
+    if (!this.state.farmers.find(f => f.id === 'farmer_default')) {
+      this.state.farmers.unshift({ id: 'farmer_default', name: '默认农户', phone: '', pricePerMu: 0, typeId: '', notes: '', enabled: true });
+    }
+    // 地块归属校验：缺失或指向已删农户 → 归入默认农户
+    (this.state.field.plots || []).forEach(p => {
+      if (!p.farmerId || !this.state.farmers.find(f => f.id === p.farmerId)) {
+        p.farmerId = 'farmer_default';
+      }
+    });
+    this.saveFarmers();
+  },
+
+  saveFarmers() {
+    Storage.saveFarmers(this.state.farmers);
+  },
+
+  getFarmer(id) {
+    return this.state.farmers.find(f => f.id === id) || null;
+  },
+
+  openFarmersModal() {
+    this._editingFarmerId = null;
+    this.renderFarmersList();
+    this.renderFarmerForm();
+    this.openModal('farmersModal');
+  },
+
+  renderFarmersList() {
+    const list = document.getElementById('farmersList');
+    if (!list) return;
+    const kw = (document.getElementById('farmerSearch')?.value || '').trim();
+    const farmers = this.state.farmers.filter(f => !kw || f.name.includes(kw));
+    if (farmers.length === 0) {
+      list.innerHTML = '<li style="text-align:center;color:var(--text-muted);cursor:default;">无匹配农户</li>';
+      return;
+    }
+    list.innerHTML = farmers.map(f => {
+      const plotCount = (this.state.field.plots || []).filter(pl => pl.farmerId === f.id).length;
+      return `
+      <li data-id="${f.id}" class="${this._editingFarmerId === f.id ? 'selected' : ''}">
+        <div>
+          <div><b>${this.escapeHtml(f.name)}</b> <span style="margin-left:6px;font-size:11px;color:var(--text-muted);">${f.pricePerMu > 0 ? `${f.pricePerMu}元/亩` : ''}${plotCount ? ` · ${plotCount} 块地` : ''}</span></div>
+          <div class="preset-meta">${this.escapeHtml(f.notes || (f.phone || ''))}</div>
+        </div>
+        <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);" data-enabled-toggle="${f.id}">
+          <input type="checkbox" ${f.enabled !== false ? 'checked' : ''}>启用
+        </label>
+      </li>`;
+    }).join('');
+    list.querySelectorAll('li').forEach(li => {
+      li.addEventListener('click', e => {
+        if (e.target.closest('[data-enabled-toggle]') && e.target.tagName !== 'INPUT') return;
+        this._editingFarmerId = li.dataset.id;
+        this.renderFarmerForm();
+        this.renderFarmersList();
+      });
+    });
+    list.querySelectorAll('[data-enabled-toggle] input').forEach(cb => {
+      cb.addEventListener('change', e => {
+        e.stopPropagation();
+        const f = this.getFarmer(e.target.closest('[data-enabled-toggle]').dataset.enabledToggle);
+        if (f) { f.enabled = e.target.checked; this.saveFarmers(); }
+      });
+    });
+  },
+
+  renderFarmerForm() {
+    const form = document.getElementById('farmerForm');
+    if (!form) return;
+    const f = this._editingFarmerId ? this.getFarmer(this._editingFarmerId) : null;
+    const v = k => (f && f[k] != null ? f[k] : '');
+    form.innerHTML = `
+      <div class="field"><label>名称 *</label><input type="text" id="ff-name" value="${this.escapeHtml(v('name'))}" placeholder="如：老王家果园"></div>
+      <div class="field"><label>电话</label><input type="text" id="ff-phone" value="${this.escapeHtml(v('phone'))}"></div>
+      <div class="field"><label>默认每亩收费 (元)</label><input type="number" id="ff-price" step="0.5" min="0" value="${v('pricePerMu') || ''}" placeholder="0"></div>
+      <div class="field"><label>备注</label><input type="text" id="ff-notes" value="${this.escapeHtml(v('notes'))}"></div>`;
+    document.getElementById('farmerDelete').style.display = this._editingFarmerId ? '' : 'none';
+  },
+
+  saveFarmerForm() {
+    const name = (document.getElementById('ff-name')?.value || '').trim();
+    if (!name) {
+      this.toast('请填写农户名称', 'warn');
+      return;
+    }
+    const num = v => { const x = parseFloat(v); return isNaN(x) ? 0 : x; };
+    let f = this._editingFarmerId ? this.getFarmer(this._editingFarmerId) : null;
+    if (f) {
+      f.name = name;
+      f.phone = document.getElementById('ff-phone')?.value || '';
+      f.pricePerMu = num(document.getElementById('ff-price')?.value);
+      f.notes = document.getElementById('ff-notes')?.value || '';
+    } else {
+      f = {
+        id: 'farmer_' + Date.now().toString(36),
+        name, phone: document.getElementById('ff-phone')?.value || '',
+        pricePerMu: num(document.getElementById('ff-price')?.value),
+        typeId: '', notes: document.getElementById('ff-notes')?.value || '', enabled: true
+      };
+      this.state.farmers.push(f);
+    }
+    this.saveFarmers();
+    this._editingFarmerId = f.id;
+    this.renderFarmersList();
+    this.renderFarmerForm();
+    this.renderPlotsEditor();
+    this.toast(`农户「${name}」已保存`, 'success');
+  },
+
+  deleteFarmerForm() {
+    const f = this._editingFarmerId ? this.getFarmer(this._editingFarmerId) : null;
+    if (!f) return;
+    if (this.state.farmers.length <= 1) {
+      this.toast('至少保留一个农户', 'warn');
+      return;
+    }
+    const refCount = (this.state.field.plots || []).filter(pl => pl.farmerId === f.id).length;
+    if (!confirm(`删除农户「${f.name}」？${refCount ? `其名下 ${refCount} 块地将归入默认农户。` : ''}`)) return;
+    this.state.farmers = this.state.farmers.filter(x => x.id !== f.id);
+    (this.state.field.plots || []).forEach(pl => { if (pl.farmerId === f.id) pl.farmerId = 'farmer_default'; });
+    if (this.state.field.farmerName === f.name) this.state.field.farmerName = '';
+    this.saveFarmers();
+    this._editingFarmerId = null;
+    this.renderFarmersList();
+    this.renderFarmerForm();
+    this.renderPlotsEditor();
+    this.compute();
+    this.save();
+    this.toast(`农户「${f.name}」已删除`, 'warn');
+  },
+
+  /* 地块绑定农户：带出档案默认单价 */
+  assignPlotFarmer(plot, farmerId) {
+    plot.farmerId = farmerId;
+    const f = this.getFarmer(farmerId);
+    if (f && f.pricePerMu > 0) {
+      this.state.income.pricePerMu = f.pricePerMu;
+      this.syncIncomeFormFromState();
+    }
+  },
+
   restoreDefaultTypes() {
     Object.entries(PLANT_DATABASE).forEach(([key, t]) => {
       if (!this.typeLibrary.find(x => x.key === key)) {
@@ -407,6 +572,10 @@ const UI = {
             <div class="unit-suffix" data-unit="组"><input type="number" class="plot-group" step="1" min="1" max="9" value="${Math.max(1, Math.round(Number(p.groupId) || 1))}"></div>
           </div>
           <div class="field">
+            <label>农户 <i class="tip" data-tip="该地块归属的农户，结算按农户分开；选择后带出档案默认单价">i</i></label>
+            <select class="plot-farmer">${this.farmerOptions(p.farmerId)}</select>
+          </div>
+          <div class="field">
             <label>该地块</label>
             <div class="plot-stat">${this.plotStatText(p)}</div>
           </div>
@@ -415,6 +584,19 @@ const UI = {
     });
     html += '<button type="button" class="btn btn-secondary btn-sm plot-add">＋ 添加地块</button>';
     wrap.innerHTML = html;
+  },
+
+  /* 农户下拉选项（启用档案优先；含现场新建入口） */
+  farmerOptions(currentId) {
+    const list = this.state.farmers || [];
+    let opts = list.map(f => `<option value="${f.id}" ${f.id === (currentId || 'farmer_default') ? 'selected' : ''}${f.enabled === false ? ' disabled' : ''}>${this.escapeHtml(f.name)}</option>`).join('');
+    // 当前值不在列表（如已停用）也要显示
+    if (currentId && !list.find(f => f.id === currentId)) {
+      const f = this.getFarmer(currentId);
+      opts += `<option value="${currentId}" selected>${this.escapeHtml(f ? f.name : currentId)}</option>`;
+    }
+    opts += '<option value="__new">＋ 新建农户…</option>';
+    return opts;
   },
 
   /* 单地块即时统计（编辑器卡片底部实时刷新；趟数在组级） */
@@ -1658,7 +1840,33 @@ const UI = {
         }
         this.compute();
       });
-      plotsEditor.addEventListener('change', () => this.save());
+      plotsEditor.addEventListener('change', e => {
+        // 农户下拉（change 语义：选择即生效）
+        if (e.target.classList.contains('plot-farmer')) {
+          const row = e.target.closest('.plot-card');
+          const plot = (this.state.field.plots || []).find(pl => String(pl.id) === row.dataset.id);
+          if (!plot) return;
+          if (e.target.value === '__new') {
+            const name = prompt('新农户名称：');
+            if (name && name.trim()) {
+              const f = { id: 'farmer_' + Date.now().toString(36), name: name.trim(), phone: '', pricePerMu: 0, typeId: '', notes: '', enabled: true };
+              this.state.farmers.push(f);
+              this.saveFarmers();
+              this.assignPlotFarmer(plot, f.id);
+              this.renderPlotsEditor();
+              this.toast(`农户「${f.name}」已创建并绑定`, 'success');
+            } else {
+              e.target.value = plot.farmerId || 'farmer_default';
+            }
+          } else {
+            this.assignPlotFarmer(plot, e.target.value);
+          }
+          this.compute();
+          this.save();
+          return;
+        }
+        this.save();
+      });
       plotsEditor.addEventListener('click', e => {
         if (e.target.closest('.plot-add')) {
           this.addPlot();
@@ -1766,6 +1974,17 @@ const UI = {
     document.getElementById('savePresetBtn').addEventListener('click', () => this.savePresetPrompt());
     document.getElementById('loadPresetBtn').addEventListener('click', () => this.openPresetModal());
     document.getElementById('deletePresetBtn').addEventListener('click', () => this.openPresetModal());
+
+    // 农户档案
+    document.getElementById('farmersBtn').addEventListener('click', () => this.openFarmersModal());
+    document.getElementById('farmerNew').addEventListener('click', () => {
+      this._editingFarmerId = null;
+      this.renderFarmerForm();
+      this.renderFarmersList();
+    });
+    document.getElementById('farmerSave').addEventListener('click', () => this.saveFarmerForm());
+    document.getElementById('farmerDelete').addEventListener('click', () => this.deleteFarmerForm());
+    document.getElementById('farmerSearch').addEventListener('input', () => this.renderFarmersList());
 
     // 用药类型管理
     document.getElementById('addTypeBtn').addEventListener('click', () => this.openTypeModal(null));
@@ -1900,6 +2119,16 @@ const UI = {
       }
     });
     if ((imported.types || []).length) this.saveTypes();
+    // 导入的农户档案并入（重名跳过），再校验地块归属
+    (imported.farmers || []).forEach(f => {
+      if (!this.state.farmers.find(x => x.name === f.name)) {
+        this.state.farmers.push({ ...f, builtin: undefined });
+      }
+    });
+    if ((imported.farmers || []).length) this.saveFarmers();
+    (this.state.field.plots || []).forEach(pl => {
+      if (!pl.farmerId || !this.getFarmer(pl.farmerId)) pl.farmerId = 'farmer_default';
+    });
     // 选中类型不在库中（如旧配置的作物）→ 注册为自定义类型
     if (!this.getType(this.state.field.plantKey) || this.state.plant.name !== (this.getType(this.state.field.plantKey) || {}).name) {
       const key = this.registerTypeSnapshot(this.state.plant);

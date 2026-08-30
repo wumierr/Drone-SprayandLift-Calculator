@@ -439,6 +439,41 @@ test('JSON 导入携带工单覆盖值', () => {
   ok(back.workOrder.completedByPlot && back.workOrder.completedByPlot.a === 120, '按地块已完成量');
 });
 
+test('农户档案：地块归属校验与 farmerName 迁移（模拟 loadFarmers 规则）', () => {
+  const farmers = [{ id: 'farmer_default', name: '默认农户', enabled: true }];
+  const plots = [
+    { id: 'a', farmerId: 'farmer_default' },
+    { id: 'b', farmerId: 'gone' },      // 失效 → 归默认
+    { id: 'c', farmerId: undefined }    // 缺失 → 归默认
+  ];
+  plots.forEach(pl => {
+    if (!pl.farmerId || !farmers.find(f => f.id === pl.farmerId)) pl.farmerId = 'farmer_default';
+  });
+  eq(plots[0].farmerId, 'farmer_default');
+  eq(plots[1].farmerId, 'farmer_default', '失效归属回默认');
+  eq(plots[2].farmerId, 'farmer_default', '缺失归属回默认');
+  // farmerName 迁移：非空且无同名档案 → 建同名档案
+  const farmerName = '老王家果园';
+  if (farmerName && !farmers.find(f => f.name === farmerName)) {
+    farmers.push({ id: 'farmer_migrated', name: farmerName, enabled: true });
+  }
+  eq(farmers.length, 2, '迁移后 2 个农户');
+  eq(farmers[1].name, '老王家果园');
+});
+
+test('农户档案文本往返', () => {
+  const s = freshState();
+  s.farmers = [
+    { id: 'farmer_default', name: '默认农户', phone: '', pricePerMu: 0, enabled: true },
+    { id: 'f1', name: '老李家', phone: '13800000000', pricePerMu: 30, enabled: true, notes: '果园东片' }
+  ];
+  const back = S.importText(S.exportText(s, 'spray'));
+  eq(back.farmers.length, 2, '2 个农户');
+  eq(back.farmers[1].name, '老李家', '名称');
+  ok(Math.abs(back.farmers[1].pricePerMu - 30) < 1e-9, '默认单价');
+  eq(back.farmers[1].phone, '13800000000', '电话');
+});
+
 /* ============================================================
    Storage：文本导出 → 导入 往返（打药）
    ============================================================ */

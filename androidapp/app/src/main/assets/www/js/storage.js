@@ -9,7 +9,8 @@ const Storage = {
     presets: 'drone_spray_presets_v2',
     history: 'drone_spray_history_v2',
     theme: 'drone_spray_theme_v1',
-    types: 'drone_spray_types_v1'
+    types: 'drone_spray_types_v1',
+    farmers: 'drone_spray_farmers_v1'
   },
 
   get(key, fallback) {
@@ -37,6 +38,10 @@ const Storage = {
   /* ---------- 用药类型库（自定义增减；内置定义见 data.js PLANT_DATABASE） ---------- */
   getTypes() { return this.get(this.KEYS.types, null); },
   saveTypes(types) { return this.set(this.KEYS.types, types); },
+
+  /* ---------- 农户档案库 ---------- */
+  getFarmers() { return this.get(this.KEYS.farmers, null); },
+  saveFarmers(farmers) { return this.set(this.KEYS.farmers, farmers); },
 
   getState() { return this.get(this.KEYS.state, null); },
   saveState(state) { this.set(this.KEYS.state, state); },
@@ -89,6 +94,14 @@ const Storage = {
     lines.push(`模式: ${mode === 'haul' ? '吊运' : '打药'}`);
     lines.push(`导出时间: ${new Date().toLocaleString('zh-CN')}`);
     lines.push('');
+
+    if (Array.isArray(state.farmers) && state.farmers.length) {
+      lines.push('【农户】');
+      state.farmers.forEach(f => {
+        lines.push(`  [农户] 名称=${f.name} | 电话=${f.phone || ''} | 每亩收费=${f.pricePerMu != null ? f.pricePerMu : 0} | 启用=${f.enabled === false ? '否' : '是'}${f.notes ? ` | 备注=${f.notes}` : ''}`);
+      });
+      lines.push('');
+    }
 
     if (mode === 'haul') {
       // 吊运模式导出
@@ -153,6 +166,7 @@ const Storage = {
         lines.push('【地块列表】');
         state.field.plots.forEach(p => {
           const parts = [`名称=${p.name || ''}`, `亩数=${p.area != null ? p.area : 0}`,
+            `农户=${p.farmerId || 'farmer_default'}`,
             `组=${Math.max(1, Math.round(Number(p.groupId) || 1))}`, `转场=${p.transferMin != null ? p.transferMin : 5}`];
           lines.push(`  [地块] ${parts.join(' | ')}`);
         });
@@ -254,7 +268,8 @@ const Storage = {
       haulCosts: { ...state.haulCosts },
       haulIncome: { ...state.haulIncome },
       workOrder: state.workOrder ? { ...state.workOrder } : null,
-      types: Array.isArray(state.typeLibrary) ? state.typeLibrary.filter(t => !t.builtin) : []
+      types: Array.isArray(state.typeLibrary) ? state.typeLibrary.filter(t => !t.builtin) : [],
+      farmers: Array.isArray(state.farmers) ? state.farmers : []
     }, null, 2);
   },
 
@@ -292,7 +307,8 @@ const Storage = {
       haulCosts: Object.assign({}, window.DEFAULT_HAUL_COSTS, obj.haulCosts || {}),
       haulIncome: Object.assign({}, window.DEFAULT_HAUL_INCOME, obj.haulIncome || {}),
       workOrder: Object.assign({}, woDefaults, obj.workOrder || {}),
-      types: Array.isArray(obj.types) ? obj.types : []
+      types: Array.isArray(obj.types) ? obj.types : [],
+      farmers: Array.isArray(obj.farmers) ? obj.farmers : []
     };
     return result;
   },
@@ -309,7 +325,8 @@ const Storage = {
       haulCosts: { ...window.DEFAULT_HAUL_COSTS },
       haulIncome: { ...window.DEFAULT_HAUL_INCOME },
       workOrder: { completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' },
-      types: []
+      types: [],
+      farmers: []
     };
 
     // 检测模式
@@ -427,6 +444,25 @@ const Storage = {
 
     const lines = text.split('\n');
     lines.forEach(line => {
+      // 农户档案行：  [农户] 名称=xx | 电话=xx | 每亩收费=25 | 启用=是
+      if (line.includes('[农户]')) {
+        const kv = {};
+        line.replace(/^\s*\[农户\]\s*/, '').split('|').forEach(seg => {
+          const idx = seg.indexOf('=');
+          if (idx > -1) kv[seg.slice(0, idx).trim()] = seg.slice(idx + 1).trim();
+        });
+        if (kv['名称']) {
+          result.farmers.push({
+            id: 'farmer_imp' + result.farmers.length + '_' + kv['名称'],
+            name: kv['名称'],
+            phone: kv['电话'] || '',
+            pricePerMu: parseFloat(kv['每亩收费']) || 0,
+            enabled: kv['启用'] !== '否',
+            notes: kv['备注'] || ''
+          });
+        }
+        return;
+      }
       // 自定义用药类型行：  [类型] 名称=xx | 图标=xx | 每亩水量=20 | ...
       if (line.includes('[类型]')) {
         const kv = {};
@@ -481,6 +517,7 @@ const Storage = {
           id: 'imp' + result.field.plots.length,
           name: kv['名称'] || '',
           area: parseFloat(kv['亩数']) || 0,
+          farmerId: kv['农户'] || 'farmer_default',
           groupId: parseInt(kv['组'], 10) || 1,
           transferMin: parseFloat(kv['转场']) != null && !isNaN(parseFloat(kv['转场'])) ? parseFloat(kv['转场']) : 5,
           tripsOverride: parseFloat(kv['趟数覆盖']) || 0

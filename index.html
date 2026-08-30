@@ -60,6 +60,7 @@
       <button id="presetBtn" class="icon-btn" title="预设管理" aria-label="预设管理">📚</button>
       <button id="importBtn" class="icon-btn" title="从文本导入配置" aria-label="导入">📥</button>
       <button id="exportBtn" class="icon-btn" title="导出配置文本" aria-label="导出">📤</button>
+      <button id="farmersBtn" class="icon-btn" title="农户档案" aria-label="农户档案">🧑‍🌾</button>
       <button id="historyBtn" class="icon-btn" title="历史记录" aria-label="历史">🕘</button>
       <button id="themeBtn" class="icon-btn theme-toggle" title="切换日/夜模式" aria-label="切换主题">☀️</button>
     </div>
@@ -361,6 +362,21 @@
         <button class="btn btn-secondary danger" id="deleteTypeBtn">🗑 删除此类型</button>
         <button class="btn btn-secondary" data-close>取消</button>
         <button class="btn btn-primary" id="saveTypeBtn">保存类型</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：农户档案 -->
+  <div class="modal" id="farmersModal" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-title">🧑‍🌾 农户档案 <button class="modal-close" data-close>✕</button></div>
+      <input type="text" id="farmerSearch" placeholder="搜索农户名称…" style="width:100%;margin-bottom:8px;">
+      <ul class="preset-list" id="farmersList"><!-- JS 注入 --></ul>
+      <div class="form-grid" id="farmerForm" style="margin-top:10px;"><!-- JS 注入 --></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary danger" id="farmerDelete">🗑 删除</button>
+        <button class="btn btn-secondary" id="farmerNew">＋ 新建</button>
+        <button class="btn btn-primary" id="farmerSave">保存</button>
       </div>
     </div>
   </div>
