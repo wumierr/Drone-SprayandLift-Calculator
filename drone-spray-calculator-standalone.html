@@ -2008,6 +2008,32 @@ html, body {
     </div>
   </div>
 
+  <!-- 模态框：通用确认（替代 confirm()，APK WebView 不支持原生对话框） -->
+  <div class="modal" id="confirmModal" aria-hidden="true">
+    <div class="modal-box" style="max-width:420px;">
+      <div class="modal-title" id="confirmTitle">请确认 <button class="modal-close" data-close>✕</button></div>
+      <p id="confirmText" style="font-size:14px;line-height:1.7;color:var(--text-primary);margin:6px 0 0;"></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="confirmCancel">取消</button>
+        <button class="btn btn-primary" id="confirmOk">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：文本输入（替代 prompt()） -->
+  <div class="modal" id="inputModal" aria-hidden="true">
+    <div class="modal-box" style="max-width:420px;">
+      <div class="modal-title" id="inputTitle">请输入 <button class="modal-close" data-close>✕</button></div>
+      <div class="field" style="margin-top:6px;">
+        <input type="text" id="inputValue">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="inputCancel">取消</button>
+        <button class="btn btn-primary" id="inputOk">确定</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast -->
   <div id="toast" class="toast" aria-live="polite"></div>
 
@@ -4244,21 +4270,22 @@ const UI = {
       this.toast('至少保留一个类型', 'warn');
       return;
     }
-    if (!confirm(`删除类型「${t.name}」？`)) return;
-    this.typeLibrary = this.typeLibrary.filter(x => x.key !== key);
-    const first = this.typeLibrary[0];
-    this.state.plant = { ...first };
-    this.state.field.plantKey = first.key;
-    this.state.field.calcBasis = this.getBasisOf(first);
-    this.saveTypes();
-    this.renderTypeGrid();
-    this.updatePlantInfo();
-    this.syncParamFormFromPlant();
-    this.updateCalcBasisVisibility();
-    this.compute();
-    this.save();
-    this.closeModal('typeModal');
-    this.toast(`类型「${t.name}」已删除`, 'warn');
+    this.confirmDialog(`删除类型「${t.name}」？`, () => {
+      this.typeLibrary = this.typeLibrary.filter(x => x.key !== key);
+      const first = this.typeLibrary[0];
+      this.state.plant = { ...first };
+      this.state.field.plantKey = first.key;
+      this.state.field.calcBasis = this.getBasisOf(first);
+      this.saveTypes();
+      this.renderTypeGrid();
+      this.updatePlantInfo();
+      this.syncParamFormFromPlant();
+      this.updateCalcBasisVisibility();
+      this.compute();
+      this.save();
+      this.closeModal('typeModal');
+      this.toast(`类型「${t.name}」已删除`, 'warn');
+    });
   },
 
   /* ============================================================
@@ -4387,7 +4414,18 @@ const UI = {
     this._editingFarmerId = f.id;
     this.renderFarmersList();
     this.renderFarmerForm();
+    // 从地块下拉"新建农户"进入时：保存后自动绑定发起地块
+    if (this._pendingBindPlotId) {
+      const plot = (this.state.field.plots || []).find(pl => String(pl.id) === String(this._pendingBindPlotId));
+      if (plot) {
+        this.assignPlotFarmer(plot, f.id);
+        this.closeModal('farmersModal');
+        this._pendingBindPlotId = null;
+      }
+    }
     this.renderPlotsEditor();
+    this.compute();
+    this.save();
     this.toast(`农户「${name}」已保存`, 'success');
   },
 
@@ -4399,18 +4437,20 @@ const UI = {
       return;
     }
     const refCount = (this.state.field.plots || []).filter(pl => pl.farmerId === f.id).length;
-    if (!confirm(`删除农户「${f.name}」？${refCount ? `其名下 ${refCount} 块地将归入默认农户。` : ''}`)) return;
-    this.state.farmers = this.state.farmers.filter(x => x.id !== f.id);
-    (this.state.field.plots || []).forEach(pl => { if (pl.farmerId === f.id) pl.farmerId = 'farmer_default'; });
-    if (this.state.field.farmerName === f.name) this.state.field.farmerName = '';
-    this.saveFarmers();
-    this._editingFarmerId = null;
-    this.renderFarmersList();
-    this.renderFarmerForm();
-    this.renderPlotsEditor();
-    this.compute();
-    this.save();
-    this.toast(`农户「${f.name}」已删除`, 'warn');
+    this.confirmDialog(`删除农户「${f.name}」？${refCount ? `其名下 ${refCount} 块地将归入默认农户。` : ''}`, () => {
+      this.state.farmers = this.state.farmers.filter(x => x.id !== f.id);
+      (this.state.field.plots || []).forEach(pl => { if (pl.farmerId === f.id) pl.farmerId = 'farmer_default'; });
+      if (this.state.field.farmerName === f.name) this.state.field.farmerName = '';
+      this.saveFarmers();
+      this._editingFarmerId = null;
+      this.renderFarmersList();
+      this.renderFarmerForm();
+      this.renderPlotsEditor();
+      this.compute();
+      this.save();
+      this.closeModal('farmersModal');
+      this.toast(`农户「${f.name}」已删除`, 'warn');
+    });
   },
 
   /* 地块绑定农户：带出档案默认单价 */
@@ -5702,7 +5742,18 @@ const UI = {
   /* ---------- 恢复默认（打药/吊运独立）---------- */
   resetDefaults() {
     if (this.state.mode === 'spray') {
-      if (!confirm('确定恢复打药模式所有参数为默认值？当前打药模式的所有参数将被重置。')) return;
+      this.confirmDialog('确定恢复打药模式所有参数为默认值？当前打药模式的所有参数将被重置。', () => {
+        this._doResetDefaults('spray');
+      }, { title: '恢复默认' });
+      return;
+    }
+    this.confirmDialog('确定恢复吊运模式所有参数为默认值？当前吊运模式的所有参数将被重置。', () => {
+      this._doResetDefaults('haul');
+    }, { title: '恢复默认' });
+  },
+
+  _doResetDefaults(mode) {
+    if (mode === 'spray') {
       // 保留用药类型，重置其他打药参数
       const keepPlant = this.state.plant;
       this.state.field = { ...DEFAULT_FIELD };
@@ -5711,10 +5762,9 @@ const UI = {
       this.state.timing = { ...DEFAULT_TIMING };
       this.state.plant = keepPlant || { ...PLANT_DATABASE.shajun };
       // 基准随类型预置
-      this.state.field.calcBasis = this.state.plant.calcMode === 'tree' ? 'tree' : 'area';
+      this.state.field.calcBasis = this.getBasisOf(this.state.plant);
       this.toast('打药模式已恢复默认', 'success');
     } else {
-      if (!confirm('确定恢复吊运模式所有参数为默认值？当前吊运模式的所有参数将被重置。')) return;
       this.state.haulField = { ...DEFAULT_HAUL_FIELD };
       this.state.haulCosts = { ...DEFAULT_HAUL_COSTS };
       this.state.haulIncome = { ...DEFAULT_HAUL_INCOME };
@@ -5788,17 +5838,13 @@ const UI = {
           const plot = (this.state.field.plots || []).find(pl => String(pl.id) === row.dataset.id);
           if (!plot) return;
           if (e.target.value === '__new') {
-            const name = prompt('新农户名称：');
-            if (name && name.trim()) {
-              const f = { id: 'farmer_' + Date.now().toString(36), name: name.trim(), phone: '', pricePerMu: 0, typeId: '', notes: '', enabled: true };
-              this.state.farmers.push(f);
-              this.saveFarmers();
-              this.assignPlotFarmer(plot, f.id);
-              this.renderPlotsEditor();
-              this.toast(`农户「${f.name}」已创建并绑定`, 'success');
-            } else {
-              e.target.value = plot.farmerId || 'farmer_default';
-            }
+            // APK WebView 不支持 prompt：打开档案弹窗建档，保存后自动绑定该地块
+            e.target.value = plot.farmerId || 'farmer_default';
+            this._pendingBindPlotId = plot.id;
+            this.openFarmersModal();
+            this._editingFarmerId = null;
+            this.renderFarmerForm();
+            setTimeout(() => { const el = document.getElementById('ff-name'); if (el) el.focus(); }, 80);
           } else {
             this.assignPlotFarmer(plot, e.target.value);
           }
@@ -5916,6 +5962,34 @@ const UI = {
     document.getElementById('loadPresetBtn').addEventListener('click', () => this.openPresetModal());
     document.getElementById('deletePresetBtn').addEventListener('click', () => this.openPresetModal());
 
+    // 通用确认/输入模态
+    document.getElementById('confirmOk').addEventListener('click', () => {
+      const cb = this._confirmCb;
+      this._confirmCb = null;
+      this.closeModal('confirmModal');
+      if (cb) cb();
+    });
+    document.getElementById('confirmCancel').addEventListener('click', () => {
+      this._confirmCb = null;
+      this.closeModal('confirmModal');
+    });
+    document.getElementById('inputOk').addEventListener('click', () => {
+      const cb = this._inputCb;
+      const val = document.getElementById('inputValue').value.trim();
+      this._inputCb = null;
+      this.closeModal('inputModal');
+      if (cb) cb(val);
+      document.getElementById('inputValue').value = '';
+    });
+    document.getElementById('inputCancel').addEventListener('click', () => {
+      this._inputCb = null;
+      this.closeModal('inputModal');
+      document.getElementById('inputValue').value = '';
+    });
+    document.getElementById('inputValue').addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('inputOk').click();
+    });
+
     // 农户档案
     document.getElementById('farmersBtn').addEventListener('click', () => this.openFarmersModal());
     document.getElementById('farmerNew').addEventListener('click', () => {
@@ -6007,6 +6081,27 @@ const UI = {
     document.getElementById(id).setAttribute('aria-hidden', 'true');
   },
 
+  /* ============================================================
+     应用内 confirm/prompt 替代（APK WebView 不支持原生对话框：
+     confirm() 恒 false、prompt() 恒 null——正是"无法添加农户"的根因）
+     ============================================================ */
+  confirmDialog(message, onOk, opts) {
+    const o = opts || {};
+    document.getElementById('confirmTitle').firstChild.textContent = (o.title || '请确认') + ' ';
+    document.getElementById('confirmText').textContent = message;
+    this._confirmCb = onOk || null;
+    this.openModal('confirmModal');
+  },
+
+  promptInput(title, defaultValue, onOk) {
+    document.getElementById('inputTitle').firstChild.textContent = title + ' ';
+    const input = document.getElementById('inputValue');
+    input.value = defaultValue || '';
+    this._inputCb = onOk || null;
+    this.openModal('inputModal');
+    setTimeout(() => { input.focus(); input.select(); }, 80);
+  },
+
   openExportModal() {
     this.openModal('exportModal');
     this.updateExportText('text');
@@ -6090,10 +6185,11 @@ const UI = {
     const label = this.state.mode === 'spray'
       ? `${this.state.plant.name}_${new Date().toLocaleDateString('zh-CN')}`
       : `吊运_${new Date().toLocaleDateString('zh-CN')}`;
-    const name = prompt('请输入预设名称：', label);
-    if (!name) return;
-    Storage.savePreset(name, this.state.mode, this.state);
-    this.toast(`预设「${name}」已保存`, 'success');
+    this.promptInput('请输入预设名称：', label, name => {
+      if (!name) return;
+      Storage.savePreset(name, this.state.mode, this.state);
+      this.toast(`预设「${name}」已保存`, 'success');
+    });
   },
 
   openPresetModal() {
@@ -6130,11 +6226,11 @@ const UI = {
       li.addEventListener('contextmenu', e => {
         e.preventDefault();
         const idx = parseInt(li.dataset.idx);
-        if (confirm(`删除预设「${presets[idx].name}」？`)) {
+        this.confirmDialog(`删除预设「${presets[idx].name}」？`, () => {
           Storage.deletePreset(presets[idx].name);
           this.renderPresetList();
           this.toast('预设已删除', 'warn');
-        }
+        }, { title: '删除预设' });
       });
     });
   },

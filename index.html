@@ -396,6 +396,32 @@
     </div>
   </div>
 
+  <!-- 模态框：通用确认（替代 confirm()，APK WebView 不支持原生对话框） -->
+  <div class="modal" id="confirmModal" aria-hidden="true">
+    <div class="modal-box" style="max-width:420px;">
+      <div class="modal-title" id="confirmTitle">请确认 <button class="modal-close" data-close>✕</button></div>
+      <p id="confirmText" style="font-size:14px;line-height:1.7;color:var(--text-primary);margin:6px 0 0;"></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="confirmCancel">取消</button>
+        <button class="btn btn-primary" id="confirmOk">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：文本输入（替代 prompt()） -->
+  <div class="modal" id="inputModal" aria-hidden="true">
+    <div class="modal-box" style="max-width:420px;">
+      <div class="modal-title" id="inputTitle">请输入 <button class="modal-close" data-close>✕</button></div>
+      <div class="field" style="margin-top:6px;">
+        <input type="text" id="inputValue">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="inputCancel">取消</button>
+        <button class="btn btn-primary" id="inputOk">确定</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast -->
   <div id="toast" class="toast" aria-live="polite"></div>
 

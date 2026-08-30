@@ -45,6 +45,16 @@ function ok(cond, msg = '') { if (!cond) throw new Error(msg || 'expected truthy
 const C = ctx.window.Calculator;
 const S = ctx.window.Storage;
 
+/* ---------- APK 兼容防护：禁止原生对话框（WebView 不实现 prompt/confirm） ---------- */
+test('js/ui.js 无原生 prompt()/confirm() 调用（注释除外）', () => {
+  const src = fs.readFileSync(path.join(ROOT, 'js', 'ui.js'), 'utf8')
+    .replace(/^\s*\/\*[\s\S]*?\*\/\s*$/gm, '')   // 去块注释
+    .replace(/\/\/.*$/gm, '');                        // 去行注释
+  ok(!/prompt\s*\(/.test(src), '不应调用 prompt()');
+  ok(!/confirm\s*\(/.test(src), '不应调用 confirm()（用 UI.confirmDialog）');
+  ok(/confirmDialog/.test(src), '应使用应用内确认模态');
+});
+
 function freshState() {
   return vm.runInContext(`({
     mode: 'spray',
