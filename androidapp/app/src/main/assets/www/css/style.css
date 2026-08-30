@@ -1648,3 +1648,24 @@ html, body {
 .st-btn:active { background: var(--accent-soft); }
 .stepper .unit-suffix { flex: 1; min-width: 0; }
 .stepper .unit-suffix input { width: 100%; }
+
+
+/* 农户档案卡片 */
+.farmer-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; max-height: 45vh; overflow: auto; padding-right: 2px; }
+.farmer-card {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.farmer-card:hover { border-color: var(--accent); }
+.farmer-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.farmer-card.disabled { opacity: 0.55; }
+.farmer-empty { text-align: center; color: var(--text-muted); padding: 16px 0; }
+.fc-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.fc-name { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.fc-toggle { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-muted); }
+.fc-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+.fc-tpl { font-size: 11px; color: var(--accent); margin-top: 3px; }
+.fc-notes { font-size: 11px; color: var(--text-muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

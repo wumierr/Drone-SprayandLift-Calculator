@@ -1667,6 +1667,27 @@ html, body {
 .stepper .unit-suffix { flex: 1; min-width: 0; }
 .stepper .unit-suffix input { width: 100%; }
 
+
+/* 农户档案卡片 */
+.farmer-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; max-height: 45vh; overflow: auto; padding-right: 2px; }
+.farmer-card {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.farmer-card:hover { border-color: var(--accent); }
+.farmer-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.farmer-card.disabled { opacity: 0.55; }
+.farmer-empty { text-align: center; color: var(--text-muted); padding: 16px 0; }
+.fc-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.fc-name { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.fc-toggle { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-muted); }
+.fc-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+.fc-tpl { font-size: 11px; color: var(--accent); margin-top: 3px; }
+.fc-notes { font-size: 11px; color: var(--text-muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
   </style>
 </head>
 <body>
@@ -2040,7 +2061,7 @@ html, body {
     <div class="modal-box">
       <div class="modal-title">🧑‍🌾 农户档案 <button class="modal-close" data-close>✕</button></div>
       <input type="text" id="farmerSearch" placeholder="搜索农户名称…" style="width:100%;margin-bottom:8px;">
-      <ul class="preset-list" id="farmersList"><!-- JS 注入 --></ul>
+      <div class="farmer-cards" id="farmersList"><!-- JS 注入 --></div>
       <div class="form-grid" id="farmerForm" style="margin-top:10px;"><!-- JS 注入 --></div>
       <div class="modal-actions">
         <button class="btn btn-secondary danger" id="farmerDelete">🗑 删除</button>
@@ -4229,6 +4250,7 @@ const UI = {
       <div class="plot-card" data-id="${p.id}">
         <div class="plot-card-head">
           <input type="text" class="plot-name" value="${this.escapeHtml(p.name || `地块${i + 1}`)}" placeholder="地块名称">
+          ${p.farmerId && p.farmerId !== 'farmer_default' ? this.plotTplButtons(p) : ''}
           <button type="button" class="icon-btn plot-del" title="删除该地块">🗑</button>
         </div>
         <div class="plot-card-fields">
@@ -4270,6 +4292,44 @@ const UI = {
     }
     opts += '<option value="__new">＋ 新建农户…</option>';
     return opts;
+  },
+
+  /* 该农户默认地块模板按钮（未绑定农户不显示；无模板时"读入"置灰提示） */
+  plotTplButtons(p) {
+    const f = this.getFarmer(p.farmerId);
+    const tpl = f && f.plotTemplate;
+    const hasTpl = tpl && ((Number(tpl.area) || 0) > 0 || (Number(tpl.treeCount) || 0) > 0);
+    return `
+      <button type="button" class="icon-btn plot-load-tpl" title="${hasTpl ? `读入 ${f.name} 的默认地块尺寸` : `${f ? f.name : ''} 还没存过默认地块尺寸`}" ${hasTpl ? '' : 'style="opacity:0.35;"'}>📄</button>
+      <button type="button" class="icon-btn plot-save-tpl" title="把当前尺寸存为 ${f ? f.name : ''} 的默认地块">⭐</button>`;
+  },
+
+  /* 快捷存/取农户默认地块尺寸（跟随当前计算基准） */
+  savePlotTemplate(plot) {
+    const f = this.getFarmer(plot.farmerId);
+    if (!f) return;
+    const basis = this.state.field.calcBasis === 'tree' ? 'tree' : 'area';
+    f.plotTemplate = basis === 'tree'
+      ? { treeCount: Number(plot.treeCount) || 0, area: 0 }
+      : { area: Number(plot.area) || 0, treeCount: 0 };
+    this.saveFarmers();
+    this.renderPlotsEditor();
+    this.toast(`已存为 ${f.name} 的默认地块尺寸`, 'success');
+  },
+
+  loadPlotTemplate(plot) {
+    const f = this.getFarmer(plot.farmerId);
+    const tpl = f && f.plotTemplate;
+    if (!tpl || ((Number(tpl.area) || 0) <= 0 && (Number(tpl.treeCount) || 0) <= 0)) {
+      this.toast('该农户还没存过默认地块尺寸（⭐ 先存一次）', 'warn');
+      return;
+    }
+    if ((Number(tpl.area) || 0) > 0) plot.area = Number(tpl.area);
+    if ((Number(tpl.treeCount) || 0) > 0) plot.treeCount = Number(tpl.treeCount);
+    this.renderPlotsEditor();
+    this.compute();
+    this.save();
+    this.toast(`已读入 ${f.name} 的默认地块尺寸`, 'success');
   },
 
   /* 单地块即时统计（编辑器卡片底部实时刷新；趟数在组级） */
@@ -5638,6 +5698,20 @@ const UI = {
       plotsEditor.addEventListener('click', e => {
         if (e.target.closest('.plot-add')) {
           this.addPlot();
+          return;
+        }
+        const saveTpl = e.target.closest('.plot-save-tpl');
+        if (saveTpl) {
+          const rowEl = saveTpl.closest('.plot-card');
+          const plot = (this.state.field.plots || []).find(pl => String(pl.id) === rowEl.dataset.id);
+          if (plot) this.savePlotTemplate(plot);
+          return;
+        }
+        const loadTpl = e.target.closest('.plot-load-tpl');
+        if (loadTpl) {
+          const rowEl = loadTpl.closest('.plot-card');
+          const plot = (this.state.field.plots || []).find(pl => String(pl.id) === rowEl.dataset.id);
+          if (plot) this.loadPlotTemplate(plot);
           return;
         }
         const del = e.target.closest('.plot-del');

@@ -563,6 +563,7 @@ const UI = {
       <div class="plot-card" data-id="${p.id}">
         <div class="plot-card-head">
           <input type="text" class="plot-name" value="${this.escapeHtml(p.name || `地块${i + 1}`)}" placeholder="地块名称">
+          ${p.farmerId && p.farmerId !== 'farmer_default' ? this.plotTplButtons(p) : ''}
           <button type="button" class="icon-btn plot-del" title="删除该地块">🗑</button>
         </div>
         <div class="plot-card-fields">
@@ -604,6 +605,44 @@ const UI = {
     }
     opts += '<option value="__new">＋ 新建农户…</option>';
     return opts;
+  },
+
+  /* 该农户默认地块模板按钮（未绑定农户不显示；无模板时"读入"置灰提示） */
+  plotTplButtons(p) {
+    const f = this.getFarmer(p.farmerId);
+    const tpl = f && f.plotTemplate;
+    const hasTpl = tpl && ((Number(tpl.area) || 0) > 0 || (Number(tpl.treeCount) || 0) > 0);
+    return `
+      <button type="button" class="icon-btn plot-load-tpl" title="${hasTpl ? `读入 ${f.name} 的默认地块尺寸` : `${f ? f.name : ''} 还没存过默认地块尺寸`}" ${hasTpl ? '' : 'style="opacity:0.35;"'}>📄</button>
+      <button type="button" class="icon-btn plot-save-tpl" title="把当前尺寸存为 ${f ? f.name : ''} 的默认地块">⭐</button>`;
+  },
+
+  /* 快捷存/取农户默认地块尺寸（跟随当前计算基准） */
+  savePlotTemplate(plot) {
+    const f = this.getFarmer(plot.farmerId);
+    if (!f) return;
+    const basis = this.state.field.calcBasis === 'tree' ? 'tree' : 'area';
+    f.plotTemplate = basis === 'tree'
+      ? { treeCount: Number(plot.treeCount) || 0, area: 0 }
+      : { area: Number(plot.area) || 0, treeCount: 0 };
+    this.saveFarmers();
+    this.renderPlotsEditor();
+    this.toast(`已存为 ${f.name} 的默认地块尺寸`, 'success');
+  },
+
+  loadPlotTemplate(plot) {
+    const f = this.getFarmer(plot.farmerId);
+    const tpl = f && f.plotTemplate;
+    if (!tpl || ((Number(tpl.area) || 0) <= 0 && (Number(tpl.treeCount) || 0) <= 0)) {
+      this.toast('该农户还没存过默认地块尺寸（⭐ 先存一次）', 'warn');
+      return;
+    }
+    if ((Number(tpl.area) || 0) > 0) plot.area = Number(tpl.area);
+    if ((Number(tpl.treeCount) || 0) > 0) plot.treeCount = Number(tpl.treeCount);
+    this.renderPlotsEditor();
+    this.compute();
+    this.save();
+    this.toast(`已读入 ${f.name} 的默认地块尺寸`, 'success');
   },
 
   /* 单地块即时统计（编辑器卡片底部实时刷新；趟数在组级） */
@@ -1972,6 +2011,20 @@ const UI = {
       plotsEditor.addEventListener('click', e => {
         if (e.target.closest('.plot-add')) {
           this.addPlot();
+          return;
+        }
+        const saveTpl = e.target.closest('.plot-save-tpl');
+        if (saveTpl) {
+          const rowEl = saveTpl.closest('.plot-card');
+          const plot = (this.state.field.plots || []).find(pl => String(pl.id) === rowEl.dataset.id);
+          if (plot) this.savePlotTemplate(plot);
+          return;
+        }
+        const loadTpl = e.target.closest('.plot-load-tpl');
+        if (loadTpl) {
+          const rowEl = loadTpl.closest('.plot-card');
+          const plot = (this.state.field.plots || []).find(pl => String(pl.id) === rowEl.dataset.id);
+          if (plot) this.loadPlotTemplate(plot);
           return;
         }
         const del = e.target.closest('.plot-del');
