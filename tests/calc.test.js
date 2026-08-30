@@ -523,6 +523,21 @@ test('打药文本往返保留时间参数（manualFlightTime/chargeAfterWork �
   eq(back.costs.fuelExpense, 150, '本次油费');
 });
 
+test('迁移用户（plotMode=false 但有地块）地块仍随文本导出', () => {
+  const s = freshState();          // 模拟迁移用户：有合成地块、plotMode=false
+  s.field.plotMode = false;
+  const text = S.exportText(s, 'spray');
+  ok(text.includes('[地块]'), '地块列表随导出');
+  vm.runInContext('DEFAULT_FIELD.plots = []', ctx);  // 清共享累积（测试环境现象）
+  const back = S.importText(text);
+  const dbgL = text.split('\n').filter(l => l.includes('地块')).slice(0, 6);
+  console.log('DEBUG 地块行:', JSON.stringify(dbgL));
+  console.log('DEBUG back.plots:', (back.field.plots || []).map(x => x.name + '/' + x.area));
+  const pl = (back.field.plots || []).find(x => x.name === '地块1');
+  ok(pl, '地块往返');
+  ok(Math.abs(pl.area - 10) < 1e-9, '面积保留');
+});
+
 test('旧版文本（含已废弃的兑水速度行）仍可导入', () => {
   const oldText = [
     '===== 无人机作业配置 =====', '版本: 2.0', '模式: 打药', '',
