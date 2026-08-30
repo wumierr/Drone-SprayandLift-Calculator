@@ -790,7 +790,7 @@ const UI = {
             <label>已完成(升)</label>
             <input type="number" class="wo-completed" data-id="${p.id}" min="0" step="1" value="${done || ''}" placeholder="0">
           </div>
-          <div class="wo-plot-rest" data-id="${p.id}">剩余 ${fmt(rest, 1)}升 ≈ ${p.perTripWater > 0 ? Math.ceil(rest / p.perTripWater) : 0}趟</div>
+          <div class="wo-plot-rest" data-id="${p.id}">剩余 ${fmt(rest, 1)}升 ≈ ${p.groupPerTripWater > 0 ? Math.ceil(rest / p.groupPerTripWater) : 0}趟</div>
         </div>`;
       });
     } else {
@@ -847,7 +847,7 @@ const UI = {
         const rest = Math.max(0, p.water - done);
         L.push(`【${p.name}】`);
         L.push(`  ${fmt(p.area, 1)}亩 | 组${p.groupId} | 水量 ${fmt(p.water, 1)}升 | 组趟数 ${p.groupTrips} | 每趟 ${fmt(p.groupPerTripWater, 1)}升 | 转场 ${fmt(p.transferMin, 1)}min`);
-        L.push(`  已完成 ${fmt(done, 1)}升 (${p.water > 0 ? fmt(done / p.water * 100, 0) : 0}%) | 剩余 ${fmt(rest, 1)}升 ≈ ${p.perTripWater > 0 ? Math.ceil(rest / p.perTripWater) : 0}趟 | 药量 ${p.pesticideRounded}套`);
+        L.push(`  已完成 ${fmt(done, 1)}升 (${p.water > 0 ? fmt(done / p.water * 100, 0) : 0}%) | 剩余 ${fmt(rest, 1)}升 ≈ ${p.groupPerTripWater > 0 ? Math.ceil(rest / p.groupPerTripWater) : 0}趟 | 用量 ${fmt(p.pesticideRaw, 2)}套`);
       });
     } else {
       const done = Number(wo.completedSingle) || 0;
@@ -1270,6 +1270,10 @@ const UI = {
       this.renderPlotsTable(r);
       this.renderSummary(r, 'spray');
       this._lastResult = r;
+      // 工单弹窗开着时同步刷新（如切换包药开关）
+      if (document.getElementById('workOrderModal')?.classList.contains('show')) {
+        this.renderWorkOrderQuick();
+      }
     } else {
       const r = Calculator.computeHaul({
         field: this.state.haulField,
