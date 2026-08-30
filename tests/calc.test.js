@@ -45,6 +45,18 @@ function ok(cond, msg = '') { if (!cond) throw new Error(msg || 'expected truthy
 const C = ctx.window.Calculator;
 const S = ctx.window.Storage;
 
+/* ---------- 内置类型推荐参数（v4.3 用户指定） ---------- */
+test('内置类型默认参数：杀菌 6/4/2、果蝇 7/6/4', () => {
+  const shajun = ctx.window.PLANT_DATABASE.shajun;
+  const guoying = ctx.window.PLANT_DATABASE.guoying;
+  eq(shajun.flightHeight, 6, '杀菌飞行高度 6 米');
+  eq(shajun.lineSpacing, 4, '杀菌航线间距 4 米');
+  eq(shajun.flightSpeed, 2, '杀菌飞行速度 2 m/s');
+  eq(guoying.flightHeight, 7, '果蝇飞行高度 7 米');
+  eq(guoying.lineSpacing, 6, '果蝇航线间距 6 米');
+  eq(guoying.flightSpeed, 4, '果蝇飞行速度 4 m/s');
+});
+
 /* ---------- 棵数速算（独立参考工具，不接地块引擎） ---------- */
 test('calcTreesPesticide 棵数速算药量', () => {
   const plant = { ...ctx.window.PLANT_DATABASE.shajun };

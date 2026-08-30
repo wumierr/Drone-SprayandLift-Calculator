@@ -233,6 +233,13 @@ const UI = {
     document.querySelectorAll('.plant-card').forEach(c => {
       c.classList.toggle('active', c.dataset.key === key);
     });
+    // 套用类型推荐参数（飞行高度随类型快照自带；间距/速度写入时间参数，覆盖当前值）
+    const applied = [];
+    if (t.lineSpacing != null) { this.state.timing.lineSpacing = t.lineSpacing; applied.push(`间距${t.lineSpacing}米`); }
+    if (t.flightSpeed != null) { this.state.timing.flightSpeed = t.flightSpeed; applied.push(`速度${t.flightSpeed}m/s`); }
+    if (t.flightHeight != null) applied.push(`高度${t.flightHeight}米`);
+    this.syncTimingFormFromState();
+    if (applied.length) this.toast(`已套用「${t.name}」推荐参数（${applied.join(' / ')}），可再调`, 'success');
     this.updatePlantInfo();
     this.syncParamFormFromPlant();
     if (this._treeQuickRender) this._treeQuickRender();   // 速算卡按新类型参数重算
@@ -264,6 +271,8 @@ const UI = {
       ${F('一套药需水量 (升)', 'tf-perSet', 'number', v('pesticideWaterPerSet', 300), '一整套药剂对应需要的水量')}
       ${F('省药系数', 'tf-coeff', 'number', v('droneSavingCoeff', 0.7), '0.7 表示比人工省 30%')}
       ${F('飞行高度 (米)', 'tf-height', 'number', v('flightHeight', 2), '距作物冠层的高度')}
+      ${F('航线间距 (米)', 'tf-lineSpacing', 'number', v('lineSpacing', 4), '相邻航线间距，选类型时套用到时间参数')}
+      ${F('飞行速度 (m/s)', 'tf-flightSpeed', 'number', v('flightSpeed', 2), '作业飞行速度，选类型时套用到时间参数')}
       ${F('每亩棵数 (按棵数计算用)', 'tf-treesPerMu', 'number', v('treesPerMu', 80), '按棵数计算时用于亩数反推，可留 0')}
       ${F('每棵水量 (升，按棵数计算用)', 'tf-waterPerTree', 'number', v('waterPerTree', 3), '单棵树喷洒量，可留 0')}
       <div class="field" style="grid-column: 1 / -1;">
@@ -286,6 +295,8 @@ const UI = {
       icon: (get('tf-icon') || '🧪').slice(0, 4),
       defaultBasis: this._editingTypeKey ? (this.getBasisOf(this.getType(this._editingTypeKey) || {})) : 'tree',
       flightHeight: num('tf-height', 2),
+      lineSpacing: num('tf-lineSpacing', 4),
+      flightSpeed: num('tf-flightSpeed', 2),
       waterPerMu: num('tf-waterPerMu', 20),
       treesPerMu: num('tf-treesPerMu', 0),
       waterPerTree: num('tf-waterPerTree', 0),
