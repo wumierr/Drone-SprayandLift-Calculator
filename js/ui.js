@@ -363,6 +363,9 @@ const UI = {
     const treeEl = document.getElementById('inp-treeCount');
     if (areaEl) areaEl.closest('.field').style.display = plotsMode ? 'none' : (this.state.field.calcBasis === 'tree' ? 'none' : '');
     if (treeEl) treeEl.closest('.field').style.display = plotsMode ? 'none' : (this.state.field.calcBasis === 'area' ? 'none' : '');
+    // 多地块按亩填写，计算基准切换一并隐藏（棵数基准仅单地块模式）
+    const basisEl = document.getElementById('inp-calcBasis');
+    if (basisEl) basisEl.closest('.field').style.display = plotsMode ? 'none' : '';
     const wrap = document.getElementById('plotsTableWrap');
     if (wrap) wrap.style.display = plotsMode ? '' : 'none';
   },
@@ -371,43 +374,65 @@ const UI = {
     const wrap = document.getElementById('plotsEditor');
     if (!wrap) return;
     const plots = this.state.field.plots || [];
-    const basis = this.state.field.calcBasis === 'tree' ? 'tree' : 'area';
-    const sizeLabel = basis === 'tree' ? '棵数' : '亩数';
-    const sizeUnit = basis === 'tree' ? '棵' : '亩';
+    const tank = this.state.field.droneTank || 85;
+    const perMu = this.state.plant ? (this.state.plant.waterPerMu || 0) : 0;
     let html = `
       <div class="plot-toolbar">
-        <span class="hint">按<b>${basis === 'tree' ? '棵数' : '亩数'}</b>填写各地块；趟数留空=按机载上限自动算最少趟数</span>
-        <span class="plot-presets">
-          转场档位
-          <button type="button" class="btn btn-sm btn-secondary plot-preset" data-min="3">保守3m</button>
-          <button type="button" class="btn btn-sm btn-secondary plot-preset" data-min="5">标准5m</button>
-          <button type="button" class="btn btn-sm btn-secondary plot-preset" data-min="8">激进8m</button>
+        <span class="hint">每个地块一张卡片，按<b>亩数</b>填写大小；趟数留空=按机载上限（${tank}升/趟）自动算最少趟数，手填可凑实际每趟加药量</span>
+        <span class="plot-presets" title="转场=加药点到该地块的单程飞行时间；选「远」=多留余量">
+          全部地块转场
+          <button type="button" class="btn btn-sm btn-secondary plot-preset" data-min="3">近·3分</button>
+          <button type="button" class="btn btn-sm btn-secondary plot-preset" data-min="5">中·5分</button>
+          <button type="button" class="btn btn-sm btn-secondary plot-preset" data-min="8">远·8分</button>
         </span>
       </div>`;
     plots.forEach((p, i) => {
-      const sizeVal = basis === 'tree' ? (p.treeCount || '') : (p.area || '');
       html += `
-      <div class="plot-row" data-id="${p.id}">
-        <input type="text" class="plot-name" value="${this.escapeHtml(p.name || `地块${i + 1}`)}" placeholder="名称">
-        <div class="unit-suffix" data-unit="${sizeUnit}"><input type="number" class="plot-size" step="0.1" min="0" value="${sizeVal}" placeholder="${sizeLabel}"></div>
-        <div class="unit-suffix" data-unit="min"><input type="number" class="plot-transfer" step="0.5" min="0" value="${p.transferMin != null ? p.transferMin : 5}" placeholder="转场"></div>
-        <div class="unit-suffix" data-unit="趟"><input type="number" class="plot-trips" step="1" min="0" value="${p.tripsOverride || ''}" placeholder="自动"></div>
-        <button type="button" class="icon-btn plot-del" title="删除地块">🗑</button>
+      <div class="plot-card" data-id="${p.id}">
+        <div class="plot-card-head">
+          <input type="text" class="plot-name" value="${this.escapeHtml(p.name || `地块${i + 1}`)}" placeholder="地块名称">
+          <button type="button" class="icon-btn plot-del" title="删除该地块">🗑</button>
+        </div>
+        <div class="plot-card-fields">
+          <div class="field">
+            <label>亩数 <i class="tip" data-tip="该地块需要打药的面积">i</i></label>
+            <div class="unit-suffix" data-unit="亩"><input type="number" class="plot-size" step="0.1" min="0" value="${p.area || ''}" placeholder="0"></div>
+          </div>
+          <div class="field">
+            <label>转场时间 <i class="tip" data-tip="加药点到该地块的单程时间（分钟）">i</i></label>
+            <div class="unit-suffix" data-unit="分钟"><input type="number" class="plot-transfer" step="0.5" min="0" value="${p.transferMin != null ? p.transferMin : 5}"></div>
+          </div>
+          <div class="field">
+            <label>趟数（选填） <i class="tip" data-tip="留空=按机载上限自动算最少趟数；手填可凑实际每趟加药量">i</i></label>
+            <div class="unit-suffix" data-unit="趟"><input type="number" class="plot-trips" step="1" min="0" value="${p.tripsOverride || ''}" placeholder="自动"></div>
+          </div>
+          <div class="field">
+            <label>该地块</label>
+            <div class="plot-stat">${this.plotStatText(p, tank, perMu)}</div>
+          </div>
+        </div>
       </div>`;
     });
     html += '<button type="button" class="btn btn-secondary btn-sm plot-add">＋ 添加地块</button>';
     wrap.innerHTML = html;
   },
 
+  /* 单地块即时统计（编辑器卡片底部实时刷新） */
+  plotStatText(p, tank, perMu) {
+    const water = (Number(p.area) || 0) * perMu;
+    const minTrips = water > 0 ? Math.ceil(water / tank) : 0;
+    const trips = Number(p.tripsOverride) > 0 ? Number(p.tripsOverride) : minTrips;
+    const perTrip = trips > 0 ? water / trips : 0;
+    return `水量 <b>${Calculator.fmt(water, 1)}</b>升 ｜ 最少 <b>${minTrips}</b>趟 ｜ 每趟 <b>${Calculator.fmt(perTrip, 1)}</b>升`;
+  },
+
   addPlot() {
     if (!Array.isArray(this.state.field.plots)) this.state.field.plots = [];
     const n = this.state.field.plots.length;
-    const isTree = this.state.field.calcBasis === 'tree';
     this.state.field.plots.push({
       id: 'p' + Date.now().toString(36) + '_' + n,
       name: `地块${n + 1}`,
-      area: isTree ? 0 : 10,
-      treeCount: isTree ? 100 : 0,
+      area: 10,
       transferMin: 5,
       tripsOverride: 0
     });
@@ -425,12 +450,10 @@ const UI = {
       return;
     }
     const fmt = Calculator.fmt.bind(Calculator);
-    const basis = r.calcBasis === 'tree' ? 'tree' : 'area';
-    const sizeHeader = basis === 'tree' ? '棵数' : '亩数';
     const rows = r.plots.map(p => `
       <tr>
         <td>${this.escapeHtml(p.name)}</td>
-        <td>${basis === 'tree' ? fmt(p.treeCount, 0) : fmt(p.area, 1)}</td>
+        <td>${fmt(p.area, 1)}</td>
         <td>${fmt(p.water, 1)}</td>
         <td>${p.minTrips}</td>
         <td><b>${p.trips}</b></td>
@@ -443,9 +466,9 @@ const UI = {
         <span class="hint">机载上限 ${r.droneTank} 升/趟 · 共 ${r.totalTrips} 趟 · 转场合计 ${fmt(r.totalTransfer, 1)}min</span>
       </div>
       <table class="summary-table plots-table">
-        <thead><tr><th>地块</th><th>${sizeHeader}</th><th>水量(升)</th><th>最少趟</th><th>趟数</th><th>每趟(升)</th><th>转场(min)</th><th>药量(套)</th></tr></thead>
+        <thead><tr><th>地块</th><th>亩数</th><th>水量(升)</th><th>最少趟</th><th>趟数</th><th>每趟(升)</th><th>转场(min)</th><th>药量(套)</th></tr></thead>
         <tbody>${rows}</tbody>
-        <tfoot><tr><td>合计</td><td>${basis === 'tree' ? fmt(r.plots.reduce((s, p) => s + p.treeCount, 0), 0) : fmt(r.area, 1)}</td><td>${fmt(r.water, 1)}</td><td>—</td><td>${r.totalTrips}</td><td>—</td><td>${fmt(r.totalTransfer, 1)}</td><td>${r.pesticideRounded}</td></tr></tfoot>
+        <tfoot><tr><td>合计</td><td>${fmt(r.area, 1)}</td><td>${fmt(r.water, 1)}</td><td>—</td><td>${r.totalTrips}</td><td>—</td><td>${fmt(r.totalTransfer, 1)}</td><td>${r.pesticideRounded}</td></tr></tfoot>
       </table>`;
   },
 
@@ -546,7 +569,7 @@ const UI = {
         const done = Number(wo.completedByPlot[p.id]) || 0;
         const rest = Math.max(0, p.water - done);
         L.push(`【${p.name}】`);
-        L.push(`  ${r.calcBasis === 'tree' ? fmt(p.treeCount, 0) + '棵' : fmt(p.area, 1) + '亩'} | 水量 ${fmt(p.water, 1)}升 | 趟数 ${p.trips} | 每趟 ${fmt(p.perTripWater, 1)}升 | 转场 ${fmt(p.transferMin, 1)}min`);
+        L.push(`  ${fmt(p.area, 1)}亩 | 水量 ${fmt(p.water, 1)}升 | 趟数 ${p.trips} | 每趟 ${fmt(p.perTripWater, 1)}升 | 转场 ${fmt(p.transferMin, 1)}min`);
         L.push(`  已完成 ${fmt(done, 1)}升 (${p.water > 0 ? fmt(done / p.water * 100, 0) : 0}%) | 剩余 ${fmt(rest, 1)}升 ≈ ${p.perTripWater > 0 ? Math.ceil(rest / p.perTripWater) : 0}趟 | 药量 ${p.pesticideRounded}套`);
       });
     } else {
@@ -1515,14 +1538,18 @@ const UI = {
           plot.name = e.target.value;
         } else if (e.target.classList.contains('plot-size')) {
           const v = parseFloat(e.target.value);
-          if (this.state.field.calcBasis === 'tree') plot.treeCount = isNaN(v) ? 0 : Math.max(0, Math.round(v));
-          else plot.area = isNaN(v) ? 0 : Math.max(0, v);
+          plot.area = isNaN(v) ? 0 : Math.max(0, v);
         } else if (e.target.classList.contains('plot-transfer')) {
           const v = parseFloat(e.target.value);
           plot.transferMin = isNaN(v) ? 0 : Math.max(0, v);
         } else if (e.target.classList.contains('plot-trips')) {
           const v = parseFloat(e.target.value);
           plot.tripsOverride = (!v || v <= 0) ? 0 : Math.max(0, Math.round(v));
+        }
+        // 卡片底部统计实时刷新
+        const stat = row.querySelector('.plot-stat');
+        if (stat) {
+          stat.innerHTML = this.plotStatText(plot, this.state.field.droneTank || 85, this.state.plant ? (this.state.plant.waterPerMu || 0) : 0);
         }
         this.compute();
       });

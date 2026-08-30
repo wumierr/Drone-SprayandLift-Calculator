@@ -1496,21 +1496,29 @@ html, body {
 .plot-presets { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
 .plot-presets .btn { min-height: 32px; padding: 4px 10px; }
 
-.plot-row {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr 1fr 44px;
-  gap: 8px; align-items: center;
-  margin-bottom: 8px;
+.plot-card {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
 }
-.plot-row input[type="text"] {
-  height: 42px; padding: 8px 10px;
-  background: var(--input-bg); border: 1px solid var(--input-border);
-  border-radius: 8px; color: var(--text-primary); font-size: 14px;
+.plot-card-head { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.plot-card-head .plot-name {
+  flex: 1; height: 40px; padding: 8px 10px;
+  background: var(--panel-bg); border: 1px solid var(--input-border);
+  border-radius: 8px; color: var(--text-primary); font-size: 14px; font-weight: 600;
   min-width: 0;
 }
-.plot-row input:focus { outline: none; border-color: var(--accent); }
-.plot-row .unit-suffix input { width: 100%; }
-.plot-row .plot-del { flex: none; }
+.plot-card-head .plot-name:focus { outline: none; border-color: var(--accent); }
+.plot-card-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.plot-card-fields .field label { font-size: 12px; color: var(--text-secondary); }
+.plot-stat {
+  min-height: 42px; display: flex; align-items: center; flex-wrap: wrap; gap: 2px;
+  background: var(--accent-soft); border-radius: 8px; padding: 8px 10px;
+  font-size: 12px; color: var(--text-primary);
+}
+.plot-stat b { color: var(--accent); }
 .plot-add { width: 100%; margin-top: 2px; }
 
 .plots-table { margin-top: 8px; font-size: 13px; }
@@ -1534,8 +1542,7 @@ html, body {
 .workorder-quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
 
 @media (max-width: 500px) {
-  .plot-row { grid-template-columns: 1fr 1fr; }
-  .plot-row .plot-name { grid-column: 1 / -1; }
+  .plot-card-fields { grid-template-columns: 1fr 1fr; }
 }
 
 /* 用药类型管理按钮行 */

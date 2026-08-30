@@ -151,7 +151,7 @@ const Storage = {
         lines.push('');
         lines.push('【地块列表】');
         state.field.plots.forEach(p => {
-          const parts = [`名称=${p.name || ''}`, `亩数=${p.area != null ? p.area : 0}`, `棵数=${p.treeCount != null ? p.treeCount : 0}`,
+          const parts = [`名称=${p.name || ''}`, `亩数=${p.area != null ? p.area : 0}`,
             `转场=${p.transferMin != null ? p.transferMin : 5}`, `趟数覆盖=${p.tripsOverride || 0}`];
           lines.push(`  [地块] ${parts.join(' | ')}`);
         });
@@ -459,7 +459,6 @@ const Storage = {
           id: 'imp' + result.field.plots.length,
           name: kv['名称'] || '',
           area: parseFloat(kv['亩数']) || 0,
-          treeCount: parseFloat(kv['棵数']) || 0,
           transferMin: parseFloat(kv['转场']) != null && !isNaN(parseFloat(kv['转场'])) ? parseFloat(kv['转场']) : 5,
           tripsOverride: parseFloat(kv['趟数覆盖']) || 0
         });
