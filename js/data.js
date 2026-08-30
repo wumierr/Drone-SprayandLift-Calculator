@@ -215,6 +215,8 @@ const DEFAULT_TIMING = {
 /* 默认作业参数 */
 const DEFAULT_FIELD = {
   area: 10,               // 作业亩数
+  treeCount: 0,           // 果树棵数（calcBasis='tree' 时作为主输入，亩数反推）
+  calcBasis: 'area',      // 计算基准：'area' 按亩数 | 'tree' 按棵数（选果树类时自动预置'tree'）
   plantKey: 'fruit_tree', // 默认植物
   existingPesticideSets: 0 // 现有药剂套数（用户填，0表示无库存，作为主显示）
 };
@@ -229,7 +231,12 @@ const DEFAULT_FIELD = {
 */
 const FIELD_DEFS = {
   // 作业参数
-  area: { label: '作业亩数', unit: '亩', tip: '本次需要打药的总亩数（建议 1-1000）', group: 'param', default: 10, step: 0.1, minHard: 0.01, warnBelow: 0.1, warnAbove: 10000, priority: 'high' },
+  calcBasis: { label: '计算基准', unit: '', tip: '按棵数：直接填果树棵数算药量，亩数=棵数÷每亩棵数反推；按亩数：维持原方式。选果树类时默认按棵数', group: 'param', type: 'radio', options: [
+    { value: 'area', label: '按亩数' },
+    { value: 'tree', label: '按棵数' }
+  ], default: 'area' },
+  treeCount: { label: '果树棵数', unit: '棵', tip: '本次作业的果树总棵数（按棵数计算时使用，亩数自动反推）', group: 'param', default: 0, step: 1, integer: true, min: 0, priority: 'high' },
+  area: { label: '作业亩数', unit: '亩', tip: '本次需要打药的总亩数（建议 1-1000）。按棵数计算时由棵数自动反推', group: 'param', default: 10, step: 0.1, minHard: 0.01, warnBelow: 0.1, warnAbove: 10000, priority: 'high' },
   existingPesticideSets: { label: '现有药剂套数', unit: '套', tip: '已库存的药剂套数（主显示，作为主要参考）。0表示无库存，将完全按公式参考量采购', group: 'param', default: 0, step: 1, integer: true, min: 0, priority: 'high' },
   flightHeight: { label: '飞行高度', unit: '米', tip: '无人机距离作物冠层的建议高度，影响覆盖均匀度（建议 1-5 米）', group: 'param', default: 2.0, step: 0.1, min: 0.5, warnBelow: 0.5, warnAbove: 10 },
   waterPerMu: { label: '每亩水量', unit: '升', tip: '每亩地需要喷洒的药液总量（升/亩，建议 1-50）', group: 'param', default: 20, step: 0.1, min: 0.1, warnBelow: 0.5 },
@@ -294,7 +301,7 @@ const FIELD_DEFS = {
 
 /* 顺序字段分组（控制表单渲染顺序） */
 const FIELD_ORDER = {
-  param: ['area', 'existingPesticideSets', 'flightHeight', 'waterPerMu', 'treesPerMu', 'waterPerTree', 'pesticideWaterPerSet', 'droneSavingCoeff'],
+  param: ['calcBasis', 'treeCount', 'area', 'existingPesticideSets', 'flightHeight', 'waterPerMu', 'treesPerMu', 'waterPerTree', 'pesticideWaterPerSet', 'droneSavingCoeff'],
   cycle: ['cycleCost', 'cycleCostThreePhase', 'cycleArea', 'useThreePhase'],
   transport: ['distance', 'fuelConsumption', 'fuelPrice', 'tolls', 'vehicleDepreciation'],
   labor: ['workers', 'days', 'dailyWage', 'mealCost', 'accommodation', 'accommodationDays'],

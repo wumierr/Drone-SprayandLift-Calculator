@@ -206,6 +206,47 @@ test('computeHaul 兼容 { haul: {...} } 完整 state 形式', () => {
 });
 
 /* ============================================================
+   计算基准：按棵数直算（一期 B）
+   ============================================================ */
+test('棵数基准：药量按棵直算，亩数反推供成本/收入/时间', () => {
+  const s = freshState();
+  s.field.calcBasis = 'tree';
+  s.field.treeCount = 160;   // 果树 80棵/亩 → 反推 2 亩
+  const r = C.compute(s);
+  ok(Math.abs(r.area - 2) < 1e-9, `反推亩数=${r.area} 应为 2`);
+  ok(Math.abs(r.pesticide - 1.12) < 1e-9, `药量=${r.pesticide} 应为 160×3÷300×0.7=1.12`);
+  eq(r.pesticideRounded, 1, '7舍8入 → 1');
+  eq(r.water, 40, '水量 = 2亩×20升');
+  eq(r.cycles, 1, '循环 = ⌈2÷2⌉');
+  eq(r.income, 50, '收入 = 2×25');
+});
+
+test('棵数基准与亩数基准数值一致（160棵 = 2亩）', () => {
+  const byTree = freshState();
+  byTree.field.calcBasis = 'tree';
+  byTree.field.treeCount = 160;
+  const byArea = freshState();
+  byArea.field.area = 2;
+  const a = C.compute(byTree), b = C.compute(byArea);
+  ok(Math.abs(a.pesticide - b.pesticide) < 1e-9, '药量一致');
+  ok(Math.abs(a.water - b.water) < 1e-9, '水量一致');
+  ok(Math.abs(a.totalCost - b.totalCost) < 1e-9, '总成本一致');
+  ok(Math.abs(a.timing.totalTime - b.timing.totalTime) < 1e-9, '作业时间一致');
+});
+
+test('旧存档无 calcBasis 时按植物类型预置（模拟 loadState 合并逻辑）', () => {
+  const s = freshState();
+  delete s.field.calcBasis;
+  s.field = Object.assign({ ...ctx.window.DEFAULT_FIELD }, s.field);
+  // 与 ui.js loadState 相同的推断规则
+  s.field.calcBasis = s.plant.calcMode === 'tree' ? 'tree' : 'area';
+  eq(s.field.calcBasis, 'tree', '果树默认按棵数');
+  s.plant = { ...ctx.window.PLANT_DATABASE.rice };
+  s.field.calcBasis = s.plant.calcMode === 'tree' ? 'tree' : 'area';
+  eq(s.field.calcBasis, 'area', '大田默认按亩数');
+});
+
+/* ============================================================
    Storage：文本导出 → 导入 往返（打药）
    ============================================================ */
 test('打药文本往返保留时间参数（manualFlightTime/chargeAfterWork 曾丢失）', () => {

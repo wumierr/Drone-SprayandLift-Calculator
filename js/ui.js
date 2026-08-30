@@ -91,6 +91,10 @@ const UI = {
       if (saved.plant) this.state.plant = { ...saved.plant };
       else this.state.plant = { ...PLANT_DATABASE[this.state.field.plantKey || 'fruit_tree'] };
       if (saved.field) this.state.field = { ...this.state.field, ...saved.field };
+      // 旧版存档无 calcBasis：按植物类型预置基准（果树→按棵数）
+      if (saved.field && saved.field.calcBasis === undefined) {
+        this.state.field.calcBasis = this.state.plant.calcMode === 'tree' ? 'tree' : 'area';
+      }
       if (saved.costs) this.state.costs = { ...this.state.costs, ...saved.costs };
       if (saved.income) this.state.income = { ...this.state.income, ...saved.income };
       if (saved.timing) this.state.timing = { ...this.state.timing, ...saved.timing };
@@ -125,13 +129,31 @@ const UI = {
     if (!plant) return;
     this.state.plant = { ...plant };
     this.state.field.plantKey = key;
+    // 切换植物时按其自然基准预置（果树→按棵数，大田→按亩数）
+    this.state.field.calcBasis = plant.calcMode === 'tree' ? 'tree' : 'area';
     document.querySelectorAll('.plant-card').forEach(c => {
       c.classList.toggle('active', c.dataset.key === key);
     });
     this.updatePlantInfo();
     this.syncParamFormFromPlant();
+    this.updateCalcBasisVisibility();
     this.compute();
     this.save();
+  },
+
+  /* 计算基准切换后的输入项显隐：按棵数隐藏亩数、显示棵数并锁定每亩棵数 */
+  updateCalcBasisVisibility() {
+    const basis = this.state.field.calcBasis === 'tree' ? 'tree' : 'area';
+    // 同步单选按钮选中态（切换植物时 state 变了但 DOM 不会自动跟随）
+    document.querySelectorAll('input[name="radio-calcBasis"]').forEach(r => {
+      r.checked = r.value === basis;
+    });
+    const areaWrap = document.getElementById('inp-area');
+    const treeWrap = document.getElementById('inp-treeCount');
+    const treesPerMu = document.getElementById('inp-treesPerMu');
+    if (areaWrap) areaWrap.closest('.field').style.display = basis === 'tree' ? 'none' : '';
+    if (treeWrap) treeWrap.closest('.field').style.display = basis === 'area' ? 'none' : '';
+    if (treesPerMu) treesPerMu.readOnly = basis === 'tree';
   },
 
   updatePlantInfo() {
@@ -147,6 +169,7 @@ const UI = {
     form.innerHTML = '';
     FIELD_ORDER.param.forEach(key => this.appendField(form, key, 'spray'));
     this.syncParamFormFromPlant();
+    this.updateCalcBasisVisibility();
   },
 
   syncParamFormFromPlant() {
@@ -160,6 +183,7 @@ const UI = {
     setVal('inp-pesticideWaterPerSet', p.pesticideWaterPerSet);
     setVal('inp-droneSavingCoeff', p.droneSavingCoeff);
     setVal('inp-area', this.state.field.area);
+    setVal('inp-treeCount', this.state.field.treeCount);
     setVal('inp-existingPesticideSets', this.state.field.existingPesticideSets);
   },
 
@@ -424,8 +448,8 @@ const UI = {
     } else if (mode === 'timing') {
       this.state.timing[key] = val;
     } else {
-      if (key === 'area') {
-        this.state.field.area = val;
+      if (key === 'area' || key === 'calcBasis' || key === 'treeCount') {
+        this.state.field[key] = val;
       } else if (key === 'existingPesticideSets') {
         this.state.field.existingPesticideSets = val;
       } else if (FIELD_ORDER.param.includes(key)) {
@@ -447,7 +471,7 @@ const UI = {
       return this.state.timing[key];
     } else {
       // field 类参数（不在 plant 内）
-      if (key === 'area') return this.state.field.area;
+      if (key === 'area' || key === 'calcBasis' || key === 'treeCount') return this.state.field[key];
       if (key === 'existingPesticideSets') return this.state.field.existingPesticideSets;
       // plant 类参数
       if (FIELD_ORDER.param.includes(key)) return this.state.plant[key];
@@ -494,6 +518,10 @@ const UI = {
     if (key === 'manualFlightTime') {
       this.updateFlightFieldsDisabled();
     }
+    // 特殊处理：计算基准切换时更新输入项显隐
+    if (key === 'calcBasis') {
+      this.updateCalcBasisVisibility();
+    }
     this.compute();
     this.save();
   },
@@ -536,11 +564,14 @@ const UI = {
     }
     document.getElementById('rPesticideDetail').textContent = stockText;
     document.getElementById('rPesticideFormula').textContent =
-      `主显示=现有 ${r.existingSets} 套 | 参考=亩数×每棵水量×每亩棵数÷一套药水量×省药系数=${fmt(r.pesticide, 2)} → ${r.pesticideRounded} 套（7舍8入）`;
+      r.calcBasis === 'tree'
+        ? `主显示=现有 ${r.existingSets} 套 | 参考=棵数${r.treeCount}×每棵水量÷一套药水量×省药系数=${fmt(r.pesticide, 2)} → ${r.pesticideRounded} 套（7舍8入）`
+        : `主显示=现有 ${r.existingSets} 套 | 参考=亩数×每棵水量×每亩棵数÷一套药水量×省药系数=${fmt(r.pesticide, 2)} → ${r.pesticideRounded} 套（7舍8入）`;
 
     setText('rWater', fmt(r.water, 1));
+    const effArea = (r.area != null ? r.area : this.state.field.area);
     document.getElementById('rWaterDetail').textContent =
-      `${this.state.plant.waterPerMu} 升/亩 × ${fmt(this.state.field.area,1)} 亩`;
+      `${this.state.plant.waterPerMu} 升/亩 × ${fmt(effArea, 1)} 亩${r.calcBasis === 'tree' ? `（按棵数 ${r.treeCount} 棵反推）` : ''}`;
     document.getElementById('rWaterFormula').textContent =
       `公式: 亩数 × 每亩水量（无人机喷洒量，独立于药量计算）`;
 
@@ -982,6 +1013,8 @@ const UI = {
       this.state.income = { ...DEFAULT_INCOME };
       this.state.timing = { ...DEFAULT_TIMING };
       this.state.plant = keepPlant || { ...PLANT_DATABASE.fruit_tree };
+      // 基准随植物类型预置
+      this.state.field.calcBasis = this.state.plant.calcMode === 'tree' ? 'tree' : 'area';
       this.toast('打药模式已恢复默认', 'success');
     } else {
       if (!confirm('确定恢复吊运模式所有参数为默认值？当前吊运模式的所有参数将被重置。')) return;

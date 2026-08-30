@@ -58,8 +58,17 @@ const Calculator = {
    */
   compute(state) {
     const { plant, field, costs, income } = state;
-    const area = Number(field.area) || 0;
     const existingSets = Number(field.existingPesticideSets) || 0;
+
+    /* 计算基准：'tree' 按棵数（亩数 = 棵数 ÷ 每亩棵数 反推）| 'area' 按亩数 */
+    const calcBasis = field.calcBasis === 'tree' ? 'tree' : 'area';
+    const treeCount = Number(field.treeCount) || 0;
+    let area = Number(field.area) || 0;
+    if (calcBasis === 'tree' && treeCount > 0) {
+      const treesPerMu = Number(plant.treesPerMu) || 0;
+      area = treesPerMu > 0 ? treeCount / treesPerMu : 0;
+    }
+
     const result = {
       pesticide: 0,                  // 参考药量（小数原值）
       pesticideRounded: 0,           // 参考药量（7舍8入取整）
@@ -76,15 +85,21 @@ const Calculator = {
       costPerMu: 0,                  // 每亩成本
       profitPerMu: 0,                // 每亩利润
       flightHeight: plant.flightHeight,
-      pesticideIncluded: costs.pesticideIncluded === true
+      pesticideIncluded: costs.pesticideIncluded === true,
+      area: area,                    // 实际采用亩数（棵数基准时为反推值）
+      calcBasis: calcBasis,
+      treeCount: treeCount
     };
 
     if (area <= 0) return result;
 
-    /* 1. 参考药量（按人工打药稀释水量计算） */
+    /* 1. 参考药量（按人工打药稀释水量计算）
+          棵数基准：棵数 × 每棵水量 ÷ 一套药需水量（直接按棵，避免反推浮点误差） */
     let pesticideRaw;
     const pesticideWaterPerSet = Math.max(0.01, Number(plant.pesticideWaterPerSet) || 1);
-    if (plant.calcMode === 'tree') {
+    if (calcBasis === 'tree' && treeCount > 0) {
+      pesticideRaw = (treeCount * (Number(plant.waterPerTree) || 0)) / pesticideWaterPerSet;
+    } else if (plant.calcMode === 'tree') {
       const treesPerMu = Number(plant.treesPerMu) || 0;
       const waterPerTree = Number(plant.waterPerTree) || 0;
       pesticideRaw = (area * waterPerTree * treesPerMu) / pesticideWaterPerSet;
@@ -215,7 +230,8 @@ const Calculator = {
     const chargeMode = t.chargeMode || 'generator';
     const chargeAfterWork = t.chargeAfterWork !== false;
 
-    const area = Number(state.field.area) || 0;
+    // 棵数基准时用反推亩数（r.area 由 compute() 传入）
+    const area = (r && r.area != null) ? r.area : (Number(state.field.area) || 0);
     const totalWater = r.water || 0;
     const cycles = r.cycles || 0;
 
