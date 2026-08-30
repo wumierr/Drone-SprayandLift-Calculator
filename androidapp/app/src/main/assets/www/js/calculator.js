@@ -556,6 +556,8 @@ const Calculator = {
     const existingSets = Number(field.existingPesticideSets) || 0;
     const calcBasis = 'area';   // 地块按亩数计算（棵数基准仅单地块模式）
     const droneTank = Math.max(1, Number(field.droneTank) || 85);
+    const groupMoveTime = Math.max(0, Number(field.groupMoveTime) || 0);
+    const groupTripsOv = (field.groupTrips && typeof field.groupTrips === 'object') ? field.groupTrips : {};
 
     const t = timing || window.DEFAULT_TIMING || {};
     const flightSpeed = Math.max(0.01, Number(t.flightSpeed) || 2.5);
@@ -571,48 +573,68 @@ const Calculator = {
     const pesticideWaterPerSet = Math.max(0.01, Number(plant.pesticideWaterPerSet) || 1);
     const savingCoeff = Number(plant.droneSavingCoeff) || 1;
 
+    /* 第 1 步：逐地块原始数据（水量/药量/所属组） */
     const rows = [];
-    let totalArea = 0, totalWater = 0, totalTrips = 0;
-    let totalTransfer = 0, totalLoad = 0, totalFlightMin = 0;
-    let weightedTSum = 0;
-
     plots.forEach((p, i) => {
       const area = Number(p.area) || 0;
       const water = area * (Number(plant.waterPerMu) || 0);
-      const minTrips = water > 0 ? Math.ceil(water / droneTank) : 0;
-      const tripsOverride = Number(p.tripsOverride) || 0;
-      const trips = tripsOverride > 0 ? tripsOverride : minTrips;
-      const perTripWater = trips > 0 ? water / trips : 0;
-      const transferMin = Math.max(0, Number(p.transferMin) || 0);
-      const flightMin = area > 0
-        ? (area * 666.67) / lineSpacing / flightSpeed / 60 : 0;
-      const perTripSpray = trips > 0 ? flightMin / trips : 0;
-      const perTripTime = 2 * transferMin + loadTime + perTripSpray;
-      const pRaw = water > 0
-        ? this.round78((water / pesticideWaterPerSet) * savingCoeff)
-        : 0;
-
       rows.push({
         id: p.id != null ? p.id : i,
         name: p.name || `地块${i + 1}`,
-        area: area, water: water,
-        minTrips: minTrips, trips: trips, tripsOverride: tripsOverride,
-        perTripWater: perTripWater, transferMin: transferMin,
-        flightMin: flightMin, perTripTime: perTripTime,
-        pesticideRounded: pRaw
+        area: area,
+        water: water,
+        groupId: Math.max(1, Math.round(Number(p.groupId) || 1)),
+        transferMin: Math.max(0, Number(p.transferMin) || 0),
+        flightMin: area > 0 ? (area * 666.67) / lineSpacing / flightSpeed / 60 : 0,
+        pesticideRaw: water > 0 ? (water / pesticideWaterPerSet) * savingCoeff : 0,
+        pesticideRounded: 0
       });
-
-      totalArea += area;
-      totalWater += water;
-      totalTrips += trips;
-      totalTransfer += trips * 2 * transferMin;
-      totalLoad += trips * loadTime;
-      totalFlightMin += flightMin;
-      if (trips > 0) weightedTSum += trips * perTripTime;
     });
+
+    /* 第 2 步：按组聚合——同组相邻地块连片连续作业，合并算趟数 */
+    const groupMap = new Map();
+    rows.forEach(r => {
+      let g = groupMap.get(r.groupId);
+      if (!g) {
+        g = { id: r.groupId, water: 0, flightMin: 0, transferMin: 0, minTrips: 0, trips: 0, tripsOverride: 0, perTripWater: 0, perTripTime: 0 };
+        groupMap.set(r.groupId, g);
+      }
+      g.water += r.water;
+      g.flightMin += r.flightMin;
+      g.transferMin = Math.max(g.transferMin, r.transferMin);   // 组转场取组内最大（保守）
+    });
+    const groups = [...groupMap.values()].sort((a, b) => a.id - b.id);
+    groups.forEach(g => {
+      const ov = Math.round(Number(groupTripsOv[g.id]) || 0);
+      g.tripsOverride = ov > 0 ? ov : 0;
+      g.minTrips = g.water > 0 ? Math.ceil(g.water / droneTank) : 0;
+      g.trips = g.tripsOverride > 0 ? g.tripsOverride : g.minTrips;
+      g.perTripWater = g.trips > 0 ? g.water / g.trips : 0;
+      const perTripSpray = g.trips > 0 ? g.flightMin / g.trips : 0;
+      g.perTripTime = 2 * g.transferMin + loadTime + perTripSpray;
+    });
+    // 回填每块地所属组的趟数信息（展示用）与逐块药量
+    rows.forEach(r => {
+      const g = groupMap.get(r.groupId);
+      r.groupTrips = g ? g.trips : 0;
+      r.groupPerTripWater = g ? g.perTripWater : 0;
+      r.pesticideRounded = r.water > 0 ? this.round78(r.pesticideRaw) : 0;
+    });
+
+    const totalArea = rows.reduce((sum, r) => sum + r.area, 0);
+    const totalWater = rows.reduce((sum, r) => sum + r.water, 0);
+    const totalTrips = groups.reduce((sum, g) => sum + g.trips, 0);
+    const totalTransfer = groups.reduce((sum, g) => sum + g.trips * 2 * g.transferMin, 0);
+    const totalLoad = groups.reduce((sum, g) => sum + g.trips * loadTime, 0);
+    const totalFlightMin = rows.reduce((sum, r) => sum + r.flightMin, 0);
+    const totalMove = groups.length > 0 ? (groups.length - 1) * groupMoveTime : 0;
+    const weightedTSum = groups.reduce((sum, g) => sum + g.trips * g.perTripTime, 0);
 
     const result = {
       plots: rows,
+      groups: groups,
+      groupMoveTime: groupMoveTime,
+      totalMove: totalMove,
       plotMode: true,
       droneTank: droneTank,
       area: totalArea,
@@ -635,7 +657,7 @@ const Calculator = {
       return result;
     }
 
-    /* 参考药量：逐块 7舍8入后求和（每块地按整套备药，保守） */
+    /* 参考药量：逐块 7舍8入后求和（每块地按整套备药，保守；提交2 改三层口径） */
     result.pesticide = rows.reduce((s, r) => s + r.pesticideRounded, 0);
     result.pesticideRounded = result.pesticide;
     result.needToBuy = Math.max(0, result.pesticideRounded - existingSets);
@@ -648,19 +670,19 @@ const Calculator = {
     const mixTotalTime = mixRounds * baseMixTime;
     const firstMixTime = mixRounds > 0 ? baseMixTime : 0;
 
-    /* 电池循环成本：按总面积 ÷ 单循环亩数（成本口径与单地块一致） */
-    const cycleArea = Math.max(0.01, Number(costs.cycleArea) || 1);
-    result.cycles = Math.ceil(totalArea / cycleArea);
+    /* 电池循环成本：改按趟数（每次落地装药=一次电池竞争事件，比按亩更贴近实际） */
+    const tripsPerCycle = Math.max(1, Number(costs.tripsPerBatteryCyclePlot) || 6);
+    result.cycles = Math.ceil(totalTrips / tripsPerCycle);
     const cycleUnitCost = costs.useThreePhase
       ? Number(costs.cycleCostThreePhase) || 0
       : Number(costs.cycleCost) || 0;
     result.costBreakdown.cycle = result.cycles * cycleUnitCost;
 
-    /* 电池等待：按总趟数模拟（每次落地重新竞争电池），T 取加权平均单趟时间 */
+    /* 电池等待：按总趟数模拟（跨组合并排队），T 取加权平均单趟时间 */
     const avgT = totalTrips > 0 ? weightedTSum / totalTrips : 0;
     const batteryResult = this.computeBatteryWait(totalTrips, avgT, batteryCount, chargeMode, genTime, threeTime);
     const batteryWait = batteryResult.total;
-    const flightSpan = totalTrips > 0 ? weightedTSum + batteryWait : 0;
+    const flightSpan = totalTrips > 0 ? weightedTSum + batteryWait + totalMove : 0;
     batteryResult.cycles.forEach(c => {
       c.tStart += firstMixTime; c.tEnd += firstMixTime;
       c.chargeStart += firstMixTime; c.chargeEnd += firstMixTime;

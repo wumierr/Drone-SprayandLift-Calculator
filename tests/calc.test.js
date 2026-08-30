@@ -272,27 +272,45 @@ test('旧作物快照注册为自定义类型（迁移逻辑纯数据验证）',
 /* ============================================================
    多地块模式（一期 C）
    ============================================================ */
-test('多地块：趟数=⌈水量÷机载上限⌉，趟数覆盖重算每趟量', () => {
+test('多地块：独立组各自 ⌈组水量÷机载上限⌉，组级覆盖重算每趟量', () => {
   const s = freshState();
   s.field.plotMode = true;
   s.field.droneTank = 85;
   s.field.plots = [
-    { id: 'a', name: '东边', area: 10, transferMin: 5, tripsOverride: 0 },
-    { id: 'b', name: '西边', area: 20, transferMin: 3, tripsOverride: 8 },
-    { id: 'c', name: '北边', area: 5, transferMin: 0, tripsOverride: 0 }
+    { id: 'a', name: '东边', area: 10, groupId: 1, transferMin: 5 },
+    { id: 'b', name: '西边', area: 20, groupId: 2, transferMin: 3 },
+    { id: 'c', name: '北边', area: 5, groupId: 3, transferMin: 0 }
   ];
+  s.field.groupTrips = { 2: 8 };   // 组2 覆盖 8 趟
   const r = C.computePlots(s);
   eq(r.plots.length, 3, '3 个地块');
+  eq(r.groups.length, 3, '3 个作业组');
   ok(Math.abs(r.water - 700) < 0.01, `总水量=${r.water} 应为 200+400+100`);
   ok(Math.abs(r.area - 35) < 0.01, `总面积=${r.area}`);
-  eq(r.plots[0].minTrips, 3, '⌈200÷85⌉=3');
-  eq(r.plots[1].trips, 8, '西边覆盖 8 趟');
-  ok(Math.abs(r.plots[1].perTripWater - 50) < 0.01, `西边每趟=${r.plots[1].perTripWater} 应为 50`);
-  eq(r.plots[2].trips, 2, '⌈100÷85⌉=2');
+  const g1 = r.groups.find(g => g.id === 1), g2 = r.groups.find(g => g.id === 2), g3 = r.groups.find(g => g.id === 3);
+  eq(g1.minTrips, 3, '组1 ⌈200÷85⌉=3');
+  eq(g2.trips, 8, '组2 覆盖 8 趟');
+  ok(Math.abs(g2.perTripWater - 50) < 0.01, `组2 每趟=${g2.perTripWater} 应为 400÷8`);
+  eq(g3.trips, 2, '组3 ⌈100÷85⌉=2');
   eq(r.totalTrips, 13, '总趟数 3+8+2');
   ok(Math.abs(r.totalTransfer - 78) < 0.01, `转场合计=${r.totalTransfer} 应为 3×2×5+8×2×3`);
   ok(Math.abs(r.income - 875) < 0.01, `收入=${r.income} 应为 35×25`);
-  eq(r.cycles, 18, '电池循环=⌈35÷2⌉');
+  eq(r.cycles, 3, '电池循环改按趟数=⌈13÷6⌉');
+});
+
+test('作业组连片：同组合并趟数（30L+30L 连片 1 趟，分块则 2 趟）', () => {
+  const s = freshState();
+  s.field.plotMode = true;
+  s.plant.waterPerMu = 3;   // 10亩×3=30L/块
+  s.field.plots = [
+    { id: 'a', name: '甲', area: 10, groupId: 1, transferMin: 5 },
+    { id: 'b', name: '乙', area: 10, groupId: 1, transferMin: 5 }
+  ];
+  const r = C.computePlots(s);
+  eq(r.groups.length, 1, '合并为 1 组');
+  eq(r.groups[0].minTrips, 1, '⌈60÷85⌉=1 趟（连片优势）');
+  eq(r.totalTrips, 1, '总趟数 1');
+  ok(Math.abs(r.totalTransfer - 1 * 2 * 5) < 0.01, '组内换块不计转场，只收组转场');
 });
 
 test('多地块：参考药量逐块 7舍8入后求和（保守）', () => {
@@ -312,40 +330,62 @@ test('多地块：参考药量逐块 7舍8入后求和（保守）', () => {
   eq(r2.needToBuy, 2, '库存 2 补 2');
 });
 
-test('多地块：总时长用同一调度模型（首批兑药 + 飞行阶段 与 兑药总时长取大）', () => {
+test('多地块：总时长=调度模型 + 组间移动（组级覆盖）', () => {
   const s = freshState();
   s.field.plotMode = true;
   s.field.plots = [
-    { id: 'a', name: 'A', area: 10, transferMin: 5, tripsOverride: 0 },
-    { id: 'b', name: 'B', area: 20, transferMin: 3, tripsOverride: 8 },
-    { id: 'c', name: 'C', area: 5, transferMin: 0, tripsOverride: 0 }
+    { id: 'a', name: 'A', area: 10, groupId: 1, transferMin: 5 },
+    { id: 'b', name: 'B', area: 20, groupId: 1, transferMin: 3 },
+    { id: 'c', name: 'C', area: 5, groupId: 1, transferMin: 0 }
   ];
+  s.field.groupTrips = { 1: 8 };   // 组1 覆盖 8 趟（合并水量 700L）
+  s.field.groupMoveTime = 0;
   const r = C.computePlots(s);
   const t = r.timing;
   eq(t.mixRounds, 1, '700L ≤ 1000L 单批');
-  ok(Math.abs(t.totalTransfer - 78) < 0.01, '转场合计');
-  ok(Math.abs(t.flightSpan - 168.7778) < 0.01, `飞行阶段=${t.flightSpan} 应为 Σ趟时间168.78`);
-  ok(Math.abs(t.totalTime - 178.7778) < 0.01, `总时间=${t.totalTime} = 首批10+168.78`);
-  // 电池模拟按总趟数、且首循环在首批兑药之后
-  eq(t.batteryCycles.length, 13, '13 趟参与电池竞争');
+  // 组转场取组内最大 5 分 → 8×2×5=80
+  ok(Math.abs(t.totalTransfer - 80) < 0.01, `转场合计=${t.totalTransfer} 应为 8×2×5`);
+  // 组内飞行 22.22+44.44+11.11=77.78，每趟喷洒 77.78÷8
+  // 每趟时间 = 2×5 + 1 + 9.72 = 20.72 → 8 趟 = 165.78
+  ok(Math.abs(t.flightSpan - 165.7778) < 0.01, `飞行阶段=${t.flightSpan} 应为 165.78`);
+  ok(Math.abs(t.totalTime - 175.7778) < 0.01, `总时间=${t.totalTime} = 首批10+165.78`);
+  eq(t.batteryCycles.length, 8, '8 趟参与电池竞争');
   ok(Math.abs(t.batteryCycles[0].tStart - 10) < 0.01, '首趟平移到首批兑药后');
 });
 
-test('多地块文本往返：地块列表与机载上限保留', () => {
+test('组间移动时间计入总时长', () => {
+  const s = freshState();
+  s.field.plotMode = true;
+  s.field.groupMoveTime = 10;
+  s.field.plots = [
+    { id: 'a', name: 'A', area: 10, groupId: 1, transferMin: 5 },
+    { id: 'b', name: 'B', area: 20, groupId: 2, transferMin: 3 }
+  ];
+  const r = C.computePlots(s);
+  eq(r.totalMove, 10, '(2-1)×10=10');
+  // 飞行阶段 = Σ趟时间 + 电池等待 + 组间移动
+  ok(r.timing.flightSpan > r.totalMove, '组间移动进入飞行阶段');
+});
+
+test('多地块文本往返：地块/组/机载上限/组趟数保留', () => {
   const s = freshState();
   s.field.plotMode = true;
   s.field.droneTank = 60;
+  s.field.groupMoveTime = 12;
   s.field.plots = [
-    { id: 'a', name: '东边', area: 12, treeCount: 0, transferMin: 5, tripsOverride: 0 },
-    { id: 'b', name: '西边', area: 8, treeCount: 0, transferMin: 3, tripsOverride: 4 }
+    { id: 'a', name: '东边', area: 12, groupId: 1, transferMin: 5 },
+    { id: 'b', name: '西边', area: 8, groupId: 2, transferMin: 3 }
   ];
+  s.field.groupTrips = { 2: 4 };
   const text = S.exportText(s, 'spray');
   const back = S.importText(text);
   eq(back.field.plotMode, true, '多地块标记');
   eq(back.field.droneTank, 60, '机载上限');
+  eq(back.field.groupMoveTime, 12, '组间移动时间');
   eq(back.field.plots.length, 2, '2 个地块');
   eq(back.field.plots[0].name, '东边', '名称');
-  eq(back.field.plots[1].tripsOverride, 4, '趟数覆盖');
+  eq(back.field.plots[1].groupId, 2, '组号');
+  eq(back.field.groupTrips[2], 4, '组趟数覆盖');
   ok(Math.abs(back.field.plots[0].area - 12) < 1e-9, '亩数');
 });
 

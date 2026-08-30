@@ -1577,3 +1577,28 @@ html, body {
 /* 用药类型管理按钮行 */
 .type-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 2px; }
 .type-actions .btn { flex: 1; min-width: 0; }
+
+/* 作业组汇总条 */
+.group-bar {
+  margin-top: 12px;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.group-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.group-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent-soft);
+  border-radius: 8px; padding: 6px 10px;
+  font-size: 12px; color: var(--text-primary);
+}
+.group-chip b { color: var(--accent); }
+.group-chip-meta { font-family: var(--font-mono); font-size: 11px; }
+.group-trips-btn {
+  width: 24px; height: 24px; border: 1px solid var(--input-border);
+  background: var(--panel-bg); color: var(--text-primary);
+  border-radius: 6px; cursor: pointer; font-size: 13px; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.group-trips-btn:hover { border-color: var(--accent); color: var(--accent); }

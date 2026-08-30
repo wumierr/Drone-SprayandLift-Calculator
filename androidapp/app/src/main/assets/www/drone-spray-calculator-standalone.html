@@ -1596,6 +1596,31 @@ html, body {
 .type-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 2px; }
 .type-actions .btn { flex: 1; min-width: 0; }
 
+/* 作业组汇总条 */
+.group-bar {
+  margin-top: 12px;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.group-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.group-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent-soft);
+  border-radius: 8px; padding: 6px 10px;
+  font-size: 12px; color: var(--text-primary);
+}
+.group-chip b { color: var(--accent); }
+.group-chip-meta { font-family: var(--font-mono); font-size: 11px; }
+.group-trips-btn {
+  width: 24px; height: 24px; border: 1px solid var(--input-border);
+  background: var(--panel-bg); color: var(--text-primary);
+  border-radius: 6px; cursor: pointer; font-size: 13px; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.group-trips-btn:hover { border-color: var(--accent); color: var(--accent); }
+
   </style>
 </head>
 <body>
@@ -2080,8 +2105,10 @@ const DEFAULT_FIELD = {
   existingPesticideSets: 0, // 现有药剂套数（用户填，0表示无库存，作为主显示）
   farmerName: '',         // 农户名称（工单抬头显示；三期接入农户档案）
   droneTank: 85,          // 机载装药上限（升/趟）：无人机药箱最大装载量
+  groupMoveTime: 10,      // 组间移动时间（分钟/次）：不相邻作业组之间转场搬运的单次时间
   plotMode: false,        // 多地块模式：true 时按地块列表计算
-  plots: []               // 地块列表 [{id, name, area, transferMin, tripsOverride}]
+  plots: [],              // 地块列表 [{id, name, area, transferMin, groupId}]
+  groupTrips: {}          // 组级趟数覆盖 {组号: 趟数}（组内连片连续作业，合并算趟数）
 };
 
 /* 表单字段定义（用于动态渲染 + tooltip 说明 + 输入验证）
@@ -2099,7 +2126,8 @@ const FIELD_DEFS = {
     { value: 'tree', label: '按棵数' }
   ], default: 'area' },
   treeCount: { label: '果树棵数', unit: '棵', tip: '本次作业的果树总棵数（按棵数计算时使用，亩数自动反推）', group: 'param', default: 0, step: 1, integer: true, min: 0, priority: 'high' },
-  droneTank: { label: '机载装药上限', unit: '升/趟', tip: '无人机药箱一次最多装载的药液量（多地块模式按此算每块地最少趟数）。T40约40-50升，T60/T100更大，可超配到85', group: 'param', default: 85, step: 1, integer: true, minHard: 1, warnBelow: 10 },
+  droneTank: { label: '机载装药上限', unit: '升/趟', tip: '无人机药箱一次最多装载的药液量（多地块模式按此算每组最少趟数）。T40约40-50升，T60/T100更大，可超配到85', group: 'param', default: 85, step: 1, integer: true, minHard: 1, warnBelow: 10 },
+  groupMoveTime: { label: '组间移动时间', unit: '分钟/次', tip: '不相邻的作业组之间转场搬运的单次时间，总时长按 (组数−1)×此值 计入', group: 'param', default: 10, step: 1, min: 0, warnAbove: 120 },
   area: { label: '作业亩数', unit: '亩', tip: '本次需要打药的总亩数（建议 1-1000）。按棵数计算时由棵数自动反推', group: 'param', default: 10, step: 0.1, minHard: 0.01, warnBelow: 0.1, warnAbove: 10000, priority: 'high' },
   existingPesticideSets: { label: '现有药剂套数', unit: '套', tip: '已库存的药剂套数（主显示，作为主要参考）。0表示无库存，将完全按公式参考量采购', group: 'param', default: 0, step: 1, integer: true, min: 0, priority: 'high' },
   flightHeight: { label: '飞行高度', unit: '米', tip: '无人机距离作物冠层的建议高度，影响覆盖均匀度（建议 1-5 米）', group: 'param', default: 2.0, step: 0.1, min: 0.5, warnBelow: 0.5, warnAbove: 10 },
@@ -2165,7 +2193,7 @@ const FIELD_DEFS = {
 
 /* 顺序字段分组（控制表单渲染顺序） */
 const FIELD_ORDER = {
-  param: ['calcBasis', 'treeCount', 'area', 'droneTank', 'existingPesticideSets', 'flightHeight', 'waterPerMu', 'treesPerMu', 'waterPerTree', 'pesticideWaterPerSet', 'droneSavingCoeff'],
+  param: ['calcBasis', 'treeCount', 'area', 'droneTank', 'groupMoveTime', 'existingPesticideSets', 'flightHeight', 'waterPerMu', 'treesPerMu', 'waterPerTree', 'pesticideWaterPerSet', 'droneSavingCoeff'],
   cycle: ['cycleCost', 'cycleCostThreePhase', 'cycleArea', 'useThreePhase'],
   transport: ['distance', 'fuelConsumption', 'fuelPrice', 'tolls', 'vehicleDepreciation'],
   labor: ['workers', 'days', 'dailyWage', 'mealCost', 'accommodation', 'accommodationDays'],
@@ -2871,6 +2899,8 @@ const Calculator = {
     const existingSets = Number(field.existingPesticideSets) || 0;
     const calcBasis = 'area';   // 地块按亩数计算（棵数基准仅单地块模式）
     const droneTank = Math.max(1, Number(field.droneTank) || 85);
+    const groupMoveTime = Math.max(0, Number(field.groupMoveTime) || 0);
+    const groupTripsOv = (field.groupTrips && typeof field.groupTrips === 'object') ? field.groupTrips : {};
 
     const t = timing || window.DEFAULT_TIMING || {};
     const flightSpeed = Math.max(0.01, Number(t.flightSpeed) || 2.5);
@@ -2886,48 +2916,68 @@ const Calculator = {
     const pesticideWaterPerSet = Math.max(0.01, Number(plant.pesticideWaterPerSet) || 1);
     const savingCoeff = Number(plant.droneSavingCoeff) || 1;
 
+    /* 第 1 步：逐地块原始数据（水量/药量/所属组） */
     const rows = [];
-    let totalArea = 0, totalWater = 0, totalTrips = 0;
-    let totalTransfer = 0, totalLoad = 0, totalFlightMin = 0;
-    let weightedTSum = 0;
-
     plots.forEach((p, i) => {
       const area = Number(p.area) || 0;
       const water = area * (Number(plant.waterPerMu) || 0);
-      const minTrips = water > 0 ? Math.ceil(water / droneTank) : 0;
-      const tripsOverride = Number(p.tripsOverride) || 0;
-      const trips = tripsOverride > 0 ? tripsOverride : minTrips;
-      const perTripWater = trips > 0 ? water / trips : 0;
-      const transferMin = Math.max(0, Number(p.transferMin) || 0);
-      const flightMin = area > 0
-        ? (area * 666.67) / lineSpacing / flightSpeed / 60 : 0;
-      const perTripSpray = trips > 0 ? flightMin / trips : 0;
-      const perTripTime = 2 * transferMin + loadTime + perTripSpray;
-      const pRaw = water > 0
-        ? this.round78((water / pesticideWaterPerSet) * savingCoeff)
-        : 0;
-
       rows.push({
         id: p.id != null ? p.id : i,
         name: p.name || `地块${i + 1}`,
-        area: area, water: water,
-        minTrips: minTrips, trips: trips, tripsOverride: tripsOverride,
-        perTripWater: perTripWater, transferMin: transferMin,
-        flightMin: flightMin, perTripTime: perTripTime,
-        pesticideRounded: pRaw
+        area: area,
+        water: water,
+        groupId: Math.max(1, Math.round(Number(p.groupId) || 1)),
+        transferMin: Math.max(0, Number(p.transferMin) || 0),
+        flightMin: area > 0 ? (area * 666.67) / lineSpacing / flightSpeed / 60 : 0,
+        pesticideRaw: water > 0 ? (water / pesticideWaterPerSet) * savingCoeff : 0,
+        pesticideRounded: 0
       });
-
-      totalArea += area;
-      totalWater += water;
-      totalTrips += trips;
-      totalTransfer += trips * 2 * transferMin;
-      totalLoad += trips * loadTime;
-      totalFlightMin += flightMin;
-      if (trips > 0) weightedTSum += trips * perTripTime;
     });
+
+    /* 第 2 步：按组聚合——同组相邻地块连片连续作业，合并算趟数 */
+    const groupMap = new Map();
+    rows.forEach(r => {
+      let g = groupMap.get(r.groupId);
+      if (!g) {
+        g = { id: r.groupId, water: 0, flightMin: 0, transferMin: 0, minTrips: 0, trips: 0, tripsOverride: 0, perTripWater: 0, perTripTime: 0 };
+        groupMap.set(r.groupId, g);
+      }
+      g.water += r.water;
+      g.flightMin += r.flightMin;
+      g.transferMin = Math.max(g.transferMin, r.transferMin);   // 组转场取组内最大（保守）
+    });
+    const groups = [...groupMap.values()].sort((a, b) => a.id - b.id);
+    groups.forEach(g => {
+      const ov = Math.round(Number(groupTripsOv[g.id]) || 0);
+      g.tripsOverride = ov > 0 ? ov : 0;
+      g.minTrips = g.water > 0 ? Math.ceil(g.water / droneTank) : 0;
+      g.trips = g.tripsOverride > 0 ? g.tripsOverride : g.minTrips;
+      g.perTripWater = g.trips > 0 ? g.water / g.trips : 0;
+      const perTripSpray = g.trips > 0 ? g.flightMin / g.trips : 0;
+      g.perTripTime = 2 * g.transferMin + loadTime + perTripSpray;
+    });
+    // 回填每块地所属组的趟数信息（展示用）与逐块药量
+    rows.forEach(r => {
+      const g = groupMap.get(r.groupId);
+      r.groupTrips = g ? g.trips : 0;
+      r.groupPerTripWater = g ? g.perTripWater : 0;
+      r.pesticideRounded = r.water > 0 ? this.round78(r.pesticideRaw) : 0;
+    });
+
+    const totalArea = rows.reduce((sum, r) => sum + r.area, 0);
+    const totalWater = rows.reduce((sum, r) => sum + r.water, 0);
+    const totalTrips = groups.reduce((sum, g) => sum + g.trips, 0);
+    const totalTransfer = groups.reduce((sum, g) => sum + g.trips * 2 * g.transferMin, 0);
+    const totalLoad = groups.reduce((sum, g) => sum + g.trips * loadTime, 0);
+    const totalFlightMin = rows.reduce((sum, r) => sum + r.flightMin, 0);
+    const totalMove = groups.length > 0 ? (groups.length - 1) * groupMoveTime : 0;
+    const weightedTSum = groups.reduce((sum, g) => sum + g.trips * g.perTripTime, 0);
 
     const result = {
       plots: rows,
+      groups: groups,
+      groupMoveTime: groupMoveTime,
+      totalMove: totalMove,
       plotMode: true,
       droneTank: droneTank,
       area: totalArea,
@@ -2950,7 +3000,7 @@ const Calculator = {
       return result;
     }
 
-    /* 参考药量：逐块 7舍8入后求和（每块地按整套备药，保守） */
+    /* 参考药量：逐块 7舍8入后求和（每块地按整套备药，保守；提交2 改三层口径） */
     result.pesticide = rows.reduce((s, r) => s + r.pesticideRounded, 0);
     result.pesticideRounded = result.pesticide;
     result.needToBuy = Math.max(0, result.pesticideRounded - existingSets);
@@ -2963,19 +3013,19 @@ const Calculator = {
     const mixTotalTime = mixRounds * baseMixTime;
     const firstMixTime = mixRounds > 0 ? baseMixTime : 0;
 
-    /* 电池循环成本：按总面积 ÷ 单循环亩数（成本口径与单地块一致） */
-    const cycleArea = Math.max(0.01, Number(costs.cycleArea) || 1);
-    result.cycles = Math.ceil(totalArea / cycleArea);
+    /* 电池循环成本：改按趟数（每次落地装药=一次电池竞争事件，比按亩更贴近实际） */
+    const tripsPerCycle = Math.max(1, Number(costs.tripsPerBatteryCyclePlot) || 6);
+    result.cycles = Math.ceil(totalTrips / tripsPerCycle);
     const cycleUnitCost = costs.useThreePhase
       ? Number(costs.cycleCostThreePhase) || 0
       : Number(costs.cycleCost) || 0;
     result.costBreakdown.cycle = result.cycles * cycleUnitCost;
 
-    /* 电池等待：按总趟数模拟（每次落地重新竞争电池），T 取加权平均单趟时间 */
+    /* 电池等待：按总趟数模拟（跨组合并排队），T 取加权平均单趟时间 */
     const avgT = totalTrips > 0 ? weightedTSum / totalTrips : 0;
     const batteryResult = this.computeBatteryWait(totalTrips, avgT, batteryCount, chargeMode, genTime, threeTime);
     const batteryWait = batteryResult.total;
-    const flightSpan = totalTrips > 0 ? weightedTSum + batteryWait : 0;
+    const flightSpan = totalTrips > 0 ? weightedTSum + batteryWait + totalMove : 0;
     batteryResult.cycles.forEach(c => {
       c.tStart += firstMixTime; c.tEnd += firstMixTime;
       c.chargeStart += firstMixTime; c.chargeEnd += firstMixTime;
@@ -3401,12 +3451,17 @@ const Storage = {
       lines.push(`  现有药剂套数: ${state.field.existingPesticideSets}`);
       if (state.field.plotMode && Array.isArray(state.field.plots) && state.field.plots.length) {
         lines.push(`  机载装药上限: ${state.field.droneTank != null ? state.field.droneTank : 85} 升`);
+        lines.push(`  组间移动时间: ${state.field.groupMoveTime != null ? state.field.groupMoveTime : 10} 分钟`);
         lines.push('');
         lines.push('【地块列表】');
         state.field.plots.forEach(p => {
           const parts = [`名称=${p.name || ''}`, `亩数=${p.area != null ? p.area : 0}`,
-            `转场=${p.transferMin != null ? p.transferMin : 5}`, `趟数覆盖=${p.tripsOverride || 0}`];
+            `组=${Math.max(1, Math.round(Number(p.groupId) || 1))}`, `转场=${p.transferMin != null ? p.transferMin : 5}`];
           lines.push(`  [地块] ${parts.join(' | ')}`);
+        });
+        const gt = state.field.groupTrips || {};
+        Object.keys(gt).forEach(k => {
+          if (Number(gt[k]) > 0) lines.push(`  [组趟数] 组=${k} | 趟数=${gt[k]}`);
         });
       }
       lines.push('');
@@ -3577,6 +3632,7 @@ const Storage = {
       // 打药-作业
       '亩数': ['field', 'area', parseFloat],
       '机载装药上限': ['field', 'droneTank', parseFloat],
+      '组间移动时间': ['field', 'groupMoveTime', parseFloat],
       '现有药剂套数': ['field', 'existingPesticideSets', parseFloat],
       // 打药-循环
       '单次循环成本': ['costs', 'cycleCost', parseFloat],
@@ -3699,7 +3755,23 @@ const Storage = {
         }
         return;
       }
-      // 地块行（多地块模式）：  [地块] 名称=xx | 亩数=12 | 棵数=0 | 转场=5 | 趟数覆盖=0
+      // 组趟数行：  [组趟数] 组=1 | 趟数=8
+      if (line.includes('[组趟数]')) {
+        const kv = {};
+        line.replace(/^\s*\[组趟数\]\s*/, '').split('|').forEach(seg => {
+          const idx = seg.indexOf('=');
+          if (idx > -1) kv[seg.slice(0, idx).trim()] = seg.slice(idx + 1).trim();
+        });
+        const gid = parseInt(kv['组'], 10);
+        const trips = parseInt(kv['趟数'], 10);
+        if (gid >= 1 && trips > 0) {
+          result.field.groupTrips = result.field.groupTrips || {};
+          result.field.groupTrips[gid] = trips;
+          result.field.plotMode = true;
+        }
+        return;
+      }
+      // 地块行（多地块模式）：  [地块] 名称=xx | 亩数=12 | 组=1 | 转场=5
       if (line.includes('[地块]')) {
         const kv = {};
         line.replace(/^\s*\[地块\]\s*/, '').split('|').forEach(seg => {
@@ -3712,6 +3784,7 @@ const Storage = {
           id: 'imp' + result.field.plots.length,
           name: kv['名称'] || '',
           area: parseFloat(kv['亩数']) || 0,
+          groupId: parseInt(kv['组'], 10) || 1,
           transferMin: parseFloat(kv['转场']) != null && !isNaN(parseFloat(kv['转场'])) ? parseFloat(kv['转场']) : 5,
           tripsOverride: parseFloat(kv['趟数覆盖']) || 0
         });
@@ -4146,11 +4219,9 @@ const UI = {
     const wrap = document.getElementById('plotsEditor');
     if (!wrap) return;
     const plots = this.state.field.plots || [];
-    const tank = this.state.field.droneTank || 85;
-    const perMu = this.state.plant ? (this.state.plant.waterPerMu || 0) : 0;
     let html = `
       <div class="plot-toolbar">
-        <span class="hint">每个地块一张卡片，按<b>亩数</b>填写大小；趟数留空=按机载上限（${tank}升/趟）自动算最少趟数，手填可凑实际每趟加药量</span>
+        <span class="hint">每个地块一张卡片，按<b>亩数</b>填写大小；相邻地块填<b>相同组号</b>连片连续作业（趟数在下方"组汇总"里调整）</span>
         <span class="plot-presets" title="转场=加药点到该地块的单程飞行时间；选「远」=多留余量">
           全部地块转场
           <button type="button" class="btn btn-sm btn-secondary plot-preset" data-min="3">近·3分</button>
@@ -4175,12 +4246,12 @@ const UI = {
             <div class="unit-suffix" data-unit="分钟"><input type="number" class="plot-transfer" step="0.5" min="0" value="${p.transferMin != null ? p.transferMin : 5}"></div>
           </div>
           <div class="field">
-            <label>趟数（选填） <i class="tip" data-tip="留空=按机载上限自动算最少趟数；手填可凑实际每趟加药量">i</i></label>
-            <div class="unit-suffix" data-unit="趟"><input type="number" class="plot-trips" step="1" min="0" value="${p.tripsOverride || ''}" placeholder="自动"></div>
+            <label>作业组 <i class="tip" data-tip="相邻地块填相同组号即可连片连续作业（合并算趟数，组内不返航）；不同组之间需转场">i</i></label>
+            <div class="unit-suffix" data-unit="组"><input type="number" class="plot-group" step="1" min="1" max="9" value="${Math.max(1, Math.round(Number(p.groupId) || 1))}"></div>
           </div>
           <div class="field">
             <label>该地块</label>
-            <div class="plot-stat">${this.plotStatText(p, tank, perMu)}</div>
+            <div class="plot-stat">${this.plotStatText(p)}</div>
           </div>
         </div>
       </div>`;
@@ -4189,13 +4260,11 @@ const UI = {
     wrap.innerHTML = html;
   },
 
-  /* 单地块即时统计（编辑器卡片底部实时刷新） */
-  plotStatText(p, tank, perMu) {
-    const water = (Number(p.area) || 0) * perMu;
-    const minTrips = water > 0 ? Math.ceil(water / tank) : 0;
-    const trips = Number(p.tripsOverride) > 0 ? Number(p.tripsOverride) : minTrips;
-    const perTrip = trips > 0 ? water / trips : 0;
-    return `水量 <b>${Calculator.fmt(water, 1)}</b>升 ｜ 最少 <b>${minTrips}</b>趟 ｜ 每趟 <b>${Calculator.fmt(perTrip, 1)}</b>升`;
+  /* 单地块即时统计（编辑器卡片底部实时刷新；趟数在组级） */
+  plotStatText(p) {
+    const water = (Number(p.area) || 0) * (this.state.plant ? (this.state.plant.waterPerMu || 0) : 0);
+    const g = Math.max(1, Math.round(Number(p.groupId) || 1));
+    return `水量 <b>${Calculator.fmt(water, 1)}</b>升 · 组<b>${g}</b>（组内合并算趟数）`;
   },
 
   addPlot() {
@@ -4206,7 +4275,7 @@ const UI = {
       name: `地块${n + 1}`,
       area: 10,
       transferMin: 5,
-      tripsOverride: 0
+      groupId: 1
     });
     this.renderPlotsEditor();
     this.compute();
@@ -4222,26 +4291,56 @@ const UI = {
       return;
     }
     const fmt = Calculator.fmt.bind(Calculator);
+    // 组汇总条：每组水量/趟数/每趟量/转场，趟数可 ±（组级覆盖，留空=自动）
+    const chips = (r.groups || []).map(g => `
+      <span class="group-chip">
+        <b>组${g.id}</b>
+        <span class="group-chip-meta">${fmt(g.water, 1)}升 · ${g.trips}趟${g.tripsOverride ? '(手动)' : ''} · 每趟${fmt(g.perTripWater, 1)}升 · 转场${fmt(g.transferMin, 1)}分</span>
+        <button type="button" class="group-trips-btn" data-g="${g.id}" data-delta="-1" title="减少一趟">−</button>
+        <button type="button" class="group-trips-btn" data-g="${g.id}" data-delta="1" title="增加一趟">＋</button>
+      </span>`).join('');
+    const groupBar = (r.groups && r.groups.length) ? `
+      <div class="group-bar">
+        <span class="hint">组汇总（同组连片连续作业；± 调整组趟数凑每趟加药量${r.totalMove > 0 ? `；组间移动 ${fmt(r.totalMove, 0)}min` : ''}）</span>
+        <div class="group-chips">${chips}</div>
+      </div>` : '';
     const rows = r.plots.map(p => `
       <tr>
         <td>${this.escapeHtml(p.name)}</td>
+        <td>组${p.groupId}</td>
         <td>${fmt(p.area, 1)}</td>
         <td>${fmt(p.water, 1)}</td>
-        <td>${p.minTrips}</td>
-        <td><b>${p.trips}</b></td>
-        <td>${fmt(p.perTripWater, 1)}</td>
+        <td><b>${p.groupTrips}</b></td>
+        <td>${fmt(p.groupPerTripWater, 1)}</td>
         <td>${fmt(p.transferMin, 1)}</td>
         <td>${p.pesticideRounded}</td>
       </tr>`).join('');
     wrap.innerHTML = `
+      ${groupBar}
       <div class="panel-title" style="margin-top:12px;"><span>🗺️</span> 地块明细
         <span class="hint">机载上限 ${r.droneTank} 升/趟 · 共 ${r.totalTrips} 趟 · 转场合计 ${fmt(r.totalTransfer, 1)}min</span>
       </div>
       <table class="summary-table plots-table">
-        <thead><tr><th>地块</th><th>亩数</th><th>水量(升)</th><th>最少趟</th><th>趟数</th><th>每趟(升)</th><th>转场(min)</th><th>药量(套)</th></tr></thead>
+        <thead><tr><th>地块</th><th>组</th><th>亩数</th><th>水量(升)</th><th>趟数</th><th>每趟(升)</th><th>转场(min)</th><th>药量(套)</th></tr></thead>
         <tbody>${rows}</tbody>
-        <tfoot><tr><td>合计</td><td>${fmt(r.area, 1)}</td><td>${fmt(r.water, 1)}</td><td>—</td><td>${r.totalTrips}</td><td>—</td><td>${fmt(r.totalTransfer, 1)}</td><td>${r.pesticideRounded}</td></tr></tfoot>
+        <tfoot><tr><td>合计</td><td>${(r.groups || []).length} 组</td><td>${fmt(r.area, 1)}</td><td>${fmt(r.water, 1)}</td><td>—</td><td><b>${r.totalTrips}</b></td><td>—</td><td>${fmt(r.totalTransfer, 1)}</td><td>${r.pesticideRounded}</td></tr></tfoot>
       </table>`;
+  },
+
+  /* 组级趟数 ±（写 field.groupTrips 覆盖；减到低于最少趟数时提示） */
+  adjustGroupTrips(groupId, delta) {
+    const r = this._lastResult;
+    if (!r || !r.groups) return;
+    const g = r.groups.find(x => String(x.id) === String(groupId));
+    if (!g) return;
+    const cur = Number((this.state.field.groupTrips || {})[g.id]) || 0;
+    const next = Math.max(0, (cur > 0 ? cur : g.minTrips) + delta);
+    this.state.field.groupTrips = { ...(this.state.field.groupTrips || {}), [g.id]: next };
+    if (next < g.minTrips) {
+      this.toast(`⚠️ 组${g.id} 趟数少于最少趟数 ${g.minTrips}，每趟加药量将超过机载上限`, 'warn');
+    }
+    this.compute();
+    this.save();
   },
 
   /* ============================================================
@@ -4316,7 +4415,7 @@ const UI = {
         <div class="wo-plot">
           <div class="wo-plot-info">
             <div class="wo-plot-name">${this.escapeHtml(p.name)}</div>
-            <div class="wo-plot-meta">${fmt(p.water, 1)}升 · ${p.trips}趟 · 每趟${fmt(p.perTripWater, 1)}升 · 转场${fmt(p.transferMin, 1)}分</div>
+            <div class="wo-plot-meta">组${p.groupId} · ${fmt(p.water, 1)}升 · 组趟数${p.groupTrips} · 每趟${fmt(p.groupPerTripWater, 1)}升 · 转场${fmt(p.transferMin, 1)}分</div>
           </div>
           <div class="wo-plot-done">
             <label>已完成(升)</label>
@@ -4378,7 +4477,7 @@ const UI = {
         const done = Number(wo.completedByPlot[p.id]) || 0;
         const rest = Math.max(0, p.water - done);
         L.push(`【${p.name}】`);
-        L.push(`  ${fmt(p.area, 1)}亩 | 水量 ${fmt(p.water, 1)}升 | 趟数 ${p.trips} | 每趟 ${fmt(p.perTripWater, 1)}升 | 转场 ${fmt(p.transferMin, 1)}min`);
+        L.push(`  ${fmt(p.area, 1)}亩 | 组${p.groupId} | 水量 ${fmt(p.water, 1)}升 | 组趟数 ${p.groupTrips} | 每趟 ${fmt(p.groupPerTripWater, 1)}升 | 转场 ${fmt(p.transferMin, 1)}min`);
         L.push(`  已完成 ${fmt(done, 1)}升 (${p.water > 0 ? fmt(done / p.water * 100, 0) : 0}%) | 剩余 ${fmt(rest, 1)}升 ≈ ${p.perTripWater > 0 ? Math.ceil(rest / p.perTripWater) : 0}趟 | 药量 ${p.pesticideRounded}套`);
       });
     } else {
@@ -4398,7 +4497,7 @@ const UI = {
     const refillSets = Calculator.computeRefillSets(restTotal, plant.pesticideWaterPerSet, plant.droneSavingCoeff);
     L.push('【汇总】');
     L.push(`  总水量 ${fmt(r.water, 1)}升 | 已完成 ${fmt(doneTotal, 1)}升 | 剩余 ${fmt(restTotal, 1)}升`);
-    if (r.plotMode) L.push(`  总趟数 ${r.totalTrips} | 兑药 ${r.timing.mixRounds}批(单批${fmt(r.timing.batchCapacity, 0)}升)`);
+    if (r.plotMode) L.push(`  总趟数 ${r.totalTrips}（${(r.groups || []).length} 组） | 兑药 ${r.timing.mixRounds}批(单批${fmt(r.timing.batchCapacity, 0)}升)`);
     let timeText = `预计总时长 ${fdur(r.timing.totalTime)}`;
     if (r.timing.chargeAfterWork && r.timing.afterWorkCharge > 0) timeText += `（另结束后充电 ${fdur(r.timing.afterWorkCharge)}）`;
     L.push(`  ${timeText}`);
@@ -4925,7 +5024,7 @@ const UI = {
     // 来回升降 + 加药装载
     setText('tRoundTrip', fdur(t.roundTripTotal));
     document.getElementById('tRoundTripDetail').textContent = t.plotUnits
-      ? `装载${fmt1(t.totalLoad)}min + 转场${fmt1(t.totalTransfer)}min`
+      ? `装载${fmt1(t.totalLoad)}min + 转场${fmt1(t.totalTransfer)}min${this._lastResult && this._lastResult.totalMove > 0 ? ` + 组间移动${fmt1(this._lastResult.totalMove)}min` : ''}`
       : `(${this.state.timing.roundTripTime}+装载${t.loadTime != null ? t.loadTime : 0}min) × 循环数`;
 
     // 电池等待
@@ -5351,14 +5450,14 @@ const UI = {
         } else if (e.target.classList.contains('plot-transfer')) {
           const v = parseFloat(e.target.value);
           plot.transferMin = isNaN(v) ? 0 : Math.max(0, v);
-        } else if (e.target.classList.contains('plot-trips')) {
-          const v = parseFloat(e.target.value);
-          plot.tripsOverride = (!v || v <= 0) ? 0 : Math.max(0, Math.round(v));
+        } else if (e.target.classList.contains('plot-group')) {
+          const v = parseInt(e.target.value, 10);
+          plot.groupId = (!v || v < 1) ? 1 : Math.min(9, Math.round(v));
         }
         // 卡片底部统计实时刷新
         const stat = row.querySelector('.plot-stat');
         if (stat) {
-          stat.innerHTML = this.plotStatText(plot, this.state.field.droneTank || 85, this.state.plant ? (this.state.plant.waterPerMu || 0) : 0);
+          stat.innerHTML = this.plotStatText(plot);
         }
         this.compute();
       });
@@ -5417,6 +5516,16 @@ const UI = {
         this.toast(ok ? '纯文本工单已复制到剪贴板 📋' : '复制失败，请手动选择文本', ok ? 'success' : 'error');
       });
     });
+
+    // 组汇总条：组趟数 ±（事件委托在结果区容器上）
+    const plotsWrap = document.getElementById('plotsTableWrap');
+    if (plotsWrap) {
+      plotsWrap.addEventListener('click', e => {
+        const btn = e.target.closest('.group-trips-btn');
+        if (!btn) return;
+        this.adjustGroupTrips(btn.dataset.g, parseInt(btn.dataset.delta, 10));
+      });
+    }
 
     // 工单快捷修改（事件委托：重渲染后依然有效）
     const woQuick = document.getElementById('workOrderQuick');

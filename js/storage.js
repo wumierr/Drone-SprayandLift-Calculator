@@ -148,12 +148,17 @@ const Storage = {
       lines.push(`  现有药剂套数: ${state.field.existingPesticideSets}`);
       if (state.field.plotMode && Array.isArray(state.field.plots) && state.field.plots.length) {
         lines.push(`  机载装药上限: ${state.field.droneTank != null ? state.field.droneTank : 85} 升`);
+        lines.push(`  组间移动时间: ${state.field.groupMoveTime != null ? state.field.groupMoveTime : 10} 分钟`);
         lines.push('');
         lines.push('【地块列表】');
         state.field.plots.forEach(p => {
           const parts = [`名称=${p.name || ''}`, `亩数=${p.area != null ? p.area : 0}`,
-            `转场=${p.transferMin != null ? p.transferMin : 5}`, `趟数覆盖=${p.tripsOverride || 0}`];
+            `组=${Math.max(1, Math.round(Number(p.groupId) || 1))}`, `转场=${p.transferMin != null ? p.transferMin : 5}`];
           lines.push(`  [地块] ${parts.join(' | ')}`);
+        });
+        const gt = state.field.groupTrips || {};
+        Object.keys(gt).forEach(k => {
+          if (Number(gt[k]) > 0) lines.push(`  [组趟数] 组=${k} | 趟数=${gt[k]}`);
         });
       }
       lines.push('');
@@ -324,6 +329,7 @@ const Storage = {
       // 打药-作业
       '亩数': ['field', 'area', parseFloat],
       '机载装药上限': ['field', 'droneTank', parseFloat],
+      '组间移动时间': ['field', 'groupMoveTime', parseFloat],
       '现有药剂套数': ['field', 'existingPesticideSets', parseFloat],
       // 打药-循环
       '单次循环成本': ['costs', 'cycleCost', parseFloat],
@@ -446,7 +452,23 @@ const Storage = {
         }
         return;
       }
-      // 地块行（多地块模式）：  [地块] 名称=xx | 亩数=12 | 棵数=0 | 转场=5 | 趟数覆盖=0
+      // 组趟数行：  [组趟数] 组=1 | 趟数=8
+      if (line.includes('[组趟数]')) {
+        const kv = {};
+        line.replace(/^\s*\[组趟数\]\s*/, '').split('|').forEach(seg => {
+          const idx = seg.indexOf('=');
+          if (idx > -1) kv[seg.slice(0, idx).trim()] = seg.slice(idx + 1).trim();
+        });
+        const gid = parseInt(kv['组'], 10);
+        const trips = parseInt(kv['趟数'], 10);
+        if (gid >= 1 && trips > 0) {
+          result.field.groupTrips = result.field.groupTrips || {};
+          result.field.groupTrips[gid] = trips;
+          result.field.plotMode = true;
+        }
+        return;
+      }
+      // 地块行（多地块模式）：  [地块] 名称=xx | 亩数=12 | 组=1 | 转场=5
       if (line.includes('[地块]')) {
         const kv = {};
         line.replace(/^\s*\[地块\]\s*/, '').split('|').forEach(seg => {
@@ -459,6 +481,7 @@ const Storage = {
           id: 'imp' + result.field.plots.length,
           name: kv['名称'] || '',
           area: parseFloat(kv['亩数']) || 0,
+          groupId: parseInt(kv['组'], 10) || 1,
           transferMin: parseFloat(kv['转场']) != null && !isNaN(parseFloat(kv['转场'])) ? parseFloat(kv['转场']) : 5,
           tripsOverride: parseFloat(kv['趟数覆盖']) || 0
         });
