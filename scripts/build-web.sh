@@ -16,6 +16,12 @@ ok()   { echo -e "  ${G}[OK]${N}   $1"; }
 note() { echo -e "  ${Y}[i]${N}    $1"; }
 
 echo "生成静态发布目录 dist/"
+# 部署前重新生成单文件版，防止 standalone 与 js/css 漂移
+if command -v node >/dev/null 2>&1; then
+  node "$ROOT/scripts/build-standalone.js" && ok "重新生成 standalone"
+else
+  note "未找到 node，使用仓库内已提交的 standalone（如改过 js/css 请先 node scripts/build-standalone.js）"
+fi
 rm -rf "$DIST"; mkdir -p "$DIST"
 
 for f in index.html manifest.json sw.js drone-spray-calculator-standalone.html LICENSE; do

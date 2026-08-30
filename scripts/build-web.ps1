@@ -22,6 +22,12 @@ Set-Location $ProjectRoot
 $Dist = Join-Path $ProjectRoot $OutDir
 
 Write-Step '生成静态发布目录 dist/'
+# 部署前重新生成单文件版，防止 standalone 与 js/css 漂移
+if (Get-Command node -ErrorAction SilentlyContinue) {
+    node (Join-Path $ProjectRoot 'scriptsuild-standalone.js') | Out-Host
+} else {
+    Write-Note '未找到 node，使用仓库内已提交的 standalone'
+}
 
 # ---- 清空 ----
 if (Test-Path $Dist) { Remove-Item $Dist -Recurse -Force }

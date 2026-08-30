@@ -3285,7 +3285,7 @@ const Storage = {
       lines.push('【作业参数】');
       lines.push(`  亩数: ${state.field.area}`);
       lines.push(`  现有药剂套数: ${state.field.existingPesticideSets}`);
-      if (state.field.plotMode && Array.isArray(state.field.plots) && state.field.plots.length) {
+      if (Array.isArray(state.field.plots) && state.field.plots.length) {
         lines.push(`  机载装药上限: ${state.field.droneTank != null ? state.field.droneTank : 85} 升`);
         lines.push('【地块列表】');
         state.field.plots.forEach(p => {
@@ -3433,7 +3433,7 @@ const Storage = {
     const result = {
       mode: 'spray',
       plant: { ...window.PLANT_DATABASE.shajun },
-      field: { ...window.DEFAULT_FIELD },
+      field: { ...window.DEFAULT_FIELD, plots: [] },   // 独立数组，避免与模板默认值共享引用导致导入累积
       costs: { ...window.DEFAULT_COSTS },
       income: { ...window.DEFAULT_INCOME },
       timing: { ...window.DEFAULT_TIMING },
