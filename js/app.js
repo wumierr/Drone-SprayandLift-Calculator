@@ -27,7 +27,7 @@
     }
 
     // 控制台彩蛋
-    console.log('%c🚁 无人机打药计算器 v4.2', 'font-size:20px;color:#2e7d32;font-weight:bold;');
+    console.log('%c🚁 无人机打药计算器 v4.3', 'font-size:20px;color:#2e7d32;font-weight:bold;');
     console.log('%c本地存储不上传 · 可打包 APK · GitHub 友好', 'color:#1565c0;');
     console.log('快捷键：Ctrl/Cmd + Shift + V 一键粘贴导入配置');
   });
