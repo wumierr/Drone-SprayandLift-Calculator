@@ -81,14 +81,22 @@
         <div class="plant-info-desc" id="plantInfoDesc">请选择用药类型</div>
         <div class="plant-info-notes" id="plantInfoNotes"></div>
       </div>
-      <div class="tree-quick">
-        <div class="tree-quick-title">🌳 棵数速算药量 <span class="hint">农户只知道棵数时的药量参考，不进入下方作业计算</span></div>
-        <div class="stepper" data-step="10">
-          <button type="button" class="st-btn st-minus" aria-label="减少">−</button>
-          <div class="unit-suffix" data-unit="棵"><input type="number" id="treeQuickInput" step="10" min="0" placeholder="0"></div>
-          <button type="button" class="st-btn st-plus" aria-label="增加">＋</button>
+      <div class="tree-quick dose-ref">
+        <div class="tree-quick-title">💊 药量参考 <span class="hint">三来源互不覆盖；采购按标准取整，结算按实际（空回退标准）</span></div>
+        <div class="dose-row"><span class="dose-label">标准参考（按亩）</span><span class="dose-val" id="doseByArea">—</span></div>
+        <div class="dose-row"><span class="dose-label">标准参考（按棵）</span>
+          <div class="stepper" data-step="10">
+            <button type="button" class="st-btn st-minus" aria-label="减少">−</button>
+            <div class="unit-suffix" data-unit="棵"><input type="number" id="treeQuickInput" step="10" min="0" placeholder="0"></div>
+            <button type="button" class="st-btn st-plus" aria-label="增加">＋</button>
+          </div>
+          <span class="dose-val" id="doseByTree">—</span>
         </div>
-        <div id="treeQuickOut" class="tree-quick-out">填入棵数后显示建议药量</div>
+        <div class="dose-row">
+          <span class="dose-label">农户标准（人工 <input type="number" id="manualDoseInput" step="0.1" min="0" placeholder="套/亩"> 套/亩 × 省药系数）</span>
+          <span class="dose-val" id="doseFarmer">—</span>
+        </div>
+        <div class="dose-row"><span class="dose-label">实际 / 临时起意</span><span class="dose-val dose-dim">工单「实际用药」手填，空回退按亩标准</span></div>
       </div>
       <div class="type-actions">
         <button id="addTypeBtn" class="btn btn-secondary btn-sm">＋ 新建类型</button>

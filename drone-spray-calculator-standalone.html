@@ -1714,6 +1714,21 @@ html, body {
 .tree-quick-out { margin-top: 6px; font-size: 13px; color: var(--text-primary); }
 .tree-quick-out b { color: var(--accent); }
 
+
+/* 药量参考卡行 */
+.dose-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; flex-wrap: wrap;
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--input-border);
+}
+.dose-row:last-child { border-bottom: none; }
+.dose-label { font-size: 12px; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dose-label input { width: 64px; height: 30px; padding: 2px 6px; background: var(--panel-bg); border: 1px solid var(--input-border); border-radius: 6px; color: var(--text-primary); }
+.dose-val { font-size: 13px; color: var(--text-primary); font-family: var(--font-mono); }
+.dose-val b { color: var(--accent); font-size: 14px; }
+.dose-dim { color: var(--text-muted); font-family: var(--font-sans); }
+
   </style>
 </head>
 <body>
@@ -1780,14 +1795,22 @@ html, body {
         <div class="plant-info-desc" id="plantInfoDesc">请选择用药类型</div>
         <div class="plant-info-notes" id="plantInfoNotes"></div>
       </div>
-      <div class="tree-quick">
-        <div class="tree-quick-title">🌳 棵数速算药量 <span class="hint">农户只知道棵数时的药量参考，不进入下方作业计算</span></div>
-        <div class="stepper" data-step="10">
-          <button type="button" class="st-btn st-minus" aria-label="减少">−</button>
-          <div class="unit-suffix" data-unit="棵"><input type="number" id="treeQuickInput" step="10" min="0" placeholder="0"></div>
-          <button type="button" class="st-btn st-plus" aria-label="增加">＋</button>
+      <div class="tree-quick dose-ref">
+        <div class="tree-quick-title">💊 药量参考 <span class="hint">三来源互不覆盖；采购按标准取整，结算按实际（空回退标准）</span></div>
+        <div class="dose-row"><span class="dose-label">标准参考（按亩）</span><span class="dose-val" id="doseByArea">—</span></div>
+        <div class="dose-row"><span class="dose-label">标准参考（按棵）</span>
+          <div class="stepper" data-step="10">
+            <button type="button" class="st-btn st-minus" aria-label="减少">−</button>
+            <div class="unit-suffix" data-unit="棵"><input type="number" id="treeQuickInput" step="10" min="0" placeholder="0"></div>
+            <button type="button" class="st-btn st-plus" aria-label="增加">＋</button>
+          </div>
+          <span class="dose-val" id="doseByTree">—</span>
         </div>
-        <div id="treeQuickOut" class="tree-quick-out">填入棵数后显示建议药量</div>
+        <div class="dose-row">
+          <span class="dose-label">农户标准（人工 <input type="number" id="manualDoseInput" step="0.1" min="0" placeholder="套/亩"> 套/亩 × 省药系数）</span>
+          <span class="dose-val" id="doseFarmer">—</span>
+        </div>
+        <div class="dose-row"><span class="dose-label">实际 / 临时起意</span><span class="dose-val dose-dim">工单「实际用药」手填，空回退按亩标准</span></div>
       </div>
       <div class="type-actions">
         <button id="addTypeBtn" class="btn btn-secondary btn-sm">＋ 新建类型</button>
@@ -2270,6 +2293,7 @@ const DEFAULT_FIELD = {
   area: 10,               // 作业亩数
   plantKey: 'shajun',     // 当前用药类型 key（内部字段名沿用，兼容旧存档）
   existingPesticideSets: 0, // 现有药剂套数（用户填，0表示无库存，作为主显示）
+  manualDosePerMu: 0,     // 人工打药量（套/亩）：农户自己的打药标准，可空；填了在药量参考卡显示"农户标准"药量
   farmerName: '',         // 农户名称（工单抬头显示；三期接入农户档案）
   droneTank: 85,          // 机载装药上限（升/趟）：无人机药箱最大装载量
   plotMode: false,        // 多地块模式：true 时按地块列表计算
@@ -2965,6 +2989,17 @@ const Calculator = {
       afterWorkCharge: 0, afterWorkBlocks: [], totalTimeWithCharge: 0,
       batteryCount: 1, chargeMode: 'generator', chargeAfterWork: true, plotUnits: '趟'
     };
+  },
+
+  /**
+   * 农户标准药量（按农户人工打药标准折算无人机用量）：
+   * 亩数 × 人工每亩套数 × 省药系数 → 小数套数
+   * 用途：农户按自己人工打药习惯报量时的参考（与标准参考并列，互不覆盖）
+   */
+  calcFarmerDose(totalArea, manualDosePerMu, plant) {
+    const dose = Math.max(0, Number(manualDosePerMu) || 0);
+    if (!dose || !plant) return 0;
+    return Math.max(0, Number(totalArea) || 0) * dose * (Number(plant.droneSavingCoeff) || 1);
   },
 
   /**
@@ -4652,6 +4687,33 @@ const UI = {
     return L.join('\n');
   },
 
+  /* 药量参考卡：四来源即时刷新（随主计算/类型切换/输入联动） */
+  renderDoseRef() {
+    const byArea = document.getElementById('doseByArea');
+    const byTree = document.getElementById('doseByTree');
+    const farmer = document.getElementById('doseFarmer');
+    if (!byArea) return;
+    const r = this._lastResult;
+    const fmt = Calculator.fmt.bind(Calculator);
+    const plant = this.state.plant || {};
+    if (r && r.pesticide > 0) {
+      byArea.innerHTML = `<b>${fmt(r.pesticide, 2)}</b> 套（采购 ${r.pesticideRounded}）`;
+    } else {
+      byArea.textContent = '—';
+    }
+    const cnt = Number(document.getElementById('treeQuickInput')?.value) || 0;
+    const treeRaw = Calculator.calcTreesPesticide(cnt, plant);
+    byTree.innerHTML = cnt > 0 && treeRaw > 0
+      ? `<b>${fmt(treeRaw, 2)}</b> 套（采购 ${Calculator.round78(treeRaw)}）`
+      : '—';
+    const dose = Number(this.state.field.manualDosePerMu) || 0;
+    const area = r && r.area != null ? r.area : (Number(this.state.field.area) || 0);
+    const farmerRaw = Calculator.calcFarmerDose(area, dose, plant);
+    farmer.innerHTML = dose > 0
+      ? `<b>${fmt(farmerRaw, 2)}</b> 套（${fmt(area, 1)}亩 × ${fmt(dose, 1)}套/亩 × 省药系数）`
+      : '—';
+  },
+
   updatePlantInfo() {
     const p = this.state.plant;
     if (!p) return;
@@ -5841,22 +5903,18 @@ const UI = {
     // 高级设置折叠状态记忆
     this.bindAdvState();
 
-    // 棵数速算药量（独立参考，不写作业状态）
+    // 药量参考卡（四来源：按亩/按棵/农户标准/实际）
     const tq = document.getElementById('treeQuickInput');
+    const md = document.getElementById('manualDoseInput');
     if (tq) {
-      const render = () => {
-        const out = document.getElementById('treeQuickOut');
-        const raw = Calculator.calcTreesPesticide(tq.value, this.state.plant);
-        const tpm = (this.state.plant && this.state.plant.treesPerMu) || 0;
-        const cnt = Number(tq.value) || 0;
-        if (!out) return;
-        out.innerHTML = raw > 0
-          ? `建议药量 <b>${Calculator.fmt(raw, 2)}</b> 套（采购 ${Calculator.round78(raw)} 套）${tpm > 0 ? ` · 折合 ≈ ${Calculator.fmt(cnt / tpm, 1)} 亩` : ''}`
-          : '填入棵数后显示建议药量';
-      };
-      tq.addEventListener('input', render);
-      this._treeQuickRender = render;   // 切换类型后按新类型参数重算
+      tq.addEventListener('input', () => this.renderDoseRef());
+      this._treeQuickRender = () => this.renderDoseRef();   // 切换类型后按新类型参数重算
     }
+    if (md) md.addEventListener('input', () => {
+      this.state.field.manualDosePerMu = parseFloat(md.value) || 0;
+      this.renderDoseRef();
+      this.save();
+    });
 
     // 农户档案
     document.getElementById('farmersBtn').addEventListener('click', () => this.openFarmersModal());

@@ -101,6 +101,7 @@ const DEFAULT_FIELD = {
   area: 10,               // 作业亩数
   plantKey: 'shajun',     // 当前用药类型 key（内部字段名沿用，兼容旧存档）
   existingPesticideSets: 0, // 现有药剂套数（用户填，0表示无库存，作为主显示）
+  manualDosePerMu: 0,     // 人工打药量（套/亩）：农户自己的打药标准，可空；填了在药量参考卡显示"农户标准"药量
   farmerName: '',         // 农户名称（工单抬头显示；三期接入农户档案）
   droneTank: 85,          // 机载装药上限（升/趟）：无人机药箱最大装载量
   plotMode: false,        // 多地块模式：true 时按地块列表计算

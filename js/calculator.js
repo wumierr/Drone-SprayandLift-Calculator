@@ -494,6 +494,17 @@ const Calculator = {
   },
 
   /**
+   * 农户标准药量（按农户人工打药标准折算无人机用量）：
+   * 亩数 × 人工每亩套数 × 省药系数 → 小数套数
+   * 用途：农户按自己人工打药习惯报量时的参考（与标准参考并列，互不覆盖）
+   */
+  calcFarmerDose(totalArea, manualDosePerMu, plant) {
+    const dose = Math.max(0, Number(manualDosePerMu) || 0);
+    if (!dose || !plant) return 0;
+    return Math.max(0, Number(totalArea) || 0) * dose * (Number(plant.droneSavingCoeff) || 1);
+  },
+
+  /**
    * 棵数速算药量（独立参考工具，不接地块/作业引擎）：
    * 棵数 × 每棵水量 ÷ 一套药需水量 × 省药系数 → 小数套数
    * 用途：农户不知道亩数、只说大致棵数时的药量参考

@@ -66,6 +66,14 @@ test('calcTreesPesticide 棵数速算药量', () => {
   ok(Math.abs(C.calcTreesPesticide(800, plant) - 5.6) < 1e-9, '800棵 → 5.6 套');
 });
 
+/* ---------- 农户标准药量（v4.4 人工打药量口径） ---------- */
+test('calcFarmerDose 农户标准 = 亩数×人工套/亩×省药系数', () => {
+  const plant = { ...ctx.window.PLANT_DATABASE.shajun };
+  ok(Math.abs(C.calcFarmerDose(30, 2, plant) - 42) < 1e-9, '30亩×2套/亩×0.7=42');
+  eq(C.calcFarmerDose(30, 0, plant), 0, '未填人工量 → 0');
+  eq(C.calcFarmerDose(-1, 2, plant), 0, '负面积 → 0');
+});
+
 /* ---------- APK 兼容防护：禁止原生对话框（WebView 不实现 prompt/confirm） ---------- */
 test('js/ui.js 无原生 prompt()/confirm() 调用（注释除外）', () => {
   const src = fs.readFileSync(path.join(ROOT, 'js', 'ui.js'), 'utf8')

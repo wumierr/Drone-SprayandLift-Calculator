@@ -1695,3 +1695,18 @@ html, body {
 .tree-quick-title { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
 .tree-quick-out { margin-top: 6px; font-size: 13px; color: var(--text-primary); }
 .tree-quick-out b { color: var(--accent); }
+
+
+/* 药量参考卡行 */
+.dose-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; flex-wrap: wrap;
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--input-border);
+}
+.dose-row:last-child { border-bottom: none; }
+.dose-label { font-size: 12px; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dose-label input { width: 64px; height: 30px; padding: 2px 6px; background: var(--panel-bg); border: 1px solid var(--input-border); border-radius: 6px; color: var(--text-primary); }
+.dose-val { font-size: 13px; color: var(--text-primary); font-family: var(--font-mono); }
+.dose-val b { color: var(--accent); font-size: 14px; }
+.dose-dim { color: var(--text-muted); font-family: var(--font-sans); }

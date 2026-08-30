@@ -923,6 +923,33 @@ const UI = {
     return L.join('\n');
   },
 
+  /* 药量参考卡：四来源即时刷新（随主计算/类型切换/输入联动） */
+  renderDoseRef() {
+    const byArea = document.getElementById('doseByArea');
+    const byTree = document.getElementById('doseByTree');
+    const farmer = document.getElementById('doseFarmer');
+    if (!byArea) return;
+    const r = this._lastResult;
+    const fmt = Calculator.fmt.bind(Calculator);
+    const plant = this.state.plant || {};
+    if (r && r.pesticide > 0) {
+      byArea.innerHTML = `<b>${fmt(r.pesticide, 2)}</b> 套（采购 ${r.pesticideRounded}）`;
+    } else {
+      byArea.textContent = '—';
+    }
+    const cnt = Number(document.getElementById('treeQuickInput')?.value) || 0;
+    const treeRaw = Calculator.calcTreesPesticide(cnt, plant);
+    byTree.innerHTML = cnt > 0 && treeRaw > 0
+      ? `<b>${fmt(treeRaw, 2)}</b> 套（采购 ${Calculator.round78(treeRaw)}）`
+      : '—';
+    const dose = Number(this.state.field.manualDosePerMu) || 0;
+    const area = r && r.area != null ? r.area : (Number(this.state.field.area) || 0);
+    const farmerRaw = Calculator.calcFarmerDose(area, dose, plant);
+    farmer.innerHTML = dose > 0
+      ? `<b>${fmt(farmerRaw, 2)}</b> 套（${fmt(area, 1)}亩 × ${fmt(dose, 1)}套/亩 × 省药系数）`
+      : '—';
+  },
+
   updatePlantInfo() {
     const p = this.state.plant;
     if (!p) return;
@@ -2112,22 +2139,18 @@ const UI = {
     // 高级设置折叠状态记忆
     this.bindAdvState();
 
-    // 棵数速算药量（独立参考，不写作业状态）
+    // 药量参考卡（四来源：按亩/按棵/农户标准/实际）
     const tq = document.getElementById('treeQuickInput');
+    const md = document.getElementById('manualDoseInput');
     if (tq) {
-      const render = () => {
-        const out = document.getElementById('treeQuickOut');
-        const raw = Calculator.calcTreesPesticide(tq.value, this.state.plant);
-        const tpm = (this.state.plant && this.state.plant.treesPerMu) || 0;
-        const cnt = Number(tq.value) || 0;
-        if (!out) return;
-        out.innerHTML = raw > 0
-          ? `建议药量 <b>${Calculator.fmt(raw, 2)}</b> 套（采购 ${Calculator.round78(raw)} 套）${tpm > 0 ? ` · 折合 ≈ ${Calculator.fmt(cnt / tpm, 1)} 亩` : ''}`
-          : '填入棵数后显示建议药量';
-      };
-      tq.addEventListener('input', render);
-      this._treeQuickRender = render;   // 切换类型后按新类型参数重算
+      tq.addEventListener('input', () => this.renderDoseRef());
+      this._treeQuickRender = () => this.renderDoseRef();   // 切换类型后按新类型参数重算
     }
+    if (md) md.addEventListener('input', () => {
+      this.state.field.manualDosePerMu = parseFloat(md.value) || 0;
+      this.renderDoseRef();
+      this.save();
+    });
 
     // 农户档案
     document.getElementById('farmersBtn').addEventListener('click', () => this.openFarmersModal());
