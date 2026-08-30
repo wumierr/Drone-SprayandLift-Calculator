@@ -7,7 +7,7 @@
    ============================================================ */
 
 /* 改任何 JS/CSS 后必须递增此版本号，否则 PWA 用户拿到的仍是旧缓存 */
-const CACHE_VERSION = 'drone-spray-v4.0.0';
+const CACHE_VERSION = 'drone-spray-v4.1.0';
 const CACHE_NAME = CACHE_VERSION;
 const ASSETS = [
   './',

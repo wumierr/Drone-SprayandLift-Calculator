@@ -132,11 +132,17 @@ const UI = {
     const f = this.state.field;
     if (!Array.isArray(f.plots)) f.plots = [];
     if (f.plots.length === 0) {
+      let area = Number(f.area) || 0;
+      let treeCount = Number(f.treeCount) || 0;
+      // 按当前基准补齐另一侧数值（数据等价换算，旧存档零丢失）
+      const tpm = (this.state.plant && this.state.plant.treesPerMu) || 0;
+      if (f.calcBasis === 'tree' && !treeCount && area > 0 && tpm > 0) treeCount = Math.round(area * tpm);
+      if (f.calcBasis !== 'tree' && !area && treeCount > 0 && tpm > 0) area = treeCount / tpm;
       f.plots = [{
         id: 'p_default',
         name: '地块1',
-        area: Number(f.area) || 0,
-        treeCount: Number(f.treeCount) || 0,
+        area: area,
+        treeCount: treeCount,
         groupId: 1,
         farmerId: 'farmer_default'
       }];
@@ -449,6 +455,11 @@ const UI = {
       this.toast('请填写农户名称', 'warn');
       return;
     }
+    // 同名去重：已存在同名档案则转为编辑该档案（防重复建档）
+    if (!this._editingFarmerId) {
+      const dup = this.state.farmers.find(x => x.name === name);
+      if (dup) this._editingFarmerId = dup.id;
+    }
     const num = v => { const x = parseFloat(v); return isNaN(x) ? 0 : x; };
     let f = this._editingFarmerId ? this.getFarmer(this._editingFarmerId) : null;
     if (f) {
@@ -598,8 +609,10 @@ const UI = {
     let sizeText, water;
     if (basis === 'tree') {
       const t = Number(p.treeCount) || 0;
+      const tpm = plant.treesPerMu || 0;
       sizeText = `${t}棵`;
-      water = t * (plant.waterPerTree || 0);
+      // 水量与引擎同口径：亩数（棵数反推）× 每亩水量（无人机喷洒）
+      water = tpm > 0 ? (t / tpm) * (plant.waterPerMu || 0) : 0;
     } else {
       const a = Number(p.area) || 0;
       sizeText = `${a}亩`;
@@ -866,7 +879,10 @@ const UI = {
       : (Number(wo.completedSingle) || 0);
     const restTotal = Math.max(0, r.water - doneTotal);
     const actualSets = Number(wo.actualSets) > 0 ? Number(wo.actualSets) : r.pesticideRounded;
-    const refillSets = Calculator.computeRefillSets(restTotal, plant.pesticideWaterPerSet, plant.droneSavingCoeff);
+    // 续药按本次作业自身的需求口径折算：剩余占比 × 合计小数用量，再 7舍8入
+    const refillSets = (restTotal > 0 && r.water > 0)
+      ? Calculator.round78(r.usedSets * (restTotal / r.water))
+      : 0;
     L.push('【汇总】');
     L.push(`  总水量 ${fmt(r.water, 1)}升 | 已完成 ${fmt(doneTotal, 1)}升 | 剩余 ${fmt(restTotal, 1)}升`);
     if (r.plotMode) L.push(`  总趟数 ${r.totalTrips}（${(r.groups || []).length} 组） | 兑药 ${r.timing.mixRounds}批(单批${fmt(r.timing.batchCapacity, 0)}升)`);
