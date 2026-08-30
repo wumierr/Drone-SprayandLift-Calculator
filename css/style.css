@@ -1441,20 +1441,26 @@ html, body {
 
 /* 大屏/平板优化（≥1200px） */
 @media (min-width: 1200px) {
+  /* 左列=输入流（类型/地块/参数/时间参数），中列=结果+时间可视化，右列=成本/收入/汇总 */
   .app-main {
-    grid-template-columns: 1fr 1.4fr 1fr;
+    grid-template-columns: 1fr 1.25fr 1.1fr;
     grid-template-areas:
-      "plant result param"
-      "plant result cost"
-      "income income income"
-      "summary summary summary";
+      "plant  plots  result"
+      "param  plots  result"
+      "tparam plots  result"
+      "cost   cost   result"
+      "cost   cost   summary"
+      "income income timing";
   }
   .plant-panel { grid-area: plant; grid-row: auto; }
-  .result-panel { grid-area: result; grid-column: auto; }
+  .plots-panel { grid-area: plots; }
   .param-panel { grid-area: param; }
+  .timing-param-panel { grid-area: tparam; }
+  .result-panel { grid-area: result; grid-column: auto; }
   .cost-panel { grid-area: cost; }
   .income-panel { grid-area: income; }
   .summary-panel { grid-area: summary; }
+  .timing-panel { grid-area: timing; }
 }
 
 /* 减少动画偏好（无障碍） */
