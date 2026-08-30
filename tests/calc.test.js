@@ -226,32 +226,6 @@ test('computeHaul 兼容 { haul: {...} } 完整 state 形式', () => {
 /* ============================================================
    计算基准：按棵数直算（一期 B）
    ============================================================ */
-test('棵数基准：药量按棵直算，亩数反推供成本/收入/时间', () => {
-  const s = freshState();
-  s.field.calcBasis = 'tree';
-  s.field.plots = [{ id: 'a', name: '地块1', treeCount: 160, groupId: 1 }];  // 80棵/亩 → 反推 2 亩
-  const r = C.computePlots(s);
-  ok(Math.abs(r.area - 2) < 1e-9, `反推亩数=${r.area} 应为 2`);
-  ok(Math.abs(r.pesticide - 1.12) < 1e-9, `药量=${r.pesticide} 应为 160×3÷300×0.7=1.12`);
-  eq(r.pesticideRounded, 1, '7舍8入 → 1');
-  eq(r.water, 40, '水量 = 2亩×20升');
-  eq(r.totalTrips, 1, '趟数 ⌈40÷85⌉=1');
-  eq(r.income, 50, '收入 = 2×25');
-});
-
-test('棵数基准与亩数基准数值一致（160棵 = 2亩）', () => {
-  const byTree = freshState();
-  byTree.field.calcBasis = 'tree';
-  byTree.field.plots = [{ id: 'a', treeCount: 160, groupId: 1 }];
-  const byArea = freshState();
-  byArea.field.plots = [{ id: 'a', area: 2, groupId: 1 }];
-  const a = C.computePlots(byTree), b = C.computePlots(byArea);
-  ok(Math.abs(a.pesticide - b.pesticide) < 1e-9, '药量一致');
-  ok(Math.abs(a.water - b.water) < 1e-9, '水量一致');
-  ok(Math.abs(a.totalCost - b.totalCost) < 1e-9, '总成本一致');
-  ok(Math.abs(a.timing.totalTime - b.timing.totalTime) < 1e-9, '作业时间一致');
-});
-
 test('类型 defaultBasis 决定面积模式药量公式（稀释 vs 每亩水量）', () => {
   const s = freshState();
   eq(s.plant.defaultBasis, 'tree', '杀菌默认按棵数（果树林型）');
