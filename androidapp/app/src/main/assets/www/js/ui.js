@@ -21,11 +21,109 @@ const UI = {
 
   /* ---------- 初始化 ---------- */
   init() {
+    this.loadTypes();
     this.loadState();
     this.bindModeSwitcher();
     this.bindEvents();
     this.applyMode(this.state.mode);
     this.applyTheme(Storage.getTheme());
+  },
+
+  /* ============================================================
+     ★★★ 用药类型库（自定义增减）★★★
+     - 内置定义在 data.js PLANT_DATABASE（杀菌/果蝇），
+       用户增改后的完整库存 localStorage（Storage.getTypes/saveTypes）
+     - state.plant 仍存选中类型快照（内部字段名沿用，兼容旧存档/预设）
+     - 旧存档/旧预设中的作物快照加载时自动注册为自定义类型
+     ============================================================ */
+  loadTypes() {
+    const saved = Storage.getTypes();
+    if (Array.isArray(saved) && saved.length > 0) {
+      // 补齐 builtin 标记（内置 key 恒为 builtin）
+      this.typeLibrary = saved.map(t => ({ ...t, builtin: !!window.PLANT_DATABASE[t.key]?.builtin && !t._modified }));
+    } else {
+      this.typeLibrary = Object.entries(window.PLANT_DATABASE).map(([key, t]) => ({ key, ...t }));
+    }
+    Storage.saveTypes(this.typeLibrary);
+  },
+
+  saveTypes() {
+    Storage.saveTypes(this.typeLibrary);
+  },
+
+  getType(key) {
+    return this.typeLibrary.find(t => t.key === key) || null;
+  },
+
+  /* 旧存档/导入的类型快照若不在库中 → 注册为自定义类型，返回可用 key */
+  registerTypeSnapshot(snapshot) {
+    if (!snapshot || !snapshot.name) return null;
+    const existing = this.typeLibrary.find(t => t.name === snapshot.name);
+    if (existing) return existing.key;
+    const key = 'custom_' + Date.now().toString(36) + '_' + this.typeLibrary.length;
+    this.typeLibrary.push({
+      key,
+      name: snapshot.name,
+      icon: snapshot.icon || '🧪',
+      defaultBasis: snapshot.defaultBasis || (snapshot.calcMode === 'tree' ? 'tree' : 'area'),
+      flightHeight: snapshot.flightHeight != null ? snapshot.flightHeight : 2,
+      waterPerMu: snapshot.waterPerMu != null ? snapshot.waterPerMu : 20,
+      treesPerMu: snapshot.treesPerMu != null ? snapshot.treesPerMu : 0,
+      waterPerTree: snapshot.waterPerTree != null ? snapshot.waterPerTree : 0,
+      pesticideWaterPerSet: snapshot.pesticideWaterPerSet != null ? snapshot.pesticideWaterPerSet : 300,
+      droneSavingCoeff: snapshot.droneSavingCoeff != null ? snapshot.droneSavingCoeff : 0.7,
+      description: snapshot.description || '（从旧数据自动导入的类型）',
+      notes: snapshot.notes || '',
+      builtin: false
+    });
+    this.saveTypes();
+    return key;
+  },
+
+  /* ---------- 加载已保存状态 ---------- */
+  loadState() {
+    const saved = Storage.getState();
+    if (saved) {
+      this.state.mode = saved.mode || 'spray';
+      if (saved.plant) this.state.plant = { ...saved.plant };
+      else this.state.plant = { ...PLANT_DATABASE[this.state.field.plantKey || 'shajun'] };
+      // 旧存档快照不在类型库中 → 自动注册为自定义类型
+      let key = this.state.field.plantKey;
+      if (!key || !this.getType(key)) {
+        key = this.registerTypeSnapshot(this.state.plant) || key;
+      }
+      this.state.field.plantKey = key;
+      const libType = this.getType(key);
+      if (libType) this.state.plant = { ...libType };
+      if (saved.field) this.state.field = { ...this.state.field, ...saved.field };
+      this.state.field.plantKey = key;
+      // 旧版存档无 calcBasis：按类型 defaultBasis 预置
+      if (saved.field && saved.field.calcBasis === undefined) {
+        this.state.field.calcBasis = this.getBasisOf(this.state.plant);
+      }
+      if (saved.costs) this.state.costs = { ...this.state.costs, ...saved.costs };
+      if (saved.income) this.state.income = { ...this.state.income, ...saved.income };
+      if (saved.timing) this.state.timing = { ...this.state.timing, ...saved.timing };
+      if (saved.haulField) this.state.haulField = { ...this.state.haulField, ...saved.haulField };
+      if (saved.haulCosts) this.state.haulCosts = { ...this.state.haulCosts, ...saved.haulCosts };
+      if (saved.haulIncome) this.state.haulIncome = { ...this.state.haulIncome, ...saved.haulIncome };
+      if (saved.workOrder) {
+        this.state.workOrder = {
+          ...{ completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' },
+          ...saved.workOrder
+        };
+      }
+    } else {
+      this.state.plant = { ...PLANT_DATABASE[this.state.field.plantKey || 'shajun'] };
+      // 全新访问：按类型 defaultBasis 预置基准
+      this.state.field.calcBasis = this.getBasisOf(this.state.plant);
+    }
+  },
+
+  /* 类型的默认计算基准（兼容旧 calcMode 字段） */
+  getBasisOf(plant) {
+    const b = plant.defaultBasis || plant.calcMode;
+    return b === 'tree' ? 'tree' : 'area';
   },
 
   /* ---------- 模式切换 ---------- */
@@ -59,7 +157,7 @@ const UI = {
     // 工单按钮仅打药模式可用
     const woBtn = document.getElementById('workOrderBtn');
     if (woBtn) woBtn.style.display = mode === 'spray' ? '' : 'none';
-    // 植物面板和预设栏：仅打药模式显示
+    // 类型面板和预设栏：仅打药模式显示
     const plantPanel = document.querySelector('.plant-panel');
     if (plantPanel) plantPanel.style.display = mode === 'spray' ? '' : 'none';
     // 作业时间面板和时间参数面板：仅打药模式显示
@@ -75,7 +173,7 @@ const UI = {
 
   renderAll() {
     if (this.state.mode === 'spray') {
-      this.renderPlantGrid();
+      this.renderTypeGrid();
       this.updatePlantInfo();
       this.renderParamForm();
       this.renderCostTabs();
@@ -88,62 +186,31 @@ const UI = {
     }
   },
 
-  /* ---------- 加载已保存状态 ---------- */
-  loadState() {
-    const saved = Storage.getState();
-    if (saved) {
-      this.state.mode = saved.mode || 'spray';
-      if (saved.plant) this.state.plant = { ...saved.plant };
-      else this.state.plant = { ...PLANT_DATABASE[this.state.field.plantKey || 'fruit_tree'] };
-      if (saved.field) this.state.field = { ...this.state.field, ...saved.field };
-      // 旧版存档无 calcBasis：按植物类型预置基准（果树→按棵数）
-      if (saved.field && saved.field.calcBasis === undefined) {
-        this.state.field.calcBasis = this.state.plant.calcMode === 'tree' ? 'tree' : 'area';
-      }
-      if (saved.costs) this.state.costs = { ...this.state.costs, ...saved.costs };
-      if (saved.income) this.state.income = { ...this.state.income, ...saved.income };
-      if (saved.timing) this.state.timing = { ...this.state.timing, ...saved.timing };
-      if (saved.haulField) this.state.haulField = { ...this.state.haulField, ...saved.haulField };
-      if (saved.haulCosts) this.state.haulCosts = { ...this.state.haulCosts, ...saved.haulCosts };
-      if (saved.haulIncome) this.state.haulIncome = { ...this.state.haulIncome, ...saved.haulIncome };
-      if (saved.workOrder) {
-        this.state.workOrder = {
-          ...{ completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' },
-          ...saved.workOrder
-        };
-      }
-    } else {
-      this.state.plant = { ...PLANT_DATABASE[this.state.field.plantKey || 'fruit_tree'] };
-      // 全新访问：按植物类型预置基准（果树→按棵数，大田→按亩数）
-      this.state.field.calcBasis = this.state.plant.calcMode === 'tree' ? 'tree' : 'area';
-    }
-  },
-
   /* ============================================================
-     ★★ 打药模式（沿用原逻辑）★★
+     ★★ 打药模式（用药类型 + 计算）★★
      ============================================================ */
 
-  renderPlantGrid() {
+  renderTypeGrid() {
     const grid = document.getElementById('plantGrid');
     grid.innerHTML = '';
-    Object.entries(PLANT_DATABASE).forEach(([key, plant]) => {
+    this.typeLibrary.forEach(t => {
       const card = document.createElement('div');
       card.className = 'plant-card';
-      card.dataset.key = key;
-      if (this.state.plant && this.state.plant.name === plant.name) card.classList.add('active');
-      card.innerHTML = `<span class="p-icon">${plant.icon}</span><span class="p-name">${plant.name}</span>`;
-      card.addEventListener('click', () => this.selectPlant(key));
+      card.dataset.key = t.key;
+      if (this.state.plant && this.state.plant.name === t.name) card.classList.add('active');
+      card.innerHTML = `<span class="p-icon">${t.icon}</span><span class="p-name">${this.escapeHtml(t.name)}</span>`;
+      card.addEventListener('click', () => this.selectType(t.key));
       grid.appendChild(card);
     });
   },
 
-  selectPlant(key) {
-    const plant = PLANT_DATABASE[key];
-    if (!plant) return;
-    this.state.plant = { ...plant };
+  selectType(key) {
+    const t = this.getType(key);
+    if (!t) return;
+    this.state.plant = { ...t };
     this.state.field.plantKey = key;
-    // 切换植物时按其自然基准预置（果树→按棵数，大田→按亩数）
-    this.state.field.calcBasis = plant.calcMode === 'tree' ? 'tree' : 'area';
+    // 切换类型时按其 defaultBasis 预置计算基准
+    this.state.field.calcBasis = this.getBasisOf(t);
     document.querySelectorAll('.plant-card').forEach(c => {
       c.classList.toggle('active', c.dataset.key === key);
     });
@@ -154,10 +221,119 @@ const UI = {
     this.save();
   },
 
+  /* ---------- 用药类型 CRUD ---------- */
+  openTypeModal(key) {
+    this._editingTypeKey = key || null;
+    this.renderTypeForm();
+    this.openModal('typeModal');
+  },
+
+  renderTypeForm() {
+    const form = document.getElementById('typeForm');
+    if (!form) return;
+    const t = this._editingTypeKey ? this.getType(this._editingTypeKey) : null;
+    const v = (k, dflt) => (t && t[k] != null ? t[k] : dflt);
+    const F = (label, id, type, val, tip) => `
+      <div class="field">
+        <label>${label}${tip ? ` <i class="tip" data-tip="${this.escapeHtml(tip)}">i</i>` : ''}</label>
+        <input type="${type}" id="${id}" value="${this.escapeHtml(String(val))}">
+      </div>`;
+    form.innerHTML = `
+      ${F('类型名称 *', 'tf-name', 'text', v('name', ''), '如：杀菌、果蝇、晚熟桃膨大期')}
+      ${F('图标', 'tf-icon', 'text', v('icon', '🧪'), '一个 emoji，显示在类型卡片上')}
+      ${F('每亩水量 (升)', 'tf-waterPerMu', 'number', v('waterPerMu', 20), '该作业每亩喷洒的药液量')}
+      ${F('一套药需水量 (升)', 'tf-perSet', 'number', v('pesticideWaterPerSet', 300), '一整套药剂对应需要的水量')}
+      ${F('省药系数', 'tf-coeff', 'number', v('droneSavingCoeff', 0.7), '0.7 表示比人工省 30%')}
+      ${F('飞行高度 (米)', 'tf-height', 'number', v('flightHeight', 2), '距作物冠层的高度')}
+      ${F('每亩棵数 (按棵数计算用)', 'tf-treesPerMu', 'number', v('treesPerMu', 80), '按棵数计算时用于亩数反推，可留 0')}
+      ${F('每棵水量 (升，按棵数计算用)', 'tf-waterPerTree', 'number', v('waterPerTree', 3), '单棵树喷洒量，可留 0')}
+      <div class="field" style="grid-column: 1 / -1;">
+        <label>说明</label>
+        <input type="text" id="tf-desc" value="${this.escapeHtml(v('description', ''))}" placeholder="如：雨后补喷注意加减量">
+      </div>`;
+  },
+
+  saveTypeForm() {
+    const get = id => document.getElementById(id)?.value;
+    const num = (id, dflt) => { const v = parseFloat(get(id)); return isNaN(v) ? dflt : v; };
+    const name = (get('tf-name') || '').trim();
+    if (!name) {
+      this.toast('请填写类型名称', 'warn');
+      return;
+    }
+    const entry = {
+      key: this._editingTypeKey || ('custom_' + Date.now().toString(36)),
+      name,
+      icon: (get('tf-icon') || '🧪').slice(0, 4),
+      defaultBasis: this._editingTypeKey ? (this.getBasisOf(this.getType(this._editingTypeKey) || {})) : 'tree',
+      flightHeight: num('tf-height', 2),
+      waterPerMu: num('tf-waterPerMu', 20),
+      treesPerMu: num('tf-treesPerMu', 0),
+      waterPerTree: num('tf-waterPerTree', 0),
+      pesticideWaterPerSet: num('tf-perSet', 300),
+      droneSavingCoeff: num('tf-coeff', 0.7),
+      description: get('tf-desc') || '',
+      notes: this._editingTypeKey ? (this.getType(this._editingTypeKey)?.notes || '') : '',
+      builtin: false   // 用户改过/新建的一律视为自定义（可删除）
+    };
+    const idx = this.typeLibrary.findIndex(t => t.key === entry.key);
+    if (idx >= 0) this.typeLibrary[idx] = entry;
+    else this.typeLibrary.push(entry);
+    this.saveTypes();
+    // 选中它
+    this.state.plant = { ...entry };
+    this.state.field.plantKey = entry.key;
+    this.state.field.calcBasis = this.getBasisOf(entry);
+    this.renderTypeGrid();
+    this.updatePlantInfo();
+    this.syncParamFormFromPlant();
+    this.updateCalcBasisVisibility();
+    this.compute();
+    this.save();
+    this.closeModal('typeModal');
+    this.toast(`类型「${name}」已保存`, 'success');
+  },
+
+  deleteCurrentType() {
+    const key = this.state.field.plantKey;
+    const t = this.getType(key);
+    if (!t) return;
+    if (this.typeLibrary.length <= 1) {
+      this.toast('至少保留一个类型', 'warn');
+      return;
+    }
+    if (!confirm(`删除类型「${t.name}」？`)) return;
+    this.typeLibrary = this.typeLibrary.filter(x => x.key !== key);
+    const first = this.typeLibrary[0];
+    this.state.plant = { ...first };
+    this.state.field.plantKey = first.key;
+    this.state.field.calcBasis = this.getBasisOf(first);
+    this.saveTypes();
+    this.renderTypeGrid();
+    this.updatePlantInfo();
+    this.syncParamFormFromPlant();
+    this.updateCalcBasisVisibility();
+    this.compute();
+    this.save();
+    this.closeModal('typeModal');
+    this.toast(`类型「${t.name}」已删除`, 'warn');
+  },
+
+  restoreDefaultTypes() {
+    Object.entries(PLANT_DATABASE).forEach(([key, t]) => {
+      if (!this.typeLibrary.find(x => x.key === key)) {
+        this.typeLibrary.push({ key, ...t });
+      }
+    });
+    this.saveTypes();
+    this.renderTypeGrid();
+    this.toast('已找回默认类型（杀菌/果蝇）', 'success');
+  },
+
   /* 计算基准切换后的输入项显隐：按棵数隐藏亩数、显示棵数并锁定每亩棵数 */
   updateCalcBasisVisibility() {
     const basis = this.state.field.calcBasis === 'tree' ? 'tree' : 'area';
-    // 同步单选按钮选中态（切换植物时 state 变了但 DOM 不会自动跟随）
+    // 同步单选按钮选中态（切换类型时 state 变了但 DOM 不会自动跟随）
     document.querySelectorAll('input[name="radio-calcBasis"]').forEach(r => {
       r.checked = r.value === basis;
     });
@@ -187,6 +363,9 @@ const UI = {
     const treeEl = document.getElementById('inp-treeCount');
     if (areaEl) areaEl.closest('.field').style.display = plotsMode ? 'none' : (this.state.field.calcBasis === 'tree' ? 'none' : '');
     if (treeEl) treeEl.closest('.field').style.display = plotsMode ? 'none' : (this.state.field.calcBasis === 'area' ? 'none' : '');
+    // 多地块按亩填写，计算基准切换一并隐藏（棵数基准仅单地块模式）
+    const basisEl = document.getElementById('inp-calcBasis');
+    if (basisEl) basisEl.closest('.field').style.display = plotsMode ? 'none' : '';
     const wrap = document.getElementById('plotsTableWrap');
     if (wrap) wrap.style.display = plotsMode ? '' : 'none';
   },
@@ -195,43 +374,65 @@ const UI = {
     const wrap = document.getElementById('plotsEditor');
     if (!wrap) return;
     const plots = this.state.field.plots || [];
-    const basis = this.state.field.calcBasis === 'tree' ? 'tree' : 'area';
-    const sizeLabel = basis === 'tree' ? '棵数' : '亩数';
-    const sizeUnit = basis === 'tree' ? '棵' : '亩';
+    const tank = this.state.field.droneTank || 85;
+    const perMu = this.state.plant ? (this.state.plant.waterPerMu || 0) : 0;
     let html = `
       <div class="plot-toolbar">
-        <span class="hint">按<b>${basis === 'tree' ? '棵数' : '亩数'}</b>填写各地块；趟数留空=按机载上限自动算最少趟数</span>
-        <span class="plot-presets">
-          转场档位
-          <button type="button" class="btn btn-sm btn-secondary plot-preset" data-min="3">保守3m</button>
-          <button type="button" class="btn btn-sm btn-secondary plot-preset" data-min="5">标准5m</button>
-          <button type="button" class="btn btn-sm btn-secondary plot-preset" data-min="8">激进8m</button>
+        <span class="hint">每个地块一张卡片，按<b>亩数</b>填写大小；趟数留空=按机载上限（${tank}升/趟）自动算最少趟数，手填可凑实际每趟加药量</span>
+        <span class="plot-presets" title="转场=加药点到该地块的单程飞行时间；选「远」=多留余量">
+          全部地块转场
+          <button type="button" class="btn btn-sm btn-secondary plot-preset" data-min="3">近·3分</button>
+          <button type="button" class="btn btn-sm btn-secondary plot-preset" data-min="5">中·5分</button>
+          <button type="button" class="btn btn-sm btn-secondary plot-preset" data-min="8">远·8分</button>
         </span>
       </div>`;
     plots.forEach((p, i) => {
-      const sizeVal = basis === 'tree' ? (p.treeCount || '') : (p.area || '');
       html += `
-      <div class="plot-row" data-id="${p.id}">
-        <input type="text" class="plot-name" value="${this.escapeHtml(p.name || `地块${i + 1}`)}" placeholder="名称">
-        <div class="unit-suffix" data-unit="${sizeUnit}"><input type="number" class="plot-size" step="0.1" min="0" value="${sizeVal}" placeholder="${sizeLabel}"></div>
-        <div class="unit-suffix" data-unit="min"><input type="number" class="plot-transfer" step="0.5" min="0" value="${p.transferMin != null ? p.transferMin : 5}" placeholder="转场"></div>
-        <div class="unit-suffix" data-unit="趟"><input type="number" class="plot-trips" step="1" min="0" value="${p.tripsOverride || ''}" placeholder="自动"></div>
-        <button type="button" class="icon-btn plot-del" title="删除地块">🗑</button>
+      <div class="plot-card" data-id="${p.id}">
+        <div class="plot-card-head">
+          <input type="text" class="plot-name" value="${this.escapeHtml(p.name || `地块${i + 1}`)}" placeholder="地块名称">
+          <button type="button" class="icon-btn plot-del" title="删除该地块">🗑</button>
+        </div>
+        <div class="plot-card-fields">
+          <div class="field">
+            <label>亩数 <i class="tip" data-tip="该地块需要打药的面积">i</i></label>
+            <div class="unit-suffix" data-unit="亩"><input type="number" class="plot-size" step="0.1" min="0" value="${p.area || ''}" placeholder="0"></div>
+          </div>
+          <div class="field">
+            <label>转场时间 <i class="tip" data-tip="加药点到该地块的单程时间（分钟）">i</i></label>
+            <div class="unit-suffix" data-unit="分钟"><input type="number" class="plot-transfer" step="0.5" min="0" value="${p.transferMin != null ? p.transferMin : 5}"></div>
+          </div>
+          <div class="field">
+            <label>趟数（选填） <i class="tip" data-tip="留空=按机载上限自动算最少趟数；手填可凑实际每趟加药量">i</i></label>
+            <div class="unit-suffix" data-unit="趟"><input type="number" class="plot-trips" step="1" min="0" value="${p.tripsOverride || ''}" placeholder="自动"></div>
+          </div>
+          <div class="field">
+            <label>该地块</label>
+            <div class="plot-stat">${this.plotStatText(p, tank, perMu)}</div>
+          </div>
+        </div>
       </div>`;
     });
     html += '<button type="button" class="btn btn-secondary btn-sm plot-add">＋ 添加地块</button>';
     wrap.innerHTML = html;
   },
 
+  /* 单地块即时统计（编辑器卡片底部实时刷新） */
+  plotStatText(p, tank, perMu) {
+    const water = (Number(p.area) || 0) * perMu;
+    const minTrips = water > 0 ? Math.ceil(water / tank) : 0;
+    const trips = Number(p.tripsOverride) > 0 ? Number(p.tripsOverride) : minTrips;
+    const perTrip = trips > 0 ? water / trips : 0;
+    return `水量 <b>${Calculator.fmt(water, 1)}</b>升 ｜ 最少 <b>${minTrips}</b>趟 ｜ 每趟 <b>${Calculator.fmt(perTrip, 1)}</b>升`;
+  },
+
   addPlot() {
     if (!Array.isArray(this.state.field.plots)) this.state.field.plots = [];
     const n = this.state.field.plots.length;
-    const isTree = this.state.field.calcBasis === 'tree';
     this.state.field.plots.push({
       id: 'p' + Date.now().toString(36) + '_' + n,
       name: `地块${n + 1}`,
-      area: isTree ? 0 : 10,
-      treeCount: isTree ? 100 : 0,
+      area: 10,
       transferMin: 5,
       tripsOverride: 0
     });
@@ -249,12 +450,10 @@ const UI = {
       return;
     }
     const fmt = Calculator.fmt.bind(Calculator);
-    const basis = r.calcBasis === 'tree' ? 'tree' : 'area';
-    const sizeHeader = basis === 'tree' ? '棵数' : '亩数';
     const rows = r.plots.map(p => `
       <tr>
         <td>${this.escapeHtml(p.name)}</td>
-        <td>${basis === 'tree' ? fmt(p.treeCount, 0) : fmt(p.area, 1)}</td>
+        <td>${fmt(p.area, 1)}</td>
         <td>${fmt(p.water, 1)}</td>
         <td>${p.minTrips}</td>
         <td><b>${p.trips}</b></td>
@@ -267,9 +466,9 @@ const UI = {
         <span class="hint">机载上限 ${r.droneTank} 升/趟 · 共 ${r.totalTrips} 趟 · 转场合计 ${fmt(r.totalTransfer, 1)}min</span>
       </div>
       <table class="summary-table plots-table">
-        <thead><tr><th>地块</th><th>${sizeHeader}</th><th>水量(升)</th><th>最少趟</th><th>趟数</th><th>每趟(升)</th><th>转场(min)</th><th>药量(套)</th></tr></thead>
+        <thead><tr><th>地块</th><th>亩数</th><th>水量(升)</th><th>最少趟</th><th>趟数</th><th>每趟(升)</th><th>转场(min)</th><th>药量(套)</th></tr></thead>
         <tbody>${rows}</tbody>
-        <tfoot><tr><td>合计</td><td>${basis === 'tree' ? fmt(r.plots.reduce((s, p) => s + p.treeCount, 0), 0) : fmt(r.area, 1)}</td><td>${fmt(r.water, 1)}</td><td>—</td><td>${r.totalTrips}</td><td>—</td><td>${fmt(r.totalTransfer, 1)}</td><td>${r.pesticideRounded}</td></tr></tfoot>
+        <tfoot><tr><td>合计</td><td>${fmt(r.area, 1)}</td><td>${fmt(r.water, 1)}</td><td>—</td><td>${r.totalTrips}</td><td>—</td><td>${fmt(r.totalTransfer, 1)}</td><td>${r.pesticideRounded}</td></tr></tfoot>
       </table>`;
   },
 
@@ -297,52 +496,93 @@ const UI = {
       return;
     }
     this.renderWorkOrderQuick();
-    this.renderWorkOrderText();
     this.openModal('workOrderModal');
   },
 
   renderWorkOrderQuick() {
     const wrap = document.getElementById('workOrderQuick');
-    if (!wrap) return;
+    const sumWrap = document.getElementById('workOrderSummary');
+    const refill = document.getElementById('woRefill');
+    if (!wrap || !sumWrap || !refill) return;
     const r = this._lastResult;
     const wo = this.getWorkOrder();
-    let html = '';
+    const fmt = Calculator.fmt.bind(Calculator);
+    const fdur = Calculator.formatDuration.bind(Calculator);
+    const pill = '\uD83D\uDC8A';
+
+    /* 汇总小卡 */
+    const timeText = fdur(r.timing.totalTime)
+      + (r.timing.chargeAfterWork && r.timing.afterWorkCharge > 0 ? '+' + fdur(r.timing.afterWorkCharge) : '');
+    sumWrap.innerHTML = `
+      <div class="wo-card"><div class="wo-card-label">总水量</div><div class="wo-card-value">${fmt(r.water, 1)}<small>升</small></div></div>
+      <div class="wo-card"><div class="wo-card-label">${r.plotMode ? '总趟数' : '循环数'}</div><div class="wo-card-value">${r.plotMode ? r.totalTrips : r.cycles}<small>${r.plotMode ? '趟' : '次'}</small></div></div>
+      <div class="wo-card"><div class="wo-card-label">预计总时长</div><div class="wo-card-value">${timeText}</div></div>
+      <div class="wo-card"><div class="wo-card-label">药量 参考 / 实际</div><div class="wo-card-value">${r.pesticideRounded}<small>套</small><input type="number" class="wo-sets" min="0" step="1" value="${wo.actualSets || ''}" placeholder="实际"></div></div>`;
+
+    /* 续药提醒条 */
+    const doneTotal = this.woDoneTotal(r, wo);
+    const restTotal = Math.max(0, r.water - doneTotal);
+    if (restTotal > 0) {
+      refill.style.display = '';
+      const refillSets = Calculator.computeRefillSets(restTotal, this.state.plant.pesticideWaterPerSet, this.state.plant.droneSavingCoeff);
+      refill.innerHTML = `${pill} 剩余 <b>${fmt(restTotal, 1)}</b> 升 ≈ 还需 <b>${refillSets}</b> 套药（7舍8入），记得安排续药`;
+    } else {
+      refill.style.display = 'none';
+    }
+
+    /* 农户 + 逐地块行 + 备注 */
+    let html = `
+      <div class="field wo-farmer-field">
+        <label>农户名称 <i class="tip" data-tip="工单抬头显示；未来农户档案将在此选择">i</i></label>
+        <input type="text" class="wo-farmer" value="${this.escapeHtml(this.state.field.farmerName || '')}" placeholder="选填，如：老王家果园">
+      </div>`;
     if (r && r.plotMode) {
       (r.plots || []).forEach(p => {
         const done = Number(wo.completedByPlot[p.id]) || 0;
         const rest = Math.max(0, p.water - done);
         html += `
-          <div class="field">
-            <label>${this.escapeHtml(p.name)} 已完成(升)</label>
+        <div class="wo-plot">
+          <div class="wo-plot-info">
+            <div class="wo-plot-name">${this.escapeHtml(p.name)}</div>
+            <div class="wo-plot-meta">${fmt(p.water, 1)}升 · ${p.trips}趟 · 每趟${fmt(p.perTripWater, 1)}升 · 转场${fmt(p.transferMin, 1)}分</div>
+          </div>
+          <div class="wo-plot-done">
+            <label>已完成(升)</label>
             <input type="number" class="wo-completed" data-id="${p.id}" min="0" step="1" value="${done || ''}" placeholder="0">
-            <span class="wo-rest hint" data-id="${p.id}">剩余 ${Calculator.fmt(rest, 1)} 升 ≈ ${p.perTripWater > 0 ? Math.ceil(rest / p.perTripWater) : 0} 趟</span>
-          </div>`;
+          </div>
+          <div class="wo-plot-rest" data-id="${p.id}">剩余 ${fmt(rest, 1)}升 ≈ ${p.perTripWater > 0 ? Math.ceil(rest / p.perTripWater) : 0}趟</div>
+        </div>`;
       });
     } else {
       const done = Number(wo.completedSingle) || 0;
       const rest = Math.max(0, (r ? r.water : 0) - done);
       html += `
-        <div class="field">
-          <label>已完成水量(升)</label>
+      <div class="wo-plot">
+        <div class="wo-plot-info">
+          <div class="wo-plot-name">当前地块</div>
+          <div class="wo-plot-meta">${fmt(r ? r.water : 0, 1)}升 · 循环 ${r ? r.cycles : 0} 次</div>
+        </div>
+        <div class="wo-plot-done">
+          <label>已完成(升)</label>
           <input type="number" class="wo-single" min="0" step="1" value="${done || ''}" placeholder="0">
-          <span class="hint" id="woRestSingle">剩余 ${Calculator.fmt(rest, 1)} 升</span>
-        </div>`;
+        </div>
+        <div class="wo-plot-rest" id="woRestSingle">剩余 ${fmt(rest, 1)}升</div>
+      </div>`;
     }
     html += `
-      <div class="field">
-        <label>实际用药(套)</label>
-        <input type="number" class="wo-sets" min="0" step="1" value="${wo.actualSets || ''}" placeholder="参考 ${r ? r.pesticideRounded : 0}">
-      </div>
-      <div class="field" style="grid-column: 1 / -1;">
+      <div class="field wo-note-field">
         <label>备注</label>
         <input type="text" class="wo-note" value="${this.escapeHtml(wo.note)}" placeholder="如：农户自备2套 / 下午续药">
       </div>`;
     wrap.innerHTML = html;
   },
 
-  renderWorkOrderText() {
-    const el = document.getElementById('workOrderText');
-    if (el) el.textContent = this.buildWorkOrderText();
+  /* 已完成总量（多地块求和 / 单地块取值） */
+  woDoneTotal(r, wo) {
+    if (!r) return 0;
+    return r.plotMode
+      ? (r.plots || []).reduce((s, p) => s + (Number(wo.completedByPlot[p.id]) || 0), 0)
+      : (Number(wo.completedSingle) || 0);
   },
 
   buildWorkOrderText() {
@@ -357,7 +597,8 @@ const UI = {
     const basisText = r.plotMode ? '多地块' : (r.calcBasis === 'tree' ? '按棵数' : '按亩数');
     L.push('🚁 无人机作业工单');
     L.push(`日期: ${new Date().toLocaleString('zh-CN')}`);
-    L.push(`作物: ${plant.icon || ''}${plant.name} · ${basisText}${r.plotMode ? ` · 机载上限 ${r.droneTank}升/趟` : ''}`);
+    if (this.state.field.farmerName) L.push(`农户: ${this.state.field.farmerName}`);
+    L.push(`类型: ${plant.icon || ''}${plant.name} · ${basisText}${r.plotMode ? ` · 机载上限 ${r.droneTank}升/趟` : ''}`);
     L.push(LINE);
 
     if (r.plotMode) {
@@ -365,7 +606,7 @@ const UI = {
         const done = Number(wo.completedByPlot[p.id]) || 0;
         const rest = Math.max(0, p.water - done);
         L.push(`【${p.name}】`);
-        L.push(`  ${r.calcBasis === 'tree' ? fmt(p.treeCount, 0) + '棵' : fmt(p.area, 1) + '亩'} | 水量 ${fmt(p.water, 1)}升 | 趟数 ${p.trips} | 每趟 ${fmt(p.perTripWater, 1)}升 | 转场 ${fmt(p.transferMin, 1)}min`);
+        L.push(`  ${fmt(p.area, 1)}亩 | 水量 ${fmt(p.water, 1)}升 | 趟数 ${p.trips} | 每趟 ${fmt(p.perTripWater, 1)}升 | 转场 ${fmt(p.transferMin, 1)}min`);
         L.push(`  已完成 ${fmt(done, 1)}升 (${p.water > 0 ? fmt(done / p.water * 100, 0) : 0}%) | 剩余 ${fmt(rest, 1)}升 ≈ ${p.perTripWater > 0 ? Math.ceil(rest / p.perTripWater) : 0}趟 | 药量 ${p.pesticideRounded}套`);
       });
     } else {
@@ -1271,14 +1512,14 @@ const UI = {
   resetDefaults() {
     if (this.state.mode === 'spray') {
       if (!confirm('确定恢复打药模式所有参数为默认值？当前打药模式的所有参数将被重置。')) return;
-      // 保留植物选择，重置其他打药参数
+      // 保留用药类型，重置其他打药参数
       const keepPlant = this.state.plant;
       this.state.field = { ...DEFAULT_FIELD };
       this.state.costs = { ...DEFAULT_COSTS };
       this.state.income = { ...DEFAULT_INCOME };
       this.state.timing = { ...DEFAULT_TIMING };
-      this.state.plant = keepPlant || { ...PLANT_DATABASE.fruit_tree };
-      // 基准随植物类型预置
+      this.state.plant = keepPlant || { ...PLANT_DATABASE.shajun };
+      // 基准随类型预置
       this.state.field.calcBasis = this.state.plant.calcMode === 'tree' ? 'tree' : 'area';
       this.toast('打药模式已恢复默认', 'success');
     } else {
@@ -1334,14 +1575,18 @@ const UI = {
           plot.name = e.target.value;
         } else if (e.target.classList.contains('plot-size')) {
           const v = parseFloat(e.target.value);
-          if (this.state.field.calcBasis === 'tree') plot.treeCount = isNaN(v) ? 0 : Math.max(0, Math.round(v));
-          else plot.area = isNaN(v) ? 0 : Math.max(0, v);
+          plot.area = isNaN(v) ? 0 : Math.max(0, v);
         } else if (e.target.classList.contains('plot-transfer')) {
           const v = parseFloat(e.target.value);
           plot.transferMin = isNaN(v) ? 0 : Math.max(0, v);
         } else if (e.target.classList.contains('plot-trips')) {
           const v = parseFloat(e.target.value);
           plot.tripsOverride = (!v || v <= 0) ? 0 : Math.max(0, Math.round(v));
+        }
+        // 卡片底部统计实时刷新
+        const stat = row.querySelector('.plot-stat');
+        if (stat) {
+          stat.innerHTML = this.plotStatText(plot, this.state.field.droneTank || 85, this.state.plant ? (this.state.plant.waterPerMu || 0) : 0);
         }
         this.compute();
       });
@@ -1391,13 +1636,13 @@ const UI = {
     // 作业工单
     document.getElementById('workOrderBtn').addEventListener('click', () => this.openWorkOrder());
     document.getElementById('copyWorkOrder').addEventListener('click', () => {
-      const txt = document.getElementById('workOrderText').textContent || '';
+      const txt = this.buildWorkOrderText();
       if (!txt) {
-        this.toast('工单内容为空', 'warn');
+        this.toast('请先完成一次计算', 'warn');
         return;
       }
       this.copyToClipboard(txt).then(ok => {
-        this.toast(ok ? '工单已复制到剪贴板 📋' : '复制失败，请长按文本手动选择', ok ? 'success' : 'error');
+        this.toast(ok ? '纯文本工单已复制到剪贴板 📋' : '复制失败，请手动选择文本', ok ? 'success' : 'error');
       });
     });
 
@@ -1425,12 +1670,16 @@ const UI = {
         } else if (e.target.classList.contains('wo-sets')) {
           const v = parseFloat(e.target.value);
           wo.actualSets = isNaN(v) ? 0 : Math.max(0, v);
+          // 汇总卡/续药条随实际套数联动刷新（重渲染后输入框失焦可接受，该字段改动频率低）
+          this.renderWorkOrderQuick();
+          return;
         } else if (e.target.classList.contains('wo-note')) {
           wo.note = e.target.value;
+        } else if (e.target.classList.contains('wo-farmer')) {
+          this.state.field.farmerName = e.target.value;
         } else {
           return;
         }
-        this.renderWorkOrderText();
         this.save();
       });
     }
@@ -1439,6 +1688,13 @@ const UI = {
     document.getElementById('savePresetBtn').addEventListener('click', () => this.savePresetPrompt());
     document.getElementById('loadPresetBtn').addEventListener('click', () => this.openPresetModal());
     document.getElementById('deletePresetBtn').addEventListener('click', () => this.openPresetModal());
+
+    // 用药类型管理
+    document.getElementById('addTypeBtn').addEventListener('click', () => this.openTypeModal(null));
+    document.getElementById('editTypeBtn').addEventListener('click', () => this.openTypeModal(this.state.field.plantKey));
+    document.getElementById('restoreTypesBtn').addEventListener('click', () => this.restoreDefaultTypes());
+    document.getElementById('saveTypeBtn').addEventListener('click', () => this.saveTypeForm());
+    document.getElementById('deleteTypeBtn').addEventListener('click', () => this.deleteCurrentType());
 
     document.getElementById('importBtn').addEventListener('click', () => this.openModal('importModal'));
     document.getElementById('exportBtn').addEventListener('click', () => this.openExportModal());
@@ -1558,6 +1814,21 @@ const UI = {
     // 工单覆盖值（实际用药套数/备注/已完成量）
     if (imported.workOrder) {
       this.state.workOrder = { ...this.getWorkOrder(), ...imported.workOrder };
+    }
+    // 导入的自定义用药类型并入类型库（重名跳过）
+    (imported.types || []).forEach(t => {
+      if (!this.typeLibrary.find(x => x.name === t.name)) {
+        this.typeLibrary.push({ ...t, builtin: false });
+      }
+    });
+    if ((imported.types || []).length) this.saveTypes();
+    // 选中类型不在库中（如旧配置的作物）→ 注册为自定义类型
+    if (!this.getType(this.state.field.plantKey) || this.state.plant.name !== (this.getType(this.state.field.plantKey) || {}).name) {
+      const key = this.registerTypeSnapshot(this.state.plant);
+      if (key) {
+        this.state.field.plantKey = key;
+        this.state.plant = { ...this.getType(key) };
+      }
     }
 
     this.applyMode(this.state.mode);

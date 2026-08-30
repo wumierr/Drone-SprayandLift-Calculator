@@ -1496,44 +1496,84 @@ html, body {
 .plot-presets { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
 .plot-presets .btn { min-height: 32px; padding: 4px 10px; }
 
-.plot-row {
-  display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr 1fr 44px;
-  gap: 8px; align-items: center;
-  margin-bottom: 8px;
+.plot-card {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
 }
-.plot-row input[type="text"] {
-  height: 42px; padding: 8px 10px;
-  background: var(--input-bg); border: 1px solid var(--input-border);
-  border-radius: 8px; color: var(--text-primary); font-size: 14px;
+.plot-card-head { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.plot-card-head .plot-name {
+  flex: 1; height: 40px; padding: 8px 10px;
+  background: var(--panel-bg); border: 1px solid var(--input-border);
+  border-radius: 8px; color: var(--text-primary); font-size: 14px; font-weight: 600;
   min-width: 0;
 }
-.plot-row input:focus { outline: none; border-color: var(--accent); }
-.plot-row .unit-suffix input { width: 100%; }
-.plot-row .plot-del { flex: none; }
+.plot-card-head .plot-name:focus { outline: none; border-color: var(--accent); }
+.plot-card-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.plot-card-fields .field label { font-size: 12px; color: var(--text-secondary); }
+.plot-stat {
+  min-height: 42px; display: flex; align-items: center; flex-wrap: wrap; gap: 2px;
+  background: var(--accent-soft); border-radius: 8px; padding: 8px 10px;
+  font-size: 12px; color: var(--text-primary);
+}
+.plot-stat b { color: var(--accent); }
 .plot-add { width: 100%; margin-top: 2px; }
 
 .plots-table { margin-top: 8px; font-size: 13px; }
 .plots-table th, .plots-table td { padding: 6px 8px; }
 .plots-table th:first-child, .plots-table td:first-child { min-width: 4.5em; }
 
-/* 工单文本块：等宽、可选中复制 */
-.workorder-text {
-  width: 100%;
-  font-family: var(--font-mono);
-  font-size: 12px; line-height: 1.7;
+/* 工单弹窗：汇总卡 / 续药提醒条 / 逐地块行 */
+.wo-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+.wo-card {
   background: var(--input-bg);
   border: 1px solid var(--input-border);
-  border-radius: var(--radius-md, 12px);
-  padding: 12px; margin: 8px 0 0;
-  white-space: pre-wrap; word-break: break-all;
-  color: var(--text-primary);
-  user-select: text; -webkit-user-select: text;
-  max-height: 45vh; overflow: auto;
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  padding: 8px 10px;
+  min-width: 0;
 }
-.workorder-quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.wo-card-label { font-size: 11px; color: var(--text-muted); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wo-card-value { font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: var(--text-primary); display: flex; align-items: baseline; gap: 3px; flex-wrap: wrap; }
+.wo-card-value small { font-size: 10px; color: var(--text-muted); font-weight: 400; }
+.wo-card-value input { width: 64px; font-size: 13px; padding: 3px 6px; background: var(--panel-bg); border: 1px solid var(--input-border); border-radius: 6px; color: var(--text-primary); }
+.wo-refill {
+  background: var(--accent-soft);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+.wo-refill b { color: var(--accent); }
+.wo-plot-list { display: flex; flex-direction: column; gap: 8px; max-height: 45vh; overflow: auto; padding-right: 2px; }
+.wo-farmer-field, .wo-note-field { margin-bottom: 2px; }
+.wo-plot {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  flex-wrap: wrap;
+}
+.wo-plot-info { flex: 1; min-width: 140px; }
+.wo-plot-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.wo-plot-meta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.wo-plot-done label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 2px; }
+.wo-plot-done input { width: 88px; height: 36px; padding: 4px 8px; background: var(--panel-bg); border: 1px solid var(--input-border); border-radius: 8px; color: var(--text-primary); }
+.wo-plot-rest { font-size: 12px; color: var(--text-secondary); background: var(--accent-soft); border-radius: 8px; padding: 5px 9px; white-space: nowrap; }
+
+@media (max-width: 600px) {
+  .wo-summary { grid-template-columns: repeat(2, 1fr); }
+  .wo-plot-rest { width: 100%; }
+}
 
 @media (max-width: 500px) {
-  .plot-row { grid-template-columns: 1fr 1fr; }
-  .plot-row .plot-name { grid-column: 1 / -1; }
+  .plot-card-fields { grid-template-columns: 1fr 1fr; }
 }
+
+/* 用药类型管理按钮行 */
+.type-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 2px; }
+.type-actions .btn { flex: 1; min-width: 0; }

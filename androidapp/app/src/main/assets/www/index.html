@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
   <meta name="theme-color" content="#2e7d32" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#0d1f0d" media="(prefers-color-scheme: dark)" />
-  <meta name="description" content="无人机打药药量/水量/成本/利润计算器，支持多植物预设、本地存储、配置分享，可打包为安卓 APK。" />
+  <meta name="description" content="无人机打药药量/水量/成本/利润计算器，支持自定义用药类型、多地块分趟、作业工单，本地存储，可打包为安卓 APK。" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -54,7 +54,7 @@
     <div class="header-left">
       <span class="app-logo" aria-hidden="true">🚁</span>
       <h1>无人机作业计算器</h1>
-      <span class="app-version">v3.0</span>
+      <span class="app-version">v3.1</span>
     </div>
     <div class="header-actions">
       <button id="presetBtn" class="icon-btn" title="预设管理" aria-label="预设管理">📚</button>
@@ -72,14 +72,19 @@
   </div>
 
   <main class="app-main">
-    <!-- 左侧：植物选择 -->
-    <section class="panel plant-panel" aria-label="植物选择">
-      <div class="panel-title"><span>🌱</span> 植物选择</div>
+    <!-- 左侧：用药类型 -->
+    <section class="panel plant-panel" aria-label="用药类型">
+      <div class="panel-title"><span>🧪</span> 用药类型 <span class="hint">点击选择，可自定义增减</span></div>
       <div class="plant-grid" id="plantGrid"><!-- JS 注入 --></div>
       <div class="plant-info" id="plantInfo">
         <div class="plant-info-name" id="plantInfoName">—</div>
-        <div class="plant-info-desc" id="plantInfoDesc">请选择一种植物</div>
+        <div class="plant-info-desc" id="plantInfoDesc">请选择用药类型</div>
         <div class="plant-info-notes" id="plantInfoNotes"></div>
+      </div>
+      <div class="type-actions">
+        <button id="addTypeBtn" class="btn btn-secondary btn-sm">＋ 新建类型</button>
+        <button id="editTypeBtn" class="btn btn-secondary btn-sm">✏️ 编辑当前</button>
+        <button id="restoreTypesBtn" class="btn btn-secondary btn-sm">↺ 找回默认</button>
       </div>
       <div class="preset-bar">
         <button id="savePresetBtn" class="btn btn-secondary btn-sm">💾 存为预设</button>
@@ -346,15 +351,29 @@
     </div>
   </div>
 
+  <!-- 模态框：用药类型编辑 -->
+  <div class="modal" id="typeModal" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-title">🧪 用药类型 <button class="modal-close" data-close>✕</button></div>
+      <p class="modal-hint" id="typeModalHint">填写该类型的作业参数，保存后立即生效。所有数值后续可随时修改。</p>
+      <div class="form-grid" id="typeForm"><!-- JS 注入 --></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary danger" id="deleteTypeBtn">🗑 删除此类型</button>
+        <button class="btn btn-secondary" data-close>取消</button>
+        <button class="btn btn-primary" id="saveTypeBtn">保存类型</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 模态框：作业工单 -->
   <div class="modal" id="workOrderModal" aria-hidden="true">
     <div class="modal-box">
       <div class="modal-title">🧾 作业工单 <button class="modal-close" data-close>✕</button></div>
-      <p class="modal-hint">上方可快捷修改实际变动的数值（即时重算并保存），下方纯文本工单可一键复制留存或发给现场人员。</p>
-      <div class="workorder-quick" id="workOrderQuick"><!-- JS 注入 --></div>
-      <div id="workOrderText" class="workorder-text" tabindex="0"><!-- JS 注入 --></div>
+      <div id="workOrderSummary" class="wo-summary"><!-- 汇总小卡 JS 注入 --></div>
+      <div id="woRefill" class="wo-refill" style="display:none;"></div>
+      <div id="workOrderQuick" class="wo-plot-list"><!-- 农户/逐地块/备注 JS 注入 --></div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" id="copyWorkOrder">📋 复制全文</button>
+        <button class="btn btn-secondary" id="copyWorkOrder">📋 复制纯文本工单</button>
         <button class="btn btn-primary" data-close>完成</button>
       </div>
     </div>

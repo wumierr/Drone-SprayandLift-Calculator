@@ -8,7 +8,8 @@ const Storage = {
     state: 'drone_spray_state_v2',
     presets: 'drone_spray_presets_v2',
     history: 'drone_spray_history_v2',
-    theme: 'drone_spray_theme_v1'
+    theme: 'drone_spray_theme_v1',
+    types: 'drone_spray_types_v1'
   },
 
   get(key, fallback) {
@@ -32,6 +33,10 @@ const Storage = {
 
   getTheme() { return this.get(this.KEYS.theme, 'day'); },
   setTheme(t) { this.set(this.KEYS.theme, t); },
+
+  /* ---------- 用药类型库（自定义增减；内置定义见 data.js PLANT_DATABASE） ---------- */
+  getTypes() { return this.get(this.KEYS.types, null); },
+  saveTypes(types) { return this.set(this.KEYS.types, types); },
 
   getState() { return this.get(this.KEYS.state, null); },
   saveState(state) { this.set(this.KEYS.state, state); },
@@ -146,7 +151,7 @@ const Storage = {
         lines.push('');
         lines.push('【地块列表】');
         state.field.plots.forEach(p => {
-          const parts = [`名称=${p.name || ''}`, `亩数=${p.area != null ? p.area : 0}`, `棵数=${p.treeCount != null ? p.treeCount : 0}`,
+          const parts = [`名称=${p.name || ''}`, `亩数=${p.area != null ? p.area : 0}`,
             `转场=${p.transferMin != null ? p.transferMin : 5}`, `趟数覆盖=${p.tripsOverride || 0}`];
           lines.push(`  [地块] ${parts.join(' | ')}`);
         });
@@ -186,6 +191,15 @@ const Storage = {
       lines.push('【收入参数】');
       lines.push(`  每亩收费: ${state.income.pricePerMu} 元/亩`);
       lines.push(`  补贴: ${state.income.subsidy} 元`);
+      // 自定义用药类型定义（内置类型不导出）
+      const customTypes = Array.isArray(state.typeLibrary) ? state.typeLibrary.filter(t => !t.builtin) : [];
+      if (customTypes.length) {
+        lines.push('');
+        lines.push('【用药类型】');
+        customTypes.forEach(t => {
+          lines.push(`  [类型] 名称=${t.name} | 图标=${t.icon || '🧪'} | 每亩水量=${t.waterPerMu} | 每亩棵数=${t.treesPerMu} | 每棵水量=${t.waterPerTree} | 一套药需水量=${t.pesticideWaterPerSet} | 省药系数=${t.droneSavingCoeff} | 飞行高度=${t.flightHeight} | 默认基准=${t.defaultBasis || 'area'} | 描述=${t.description || ''}`);
+        });
+      }
       // 时间参数
       if (state.timing) {
         lines.push('');
@@ -234,7 +248,8 @@ const Storage = {
       haulField: { ...state.haulField },
       haulCosts: { ...state.haulCosts },
       haulIncome: { ...state.haulIncome },
-      workOrder: state.workOrder ? { ...state.workOrder } : null
+      workOrder: state.workOrder ? { ...state.workOrder } : null,
+      types: Array.isArray(state.typeLibrary) ? state.typeLibrary.filter(t => !t.builtin) : []
     }, null, 2);
   },
 
@@ -263,7 +278,7 @@ const Storage = {
     const woDefaults = { completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' };
     const result = {
       mode: obj.mode || 'spray',
-      plant: obj.plant || { ...window.PLANT_DATABASE.fruit_tree },
+      plant: obj.plant || { ...window.PLANT_DATABASE.shajun },
       field: Object.assign({}, window.DEFAULT_FIELD, obj.field || {}),
       costs: Object.assign({}, window.DEFAULT_COSTS, obj.costs || {}),
       income: Object.assign({}, window.DEFAULT_INCOME, obj.income || {}),
@@ -271,7 +286,8 @@ const Storage = {
       haulField: Object.assign({}, window.DEFAULT_HAUL_FIELD, obj.haulField || {}),
       haulCosts: Object.assign({}, window.DEFAULT_HAUL_COSTS, obj.haulCosts || {}),
       haulIncome: Object.assign({}, window.DEFAULT_HAUL_INCOME, obj.haulIncome || {}),
-      workOrder: Object.assign({}, woDefaults, obj.workOrder || {})
+      workOrder: Object.assign({}, woDefaults, obj.workOrder || {}),
+      types: Array.isArray(obj.types) ? obj.types : []
     };
     return result;
   },
@@ -279,7 +295,7 @@ const Storage = {
   _parseTextFormat(text) {
     const result = {
       mode: 'spray',
-      plant: { ...window.PLANT_DATABASE.fruit_tree },
+      plant: { ...window.PLANT_DATABASE.shajun },
       field: { ...window.DEFAULT_FIELD },
       costs: { ...window.DEFAULT_COSTS },
       income: { ...window.DEFAULT_INCOME },
@@ -287,7 +303,8 @@ const Storage = {
       haulField: { ...window.DEFAULT_HAUL_FIELD },
       haulCosts: { ...window.DEFAULT_HAUL_COSTS },
       haulIncome: { ...window.DEFAULT_HAUL_INCOME },
-      workOrder: { completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' }
+      workOrder: { completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' },
+      types: []
     };
 
     // 检测模式
@@ -404,6 +421,31 @@ const Storage = {
 
     const lines = text.split('\n');
     lines.forEach(line => {
+      // 自定义用药类型行：  [类型] 名称=xx | 图标=xx | 每亩水量=20 | ...
+      if (line.includes('[类型]')) {
+        const kv = {};
+        line.replace(/^\s*\[类型\]\s*/, '').split('|').forEach(seg => {
+          const idx = seg.indexOf('=');
+          if (idx > -1) kv[seg.slice(0, idx).trim()] = seg.slice(idx + 1).trim();
+        });
+        if (kv['名称']) {
+          result.types.push({
+            key: 'custom_' + result.types.length + '_' + kv['名称'],
+            name: kv['名称'],
+            icon: kv['图标'] || '🧪',
+            defaultBasis: kv['默认基准'] === 'tree' ? 'tree' : 'area',
+            flightHeight: parseFloat(kv['飞行高度']) || 2,
+            waterPerMu: parseFloat(kv['每亩水量']) || 20,
+            treesPerMu: parseFloat(kv['每亩棵数']) || 0,
+            waterPerTree: parseFloat(kv['每棵水量']) || 0,
+            pesticideWaterPerSet: parseFloat(kv['一套药需水量']) || 300,
+            droneSavingCoeff: parseFloat(kv['省药系数']) || 0.7,
+            description: kv['描述'] || '',
+            notes: ''
+          });
+        }
+        return;
+      }
       // 地块行（多地块模式）：  [地块] 名称=xx | 亩数=12 | 棵数=0 | 转场=5 | 趟数覆盖=0
       if (line.includes('[地块]')) {
         const kv = {};
@@ -417,7 +459,6 @@ const Storage = {
           id: 'imp' + result.field.plots.length,
           name: kv['名称'] || '',
           area: parseFloat(kv['亩数']) || 0,
-          treeCount: parseFloat(kv['棵数']) || 0,
           transferMin: parseFloat(kv['转场']) != null && !isNaN(parseFloat(kv['转场'])) ? parseFloat(kv['转场']) : 5,
           tripsOverride: parseFloat(kv['趟数覆盖']) || 0
         });

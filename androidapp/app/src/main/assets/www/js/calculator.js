@@ -99,7 +99,7 @@ const Calculator = {
     const pesticideWaterPerSet = Math.max(0.01, Number(plant.pesticideWaterPerSet) || 1);
     if (calcBasis === 'tree' && treeCount > 0) {
       pesticideRaw = (treeCount * (Number(plant.waterPerTree) || 0)) / pesticideWaterPerSet;
-    } else if (plant.calcMode === 'tree') {
+    } else if ((plant.defaultBasis || plant.calcMode) === 'tree') {
       const treesPerMu = Number(plant.treesPerMu) || 0;
       const waterPerTree = Number(plant.waterPerTree) || 0;
       pesticideRaw = (area * waterPerTree * treesPerMu) / pesticideWaterPerSet;
@@ -554,7 +554,7 @@ const Calculator = {
     const { plant, field, costs, income, timing } = state;
     const plots = Array.isArray(field.plots) ? field.plots : [];
     const existingSets = Number(field.existingPesticideSets) || 0;
-    const calcBasis = field.calcBasis === 'tree' ? 'tree' : 'area';
+    const calcBasis = 'area';   // 地块按亩数计算（棵数基准仅单地块模式）
     const droneTank = Math.max(1, Number(field.droneTank) || 85);
 
     const t = timing || window.DEFAULT_TIMING || {};
@@ -577,17 +577,8 @@ const Calculator = {
     let weightedTSum = 0;
 
     plots.forEach((p, i) => {
-      const treeCount = Number(p.treeCount) || 0;
-      const pArea = Number(p.area) || 0;
-      let area, water;
-      if (calcBasis === 'tree') {
-        const treesPerMu = Number(plant.treesPerMu) || 0;
-        area = treesPerMu > 0 ? treeCount / treesPerMu : 0;
-        water = treeCount * (Number(plant.waterPerTree) || 0);
-      } else {
-        area = pArea;
-        water = pArea * (Number(plant.waterPerMu) || 0);
-      }
+      const area = Number(p.area) || 0;
+      const water = area * (Number(plant.waterPerMu) || 0);
       const minTrips = water > 0 ? Math.ceil(water / droneTank) : 0;
       const tripsOverride = Number(p.tripsOverride) || 0;
       const trips = tripsOverride > 0 ? tripsOverride : minTrips;
@@ -598,14 +589,13 @@ const Calculator = {
       const perTripSpray = trips > 0 ? flightMin / trips : 0;
       const perTripTime = 2 * transferMin + loadTime + perTripSpray;
       const pRaw = water > 0
-        ? this.round78(((calcBasis === 'tree' ? treeCount * (Number(plant.waterPerTree) || 0)
-                        : water) / pesticideWaterPerSet) * savingCoeff)
+        ? this.round78((water / pesticideWaterPerSet) * savingCoeff)
         : 0;
 
       rows.push({
         id: p.id != null ? p.id : i,
         name: p.name || `地块${i + 1}`,
-        area: area, treeCount: treeCount, water: water,
+        area: area, water: water,
         minTrips: minTrips, trips: trips, tripsOverride: tripsOverride,
         perTripWater: perTripWater, transferMin: transferMin,
         flightMin: flightMin, perTripTime: perTripTime,
