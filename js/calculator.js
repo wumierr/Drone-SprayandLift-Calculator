@@ -108,7 +108,8 @@ const Calculator = {
     }
     pesticideRaw *= Number(plant.droneSavingCoeff) || 1;
     result.pesticide = pesticideRaw;
-    result.pesticideRounded = this.round78(pesticideRaw);
+    result.usedSets = pesticideRaw;                    // 合计小数用量（结算用）
+    result.pesticideRounded = this.round78(pesticideRaw);  // 采购取整
 
     /* 1.5 现有药量与补购计算（双路线核心） */
     result.needToBuy = Math.max(0, result.pesticideRounded - existingSets);
@@ -613,12 +614,11 @@ const Calculator = {
       const perTripSpray = g.trips > 0 ? g.flightMin / g.trips : 0;
       g.perTripTime = 2 * g.transferMin + loadTime + perTripSpray;
     });
-    // 回填每块地所属组的趟数信息（展示用）与逐块药量
+    // 回填每块地所属组的趟数信息（展示用）；药量保持小数（三层口径：块级不取整）
     rows.forEach(r => {
       const g = groupMap.get(r.groupId);
       r.groupTrips = g ? g.trips : 0;
       r.groupPerTripWater = g ? g.perTripWater : 0;
-      r.pesticideRounded = r.water > 0 ? this.round78(r.pesticideRaw) : 0;
     });
 
     const totalArea = rows.reduce((sum, r) => sum + r.area, 0);
@@ -657,13 +657,17 @@ const Calculator = {
       return result;
     }
 
-    /* 参考药量：逐块 7舍8入后求和（每块地按整套备药，保守；提交2 改三层口径） */
-    result.pesticide = rows.reduce((s, r) => s + r.pesticideRounded, 0);
-    result.pesticideRounded = result.pesticide;
+    /* 药量三层口径：
+       块级小数（pesticideRaw）→ 合计小数（usedSets，给农户看"用药量"）
+       → 7舍8入取整（pesticideRounded = 采购量，作业方备药） */
+    const usedSets = rows.reduce((s, r) => s + r.pesticideRaw, 0);
+    result.pesticide = usedSets;                       // 合计小数用量
+    result.usedSets = usedSets;
+    result.pesticideRounded = this.round78(usedSets);  // 采购取整
     result.needToBuy = Math.max(0, result.pesticideRounded - existingSets);
     result.stockStatus = existingSets <= 0 ? 'none'
       : (existingSets >= result.pesticideRounded ? 'enough' : 'short');
-    result.concentration = totalWater > 0 ? (result.pesticideRounded / totalWater) * 100 : 0;
+    result.concentration = totalWater > 0 ? (usedSets / totalWater) * 100 : 0;
 
     /* 兑药批次（与单地块同一调度模型） */
     const mixRounds = totalWater > 0 ? Math.max(1, Math.ceil(totalWater / batchCapacity)) : 0;
@@ -693,6 +697,18 @@ const Calculator = {
     afterWorkCharge.blocks.forEach(b => { b.startAt += firstMixTime; b.endAt += firstMixTime; });
 
     const totalTime = Math.max(mixTotalTime, firstMixTime + flightSpan);
+
+    /* 结算数据（农户维度；提交2 先聚合为单行，提交4 按真实农户拆分） */
+    const pesticidePrice = Number(costs.pesticidePrice) || 0;
+    result.settlement = [{
+      farmerId: 'all',
+      farmerName: field.farmerName || '全部农户',
+      area: totalArea,
+      sprayFee: totalArea * (Number(income.pricePerMu) || 0),
+      usedSets: usedSets,
+      pesticideFee: result.pesticideIncluded ? usedSets * pesticidePrice : 0,
+      included: result.pesticideIncluded === true
+    }];
 
     result.timing = {
       mixTotalTime: mixTotalTime, mixRounds: mixRounds, batchCapacity: batchCapacity,

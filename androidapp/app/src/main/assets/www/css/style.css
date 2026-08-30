@@ -1602,3 +1602,9 @@ html, body {
   display: inline-flex; align-items: center; justify-content: center;
 }
 .group-trips-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* 工单-农户结算单 */
+.wo-settlement { margin-bottom: 10px; }
+.wo-settle-title { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
+.wo-settlement .summary-table { font-size: 13px; }
+.wo-settlement .summary-table th, .wo-settlement .summary-table td { padding: 6px 8px; }

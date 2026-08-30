@@ -313,21 +313,49 @@ test('作业组连片：同组合并趟数（30L+30L 连片 1 趟，分块则 2 
   ok(Math.abs(r.totalTransfer - 1 * 2 * 5) < 0.01, '组内换块不计转场，只收组转场');
 });
 
-test('多地块：参考药量逐块 7舍8入后求和（保守）', () => {
+test('药量三层口径：块级小数 → 合计小数 → 取整采购（不逐块取整）', () => {
   const s = freshState();
   s.field.plotMode = true;
   s.field.plots = [
-    { id: 'a', name: 'A', area: 10, transferMin: 5, tripsOverride: 0 },
-    { id: 'b', name: 'B', area: 20, transferMin: 3, tripsOverride: 0 },
-    { id: 'c', name: 'C', area: 5, transferMin: 0, tripsOverride: 0 }
+    { id: 'a', name: 'A', area: 10, groupId: 1, transferMin: 5 },
+    { id: 'b', name: 'B', area: 20, groupId: 1, transferMin: 3 },
+    { id: 'c', name: 'C', area: 5, groupId: 1, transferMin: 0 }
   ];
-  s.plant.pesticideWaterPerSet = 100;  // 放大药量便于断言：1.4→1, 2.8→3(7舍8入), 0.7→0
+  s.plant.pesticideWaterPerSet = 100;  // 块级小数：1.4 / 2.8 / 0.7
   const r = C.computePlots(s);
-  eq(r.pesticideRounded, 4, '逐块取整 1+3+0=4');
-  eq(r.needToBuy, 4, '无库存需补 4 套');
+  ok(Math.abs(r.pesticide - 4.9) < 1e-9, `合计小数用量=${r.pesticide} 应为 4.9`);
+  eq(r.pesticideRounded, 5, '合计后 7舍8入 → 采购 5');
+  eq(r.needToBuy, 5, '无库存需补 5 套');
   s.field.existingPesticideSets = 2;
   const r2 = C.computePlots(s);
-  eq(r2.needToBuy, 2, '库存 2 补 2');
+  eq(r2.needToBuy, 3, '库存 2 补 3');
+  // 块级小数保留（明细表展示）
+  ok(Math.abs(r.plots[0].pesticideRaw - 1.4) < 1e-9, 'A 块小数用量 1.4');
+});
+
+test('农户结算四数据（含不包药分支）', () => {
+  const s = freshState();
+  s.field.plotMode = true;
+  s.field.plots = [
+    { id: 'a', name: 'A', area: 10, groupId: 1, transferMin: 5 },
+    { id: 'b', name: 'B', area: 20, groupId: 1, transferMin: 3 }
+  ];
+  // 包药：地块 30亩 | 打药 750 | 用药 (200+400)/300*0.7=1.4套 | 药钱 1.4×80=112
+  const r1 = C.computePlots(s);
+  eq(r1.settlement.length, 1, '单行结算');
+  const st1 = r1.settlement[0];
+  ok(Math.abs(st1.area - 30) < 1e-9, '地块大小 30 亩');
+  ok(Math.abs(st1.sprayFee - 750) < 1e-9, '打药钱 30×25=750');
+  ok(Math.abs(st1.usedSets - 1.4) < 1e-9, `用药量 ${st1.usedSets} 应为 1.4 套`);
+  eq(st1.pesticideFee, 0, '不包药 → 药钱 0');
+  eq(st1.included, false, '默认不包药');
+  // 包药开关
+  s.costs.pesticideIncluded = true;
+  const r2 = C.computePlots(s);
+  eq(r2.settlement[0].included, true, '包药标记');
+  ok(Math.abs(r2.settlement[0].pesticideFee - 112) < 1e-9, '包药药钱 112');
+  // 作业方药剂成本按补购口径（与结算药钱解耦）
+  eq(r2.costBreakdown.pesticide, r2.needToBuy * 80, '作业方成本=补购×单价');
 });
 
 test('多地块：总时长=调度模型 + 组间移动（组级覆盖）', () => {

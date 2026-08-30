@@ -470,7 +470,7 @@ const UI = {
         <td><b>${p.groupTrips}</b></td>
         <td>${fmt(p.groupPerTripWater, 1)}</td>
         <td>${fmt(p.transferMin, 1)}</td>
-        <td>${p.pesticideRounded}</td>
+        <td>${fmt(p.pesticideRaw, 2)}</td>
       </tr>`).join('');
     wrap.innerHTML = `
       ${groupBar}
@@ -478,9 +478,9 @@ const UI = {
         <span class="hint">机载上限 ${r.droneTank} 升/趟 · 共 ${r.totalTrips} 趟 · 转场合计 ${fmt(r.totalTransfer, 1)}min</span>
       </div>
       <table class="summary-table plots-table">
-        <thead><tr><th>地块</th><th>组</th><th>亩数</th><th>水量(升)</th><th>趟数</th><th>每趟(升)</th><th>转场(min)</th><th>药量(套)</th></tr></thead>
+        <thead><tr><th>地块</th><th>组</th><th>亩数</th><th>水量(升)</th><th>趟数</th><th>每趟(升)</th><th>转场(min)</th><th>用量(套)</th></tr></thead>
         <tbody>${rows}</tbody>
-        <tfoot><tr><td>合计</td><td>${(r.groups || []).length} 组</td><td>${fmt(r.area, 1)}</td><td>${fmt(r.water, 1)}</td><td>—</td><td><b>${r.totalTrips}</b></td><td>—</td><td>${fmt(r.totalTransfer, 1)}</td><td>${r.pesticideRounded}</td></tr></tfoot>
+        <tfoot><tr><td>合计</td><td>${(r.groups || []).length} 组</td><td>${fmt(r.area, 1)}</td><td>${fmt(r.water, 1)}</td><td>—</td><td><b>${r.totalTrips}</b></td><td>—</td><td>${fmt(r.totalTransfer, 1)}</td><td>${fmt(r.usedSets != null ? r.usedSets : r.pesticide, 2)}</td></tr></tfoot>
       </table>`;
   },
 
@@ -556,6 +556,36 @@ const UI = {
       refill.innerHTML = `${pill} 剩余 <b>${fmt(restTotal, 1)}</b> 升 ≈ 还需 <b>${refillSets}</b> 套药（7舍8入），记得安排续药`;
     } else {
       refill.style.display = 'none';
+    }
+
+    /* 农户结算单：地块大小/打药钱/用药量/药钱（不包药隐藏后两项） */
+    const settleWrap = document.getElementById('woSettlement');
+    if (settleWrap) {
+      const st = r.settlement || [];
+      if (st.length) {
+        const rowsHtml = st.map(row => `
+          <tr>
+            <td>${this.escapeHtml(row.farmerName)}</td>
+            <td>${fmt(row.area, 1)} 亩</td>
+            <td>¥${Calculator.fmtMoney(row.sprayFee)}</td>
+            ${row.included ? `<td>${fmt(row.usedSets, 2)} 套</td><td>¥${Calculator.fmtMoney(row.pesticideFee)}</td>` : ''}
+          </tr>`).join('');
+        const totalAreaS = st.reduce((x, row) => x + row.area, 0);
+        const totalFee = st.reduce((x, row) => x + row.sprayFee, 0);
+        const totalUsed = st.reduce((x, row) => x + row.usedSets, 0);
+        const totalMed = st.reduce((x, row) => x + row.pesticideFee, 0);
+        const medCols = st[0] && st[0].included;
+        settleWrap.innerHTML = `
+          <div class="wo-settle-title">农户结算单${medCols ? '' : '（不包药）'}</div>
+          <table class="summary-table">
+            <thead><tr><th>农户</th><th>地块大小</th><th>打药的钱</th>${medCols ? '<th>用药量</th><th>药钱</th>' : ''}</tr></thead>
+            <tbody>${rowsHtml}</tbody>
+            <tfoot><tr><td>合计</td><td>${fmt(totalAreaS, 1)} 亩</td><td>¥${Calculator.fmtMoney(totalFee)}</td>${medCols ? `<td>${fmt(totalUsed, 2)} 套</td><td>¥${Calculator.fmtMoney(totalMed)}</td>` : ''}</tr></tfoot>
+          </table>`;
+        settleWrap.style.display = '';
+      } else {
+        settleWrap.style.display = 'none';
+      }
     }
 
     /* 农户 + 逐地块行 + 备注 */
@@ -658,8 +688,18 @@ const UI = {
     let timeText = `预计总时长 ${fdur(r.timing.totalTime)}`;
     if (r.timing.chargeAfterWork && r.timing.afterWorkCharge > 0) timeText += `（另结束后充电 ${fdur(r.timing.afterWorkCharge)}）`;
     L.push(`  ${timeText}`);
-    L.push(`  药量: 参考 ${r.pesticideRounded}套 | 实际 ${actualSets}套${Number(wo.actualSets) > 0 ? '（手填）' : ''} | 需补购 ${r.needToBuy}套`);
+    L.push(`  药量: 需求 ${fmt(r.pesticide, 2)}套 → 采购 ${r.pesticideRounded}套 | 实际 ${actualSets}套${Number(wo.actualSets) > 0 ? '（手填）' : ''} | 补购 ${r.needToBuy}套`);
     if (restTotal > 0) L.push(`  续药提醒: 剩余 ${fmt(restTotal, 1)}升 ≈ 还需 ${refillSets}套（7舍8入）`);
+    const st = r.settlement || [];
+    if (st.length) {
+      L.push('【农户结算】');
+      st.forEach(row => {
+        const medPart = row.included
+          ? ` | 用药量 ${fmt(row.usedSets, 2)}套 | 药钱 ¥${Calculator.fmtMoney(row.pesticideFee)}`
+          : '';
+        L.push(`  ${row.farmerName}: 地块 ${fmt(row.area, 1)}亩 | 打药 ¥${Calculator.fmtMoney(row.sprayFee)}${medPart}`);
+      });
+    }
     L.push(`  成本 ¥${Calculator.fmtMoney(r.totalCost)} | 收入 ¥${Calculator.fmtMoney(r.income)} | 利润 ¥${Calculator.fmtMoney(r.profit)}`);
     if (wo.note) L.push(`【备注】${wo.note}`);
     L.push(LINE);
@@ -1070,12 +1110,12 @@ const UI = {
     // 库存状态文案（参考药量显示：小数原值 → 取整值）
     let stockText;
     if (r.stockStatus === 'none') {
-      stockText = `无库存，参考需 ${fmt(r.pesticide, 2)} → ${r.pesticideRounded} 套（7舍8入）`;
+      stockText = `无库存，需 ${fmt(r.pesticide, 2)} 套 → 采购 ${r.pesticideRounded} 套（7舍8入）`;
     } else if (r.stockStatus === 'enough') {
       const surplus = r.existingSets - r.pesticideRounded;
-      stockText = `库存充足（多 ${surplus} 套）| 参考需 ${fmt(r.pesticide, 2)} → ${r.pesticideRounded} 套`;
+      stockText = `库存充足（多 ${surplus} 套）| 需 ${fmt(r.pesticide, 2)} 套 → 采购 ${r.pesticideRounded} 套`;
     } else { // short
-      stockText = `库存不足，需补购 ${r.needToBuy} 套 | 参考需 ${fmt(r.pesticide, 2)} → ${r.pesticideRounded} 套`;
+      stockText = `库存不足，需补购 ${r.needToBuy} 套 | 需 ${fmt(r.pesticide, 2)} 套 → 采购 ${r.pesticideRounded} 套`;
     }
     // 按棵数但棵数未填（含旧存档回落）：提示补填
     if (!r.plotMode && r.calcBasis === 'tree' && !(r.treeCount > 0)) {
@@ -1084,10 +1124,10 @@ const UI = {
     document.getElementById('rPesticideDetail').textContent = stockText;
     document.getElementById('rPesticideFormula').textContent =
       r.plotMode
-        ? `主显示=现有 ${r.existingSets} 套 | 参考=各地块7舍8入之和=${r.pesticideRounded} 套（逐块保守取整）`
+        ? `现有 ${r.existingSets} 套 | 需求合计 ${fmt(r.pesticide, 2)} 套 → 采购 ${r.pesticideRounded} 套（合计后7舍8入）`
         : (r.calcBasis === 'tree'
-          ? `主显示=现有 ${r.existingSets} 套 | 参考=棵数${r.treeCount}×每棵水量÷一套药水量×省药系数=${fmt(r.pesticide, 2)} → ${r.pesticideRounded} 套（7舍8入）`
-          : `主显示=现有 ${r.existingSets} 套 | 参考=亩数×每棵水量×每亩棵数÷一套药水量×省药系数=${fmt(r.pesticide, 2)} → ${r.pesticideRounded} 套（7舍8入）`);
+          ? `现有 ${r.existingSets} 套 | 需求=棵数${r.treeCount}×每棵水量÷一套药水量×省药系数=${fmt(r.pesticide, 2)} → 采购 ${r.pesticideRounded} 套（7舍8入）`
+          : `现有 ${r.existingSets} 套 | 需求=亩数×每亩水量÷一套药水量×省药系数=${fmt(r.pesticide, 2)} → 采购 ${r.pesticideRounded} 套（7舍8入）`);
 
     setText('rWater', fmt(r.water, 1));
     const effArea = (r.area != null ? r.area : this.state.field.area);
