@@ -103,9 +103,11 @@ const DEFAULT_FIELD = {
   existingPesticideSets: 0, // 现有药剂套数（用户填，0表示无库存，作为主显示）
   manualDosePerMu: 0,     // 人工打药量（套/亩）：农户自己的打药标准，可空；填了在药量参考卡显示"农户标准"药量
   farmerName: '',         // 农户名称（工单抬头显示；三期接入农户档案）
+  spareWater: 35,         // 富余水量（升）：填充管道、富余、留底，总加水=计算水量+富余
+  drawReserve: 40,        // 抽药占用（升）：兑药时抽水抽药的空间，按药种类 20~60
   droneTank: 85,          // 机载装药上限（升/趟）：无人机药箱最大装载量
   plotMode: false,        // 多地块模式：true 时按地块列表计算
-  plots: [],              // 地块列表 [{id, name, area, groupId}]
+  plots: [],              // 地块列表 [{id, name, area, groupId}]（旧存档可能残留 treeCount，加载时换算）
   groupTrips: {}          // 组级趟数覆盖 {组号: 趟数}（组内连片连续作业，合并算趟数）
 };
 
@@ -119,6 +121,10 @@ const DEFAULT_FIELD = {
 */
 const FIELD_DEFS = {
   // 作业参数
+  spareWater: 35,         // 富余水量（升）：填充管道、富余、留底，总加水=计算水量+富余
+  drawReserve: 40,        // 抽药占用（升）：兑药时抽水抽药的空间，按药种类 20~60
+  spareWater: { label: '富余水量', unit: '升', tip: '填充管道、喷洒富余、留底等的额外水量：总加水 = 计算水量 + 富余（一般 30~40）', group: 'param', default: 35, step: 5, min: 0 },
+  drawReserve: { label: '抽药占用', unit: '升', tip: '兑药时抽水抽药占用的空间，按药种类 20~60 升。每批先加水到目标减去此值，兑药后看情况补满', group: 'param', default: 40, step: 5, min: 0 },
   droneTank: { label: '机载装药上限', unit: '升/趟', tip: '无人机药箱一次最多装载的药液量（多地块模式按此算每组最少趟数）。T40约40-50升，T60/T100更大，可超配到85', group: 'param', advanced: true, default: 85, step: 1, integer: true, minHard: 1, warnBelow: 10 },
   existingPesticideSets: { label: '现有药剂套数', unit: '套', tip: '已库存的药剂套数（主显示，作为主要参考）。0表示无库存，将完全按公式参考量采购', group: 'param', default: 0, step: 1, integer: true, min: 0, priority: 'high' },
   flightHeight: { label: '飞行高度', unit: '米', tip: '无人机距离作物冠层的建议高度，影响覆盖均匀度（建议 1-5 米）', group: 'param', advanced: true, default: 2.0, step: 0.1, min: 0.5, warnBelow: 0.5, warnAbove: 10 },

@@ -898,8 +898,9 @@ const UI = {
       ? Calculator.round78(r.usedSets * (restTotal / r.water))
       : 0;
     L.push('【汇总】');
-    L.push(`  总水量 ${fmt(r.water, 1)}升 | 已完成 ${fmt(doneTotal, 1)}升 | 剩余 ${fmt(restTotal, 1)}升`);
-    if (r.plotMode) L.push(`  总趟数 ${r.totalTrips}（${(r.groups || []).length} 组） | 兑药 ${r.timing.mixRounds}批(单批${fmt(r.timing.batchCapacity, 0)}升)`);
+    L.push(`  计算水量 ${fmt(r.water, 1)}升 + 富余 ${fmt(r.spareWater || 0, 0)}升 = 总加水 ${fmt(r.totalAddWater != null ? r.totalAddWater : r.water, 1)}升`);
+    L.push(`  已完成 ${fmt(doneTotal, 1)}升 | 剩余 ${fmt(restTotal, 1)}升`);
+    if (r.plotMode) L.push(`  总趟数 ${r.totalTrips}（${(r.groups || []).length} 组） | 兑药 ${r.timing.mixRounds}批(单批${fmt(r.timing.batchCapacity, 0)}升，每批留抽药空间后补满)`);
     let timeText = `预计总时长 ${fdur(r.timing.totalTime)}`;
     if (r.timing.chargeAfterWork && r.timing.afterWorkCharge > 0) timeText += `（另结束后充电 ${fdur(r.timing.afterWorkCharge)}）`;
     L.push(`  ${timeText}`);
@@ -1444,11 +1445,12 @@ const UI = {
     document.getElementById('rPesticideFormula').textContent =
       `现有 ${r.existingSets} 套 | 需求合计 ${fmt(r.pesticide, 2)} 套 → 采购 ${r.pesticideRounded} 套（合计后7舍8入）`;
 
-    setText('rWater', fmt(r.water, 1));
+    setText('rWater', fmt(r.totalAddWater != null ? r.totalAddWater : r.water, 1));
     const effArea = (r.area != null ? r.area : this.state.field.area);
     if (r.plotMode) {
       document.getElementById('rWaterDetail').textContent =
-        `Σ ${r.plots.length} 个地块 · 机载上限 ${r.droneTank} 升/趟 · 共 ${r.totalTrips} 趟`;
+        `Σ ${r.plots.length} 个地块 · 机载上限 ${r.droneTank} 升/趟 · 共 ${r.totalTrips} 趟` +
+        (r.spareWater > 0 ? ` · 计算水量 ${fmt(r.water, 1)} + 富余 ${fmt(r.spareWater, 0)}` : '');
     } else {
       document.getElementById('rWaterDetail').textContent =
         `${this.state.plant.waterPerMu} 升/亩 × ${fmt(effArea, 1)} 亩`;
@@ -1514,9 +1516,7 @@ const UI = {
     // 兑水兑药：首批串行在前，其余批次与飞行并行
     setText('tMixTime', fdur(t.mixTotalTime));
     document.getElementById('tMixDetail').textContent =
-      t.mixRounds > 0
-        ? `${t.mixRounds}批 × ${fmt1(this.state.timing.baseMixTime)}min（首批串行，其余与飞行并行）`
-        : '—';
+`${t.mixRounds}批 × ${fmt1(this.state.timing.baseMixTime)}min（首批串行，其余与飞行并行；每批留抽药空间后补满）`;
 
     // 飞行作业
     setText('tFlightTime', fdur(t.flightTimeMin));

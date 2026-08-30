@@ -66,6 +66,21 @@ test('calcTreesPesticide 棵数速算药量', () => {
   ok(Math.abs(C.calcTreesPesticide(800, plant) - 5.6) < 1e-9, '800棵 → 5.6 套');
 });
 
+/* ---------- 水量三口径：计算水量+富余=总加水（v4.4） ---------- */
+test('总加水口径：兑药批次按 计算水量+富余 计算', () => {
+  const s = freshState();
+  s.field.plots = [{ id: 'a', name: 'A', area: 10, groupId: 1 }];
+  s.field.spareWater = 35;   // 计算 200L + 富余 35 = 总加水 235
+  const r = C.computePlots(s);
+  eq(r.totalAddWater, 235, '总加水 235');
+  eq(r.timing.mixRounds, 1, '235 ≤ 1000 单批');
+  s.timing.batchCapacity = 200;   // 235 → 2 批
+  const r2 = C.computePlots(s);
+  eq(r2.timing.mixRounds, 2, '富余参与批次数');
+  // 趟数仍按计算水量（200÷85=3），富余不进喷洒需求
+  eq(r.totalTrips, 3, '趟数按计算水量');
+});
+
 /* ---------- 农户标准药量（v4.4 人工打药量口径） ---------- */
 test('calcFarmerDose 农户标准 = 亩数×人工套/亩×省药系数', () => {
   const plant = { ...ctx.window.PLANT_DATABASE.shajun };

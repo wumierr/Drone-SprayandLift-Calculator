@@ -266,6 +266,7 @@ const Calculator = {
     const plots = Array.isArray(field.plots) ? field.plots : [];
     const existingSets = Number(field.existingPesticideSets) || 0;
     const droneTank = Math.max(1, Number(field.droneTank) || 85);
+    const spareWater = Math.max(0, Number(field.spareWater) || 0);
     const groupTripsOv = (field.groupTrips && typeof field.groupTrips === 'object') ? field.groupTrips : {};
 
     const t = timing || window.DEFAULT_TIMING || {};
@@ -348,6 +349,7 @@ const Calculator = {
 
     const totalArea = rows.reduce((sum, r) => sum + r.area, 0);
     const totalWater = rows.reduce((sum, r) => sum + r.water, 0);
+    const totalAddWater = totalWater + spareWater;
     const totalTrips = groups.reduce((sum, g) => sum + g.trips, 0);
     const totalLoad = groups.reduce((sum, g) => sum + g.trips * loadTime, 0);
     const weightedTSum = groups.reduce((sum, g) => sum + g.trips * g.perTripTime, 0);
@@ -359,6 +361,8 @@ const Calculator = {
       droneTank: droneTank,
       area: totalArea,
       water: totalWater,
+      spareWater: spareWater,
+      totalAddWater: totalAddWater,
       totalTrips: totalTrips,
       totalLoad: totalLoad,
       totalFlightMin: totalFlightMin,
@@ -387,8 +391,8 @@ const Calculator = {
       : (existingSets >= result.pesticideRounded ? 'enough' : 'short');
     result.concentration = totalWater > 0 ? (usedSets / totalWater) * 100 : 0;
 
-    /* 兑药批次（与单地块同一调度模型） */
-    const mixRounds = totalWater > 0 ? Math.max(1, Math.ceil(totalWater / batchCapacity)) : 0;
+    /* 兑药批次：按总加水（计算水量+富余）算 */
+    const mixRounds = totalAddWater > 0 ? Math.max(1, Math.ceil(totalAddWater / batchCapacity)) : 0;
     const mixTotalTime = mixRounds * baseMixTime;
     const firstMixTime = mixRounds > 0 ? baseMixTime : 0;
 
