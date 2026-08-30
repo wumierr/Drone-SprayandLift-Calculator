@@ -120,19 +120,19 @@ const FIELD_DEFS = {
     { value: 'area', label: '按亩数' },
     { value: 'tree', label: '按棵数' }
   ], default: 'area' },
-  droneTank: { label: '机载装药上限', unit: '升/趟', tip: '无人机药箱一次最多装载的药液量（多地块模式按此算每组最少趟数）。T40约40-50升，T60/T100更大，可超配到85', group: 'param', default: 85, step: 1, integer: true, minHard: 1, warnBelow: 10 },
+  droneTank: { label: '机载装药上限', unit: '升/趟', tip: '无人机药箱一次最多装载的药液量（多地块模式按此算每组最少趟数）。T40约40-50升，T60/T100更大，可超配到85', group: 'param', advanced: true, default: 85, step: 1, integer: true, minHard: 1, warnBelow: 10 },
   existingPesticideSets: { label: '现有药剂套数', unit: '套', tip: '已库存的药剂套数（主显示，作为主要参考）。0表示无库存，将完全按公式参考量采购', group: 'param', default: 0, step: 1, integer: true, min: 0, priority: 'high' },
-  flightHeight: { label: '飞行高度', unit: '米', tip: '无人机距离作物冠层的建议高度，影响覆盖均匀度（建议 1-5 米）', group: 'param', default: 2.0, step: 0.1, min: 0.5, warnBelow: 0.5, warnAbove: 10 },
+  flightHeight: { label: '飞行高度', unit: '米', tip: '无人机距离作物冠层的建议高度，影响覆盖均匀度（建议 1-5 米）', group: 'param', advanced: true, default: 2.0, step: 0.1, min: 0.5, warnBelow: 0.5, warnAbove: 10 },
   waterPerMu: { label: '每亩水量', unit: '升', tip: '每亩地需要喷洒的药液总量（升/亩，建议 1-50）', group: 'param', default: 20, step: 0.1, min: 0.1, warnBelow: 0.5 },
-  treesPerMu: { label: '每亩棵数', unit: '棵', tip: '每亩种植的棵数，按棵数计算时用于亩数反推', group: 'param', default: 80, step: 1, integer: true, min: 0 },
-  waterPerTree: { label: '每棵用水量', unit: '升', tip: '单棵树需要喷洒的药液量（升/棵），按棵数计算时使用', group: 'param', default: 3, step: 0.1, min: 0 },
-  pesticideWaterPerSet: { label: '一套药需水量', unit: '升', tip: '一整套药剂对应需要的水量（升），决定一套药能配多少药液', group: 'param', default: 300, step: 1, min: 1, warnBelow: 10 },
-  droneSavingCoeff: { label: '无人机省药系数', unit: '', tip: '无人机相比人工打药节省的药量比例，0.7 表示省 30%（可超过1，表示更费药；建议 0.5-1.5）', group: 'param', default: 0.7, step: 0.05, min: 0, warnBelow: 0.1, warnAbove: 3 },
+  treesPerMu: { label: '每亩棵数', unit: '棵', tip: '每亩种植的棵数，按棵数计算时用于亩数反推', group: 'param', advanced: true, default: 80, step: 1, integer: true, min: 0 },
+  waterPerTree: { label: '每棵用水量', unit: '升', tip: '单棵树需要喷洒的药液量（升/棵），按棵数计算时使用', group: 'param', advanced: true, default: 3, step: 0.1, min: 0 },
+  pesticideWaterPerSet: { label: '一套药需水量', unit: '升', tip: '一整套药剂对应需要的水量（升），决定一套药能配多少药液', group: 'param', advanced: true, default: 300, step: 1, min: 1, warnBelow: 10 },
+  droneSavingCoeff: { label: '无人机省药系数', unit: '', tip: '无人机相比人工打药节省的药量比例，0.7 表示省 30%（可超过1，表示更费药；建议 0.5-1.5）', group: 'param', advanced: true, default: 0.7, step: 0.05, min: 0, warnBelow: 0.1, warnAbove: 3 },
 
   // 循环成本
-  batteryDepreciation: { label: '电池折旧', unit: '元/次充电', tip: '一组电池每充一次电分摊的折旧费（建议 5-10）', group: 'cycle', default: 7, step: 0.5, min: 0 },
+  batteryDepreciation: { label: '电池折旧', unit: '元/次充电', tip: '一组电池每充一次电分摊的折旧费（建议 5-10）', group: 'cycle', advanced: true, default: 7, step: 0.5, min: 0 },
   fuelExpense: { label: '本次油费', unit: '元', tip: '出发加满、回家加满的加油差价（含行车与发电机用油）。每次充电油钱=油费÷充电次数，自动算出', group: 'cycle', default: 150, step: 10, min: 0 },
-  cycleArea: { label: '单循环亩数', unit: '亩', tip: '一个循环（一组电池）能完成的作业亩数（建议 0.5-30）', group: 'cycle', default: 2, step: 0.1, min: 0.1, warnBelow: 0.1, warnAbove: 100 },
+  cycleArea: { label: '单循环亩数', unit: '亩', tip: '一个循环（一组电池）能完成的作业亩数（建议 0.5-30）', group: 'cycle', advanced: true, default: 2, step: 0.1, min: 0.1, warnBelow: 0.1, warnAbove: 100 },
 
   // 人工
   workers: { label: '作业人数', unit: '人', tip: '含飞手、配药、搬运等所有人员。填0可剔除人工成本', group: 'labor', default: 3, step: 1, integer: true, min: 0 },
@@ -145,11 +145,11 @@ const FIELD_DEFS = {
   // 其他
   pesticidePrice: { label: '一套药剂价格', unit: '元/套', tip: '一套药剂的进货价格（建议 20-500）', group: 'other', default: 80, step: 1, min: 0, warnBelow: 1, warnAbove: 5000 },
   pesticideIncluded: { label: '包药（作业方提供药剂）', unit: '', tip: '勾选=作业方提供药剂并承担药剂成本；不勾选=农户自备药剂，不扣药剂成本（默认不包药）', group: 'other', type: 'check', default: false },
-  droneDepreciation: { label: '无人机折旧', unit: '元/亩', tip: '无人机机身分摊到每亩的折旧费', group: 'other', default: 0.3, step: 0.05, min: 0 },
-  maintenanceReserve: { label: '维修保养储备', unit: '元/亩', tip: '机臂、桨叶、电机等易损件更换分摊', group: 'other', default: 0.2, step: 0.05, min: 0 },
-  protectiveGear: { label: '防护装备', unit: '元/次', tip: '口罩、手套、护目镜等分摊到每次作业', group: 'other', default: 5, step: 1, min: 0 },
-  cleaningCost: { label: '清洗费用', unit: '元/次', tip: '作业后药箱、管路清洗的材料费', group: 'other', default: 10, step: 1, min: 0 },
-  insurance: { label: '保险分摊', unit: '元/亩', tip: '无人机+第三者责任险分摊到每亩', group: 'other', default: 0.1, step: 0.05, min: 0 },
+  droneDepreciation: { label: '无人机折旧', unit: '元/亩', tip: '无人机机身分摊到每亩的折旧费', group: 'other', advanced: true, default: 0.3, step: 0.05, min: 0 },
+  maintenanceReserve: { label: '维修保养储备', unit: '元/亩', tip: '机臂、桨叶、电机等易损件更换分摊', group: 'other', advanced: true, default: 0.2, step: 0.05, min: 0 },
+  protectiveGear: { label: '防护装备', unit: '元/次', tip: '口罩、手套、护目镜等分摊到每次作业', group: 'other', advanced: true, default: 5, step: 1, min: 0 },
+  cleaningCost: { label: '清洗费用', unit: '元/次', tip: '作业后药箱、管路清洗的材料费', group: 'other', advanced: true, default: 10, step: 1, min: 0 },
+  insurance: { label: '保险分摊', unit: '元/亩', tip: '无人机+第三者责任险分摊到每亩', group: 'other', advanced: true, default: 0.1, step: 0.05, min: 0 },
   miscCost: { label: '其他杂费', unit: '元', tip: '如通信、停车、临时用工等本次作业的杂费', group: 'other', default: 0, step: 1, min: 0 },
 
   // 收入
@@ -157,16 +157,16 @@ const FIELD_DEFS = {
   subsidy: { label: '农机补贴等', unit: '元', tip: '政府补贴或项目补贴（若有）', group: 'income', default: 0, step: 10, min: 0 },
 
   // 作业时间参数
-  flightSpeed: { label: '飞行速度', unit: 'm/s', tip: '无人机作业时的飞行速度，常见 2-5 m/s（建议 1-10）。填了飞行作业时间后此字段禁用', group: 'timing', default: 2.5, step: 0.1, minHard: 0.1, warnBelow: 0.5, warnAbove: 20 },
-  lineSpacing: { label: '航线间距', unit: '米', tip: '相邻航线间距，影响喷幅覆盖。一般 1.5-3 米（建议 1-5）。填了飞行作业时间后此字段禁用', group: 'timing', default: 2, step: 0.1, minHard: 0.5, warnBelow: 0.5, warnAbove: 10 },
+  flightSpeed: { label: '飞行速度', unit: 'm/s', tip: '无人机作业时的飞行速度，常见 2-5 m/s（建议 1-10）。填了飞行作业时间后此字段禁用', group: 'timing', advanced: true, default: 2.5, step: 0.1, minHard: 0.1, warnBelow: 0.5, warnAbove: 20 },
+  lineSpacing: { label: '航线间距', unit: '米', tip: '相邻航线间距，影响喷幅覆盖。一般 1.5-3 米（建议 1-5）。填了飞行作业时间后此字段禁用', group: 'timing', advanced: true, default: 2, step: 0.1, minHard: 0.5, warnBelow: 0.5, warnAbove: 10 },
   manualFlightTime: { label: '飞行作业时间（手动）', unit: 'min', tip: '高优先级：手动输入飞行作业时间。填了则用此值计算（显示"准确时间"），不填或0则用飞行速度×航线间距估算（显示"参考时间"）', group: 'timing', default: 0, step: 0.5, min: 0, priority: 'high' },
   roundTripTime: { label: '来回升降时间', unit: 'min/循环', tip: '每次循环的起飞、降落、转场时间。一般 2-5 分钟', group: 'timing', default: 3, step: 0.5, min: 0, warnAbove: 30 },
   loadTime: { label: '加药装载时间', unit: 'min/循环', tip: '每趟飞行前给无人机药箱加药液的时间。真实串行耗时，不能被飞行抵消（充电可以）。一般 0.5-2 分钟', group: 'timing', default: 1, step: 0.5, min: 0, warnAbove: 15 },
   baseMixTime: { label: '基础兑药时间', unit: 'min/轮', tip: '每批兑水兑药搅拌的时间，与水量无关', group: 'timing', default: 10, step: 1, min: 0, warnAbove: 60 },
-  batchCapacity: { label: '单批兑水量', unit: '升', tip: '配药桶一批能兑的药液量。总水量超过此值分多批：首批必须在飞行前兑完（串行），第2批起可与飞行并行', group: 'timing', default: 1000, step: 50, min: 1, minHard: 1, warnBelow: 10 },
+  batchCapacity: { label: '单批兑水量', unit: '升', tip: '配药桶一批能兑的药液量。总水量超过此值分多批：首批必须在飞行前兑完（串行），第2批起可与飞行并行', group: 'timing', advanced: true, default: 1000, step: 50, min: 1, minHard: 1, warnBelow: 10 },
   batteryCount: { label: '拥有电池数量', unit: '块', tip: '作业用电池数量（至少 1 块）。2块轮流、3块以上更宽松', group: 'timing', default: 2, step: 1, integer: true, minHard: 1, warnBelow: 1, warnAbove: 20 },
-  generatorChargeTime: { label: '发电机充电时间', unit: 'min/块', tip: '发电机给单块电池充满的时间，一般 6-10 min', group: 'timing', default: 8, step: 0.5, minHard: 0.1, warnBelow: 1, warnAbove: 60 },
-  threePhaseChargeTime: { label: '三相电充电时间', unit: 'min/块', tip: '三相电给单块电池充满的时间，一般 4-6 min', group: 'timing', default: 5, step: 0.5, minHard: 0.1, warnBelow: 1, warnAbove: 60 },
+  generatorChargeTime: { label: '发电机充电时间', unit: 'min/块', tip: '发电机给单块电池充满的时间，一般 6-10 min', group: 'timing', advanced: true, default: 8, step: 0.5, minHard: 0.1, warnBelow: 1, warnAbove: 60 },
+  threePhaseChargeTime: { label: '三相电充电时间', unit: 'min/块', tip: '三相电给单块电池充满的时间，一般 4-6 min', group: 'timing', advanced: true, default: 5, step: 0.5, minHard: 0.1, warnBelow: 1, warnAbove: 60 },
   chargeMode: { label: '充电模式', unit: '', tip: '仅发电机/仅三相电/三相电+发电机双充（双充更快但需≥3块电池才能完全无等待）', group: 'timing', type: 'radio', options: [
     { value: 'generator', label: '仅发电机' },
     { value: 'threePhase', label: '仅三相电' },
@@ -246,10 +246,10 @@ const DEFAULT_HAUL_FIELD = {
 const HAUL_FIELD_DEFS = {
   // 作业参数
   totalWeight: { label: '总斤数', unit: '斤', tip: '本次需要吊运的总重量（斤）', group: 'param', default: 1000, step: 10 },
-  flightHeight: { label: '飞行高度', unit: '米', tip: '无人机吊运时的飞行高度，根据地形和障碍物调整。山区吊运通常 5-15 米', group: 'param', default: 5, step: 0.5 },
+  flightHeight: { label: '飞行高度', unit: '米', tip: '无人机吊运时的飞行高度，根据地形和障碍物调整。山区吊运通常 5-15 米', group: 'param', advanced: true, default: 5, step: 0.5 },
 
   // 电池循环
-  batteryDepreciation: { label: '电池折旧', unit: '元/次充电', tip: '一组电池每充一次电分摊的折旧费', group: 'cycle', default: 3, step: 0.5, min: 0 },
+  batteryDepreciation: { label: '电池折旧', unit: '元/次充电', tip: '一组电池每充一次电分摊的折旧费', group: 'cycle', advanced: true, default: 3, step: 0.5, min: 0 },
   fuelExpense: { label: '本次油费', unit: '元', tip: '出发加满、回家加满的加油差价。每次充电油钱=油费÷充电次数，自动算出', group: 'cycle', default: 150, step: 10, min: 0 },
   weightPerTrip: { label: '一躺多少斤', unit: '斤', tip: '单次吊运（一个来回）的重量。受无人机载重限制，T40约50-60斤，T30约30-40斤', group: 'cycle', default: 50, step: 5 },
   tripsPerBatteryCycle: { label: '多少躺一组电池', unit: '躺', tip: '一组电池能完成的来回数（满电到换电）。载重越大越少，通常4-8躺', group: 'cycle', default: 6 },
@@ -266,11 +266,11 @@ const HAUL_FIELD_DEFS = {
   pickupPricePerJin: { label: '采摘每斤单价', unit: '毛', tip: '采摘工每斤的工钱（毛）。5毛=0.5元/斤。仅包采摘时计入', group: 'pickupLabor', default: 5, step: 0.5 },
 
   // 设备折旧（按100斤）
-  droneDepreciation: { label: '无人机折旧', unit: '元/100斤', tip: '无人机机身分摊到每100斤的折旧费（吊运损耗比打药大）', group: 'other', default: 0.5, step: 0.05 },
-  maintenanceReserve: { label: '维修保养储备', unit: '元/100斤', tip: '机臂、桨叶、电机等易损件更换分摊', group: 'other', default: 0.3, step: 0.05 },
-  protectiveGear: { label: '防护装备', unit: '元/次', tip: '口罩、手套、安全帽等分摊到每次作业', group: 'other', default: 5, step: 1 },
-  cleaningCost: { label: '清洗费用', unit: '元/次', tip: '作业后设备清洗的材料费', group: 'other', default: 5, step: 1 },
-  insurance: { label: '保险分摊', unit: '元/100斤', tip: '无人机+第三者责任险分摊', group: 'other', default: 0.05, step: 0.01 },
+  droneDepreciation: { label: '无人机折旧', unit: '元/100斤', tip: '无人机机身分摊到每100斤的折旧费（吊运损耗比打药大）', group: 'other', advanced: true, default: 0.5, step: 0.05 },
+  maintenanceReserve: { label: '维修保养储备', unit: '元/100斤', tip: '机臂、桨叶、电机等易损件更换分摊', group: 'other', advanced: true, default: 0.3, step: 0.05 },
+  protectiveGear: { label: '防护装备', unit: '元/次', tip: '口罩、手套、安全帽等分摊到每次作业', group: 'other', advanced: true, default: 5, step: 1 },
+  cleaningCost: { label: '清洗费用', unit: '元/次', tip: '作业后设备清洗的材料费', group: 'other', advanced: true, default: 5, step: 1 },
+  insurance: { label: '保险分摊', unit: '元/100斤', tip: '无人机+第三者责任险分摊', group: 'other', advanced: true, default: 0.05, step: 0.01 },
   miscCost: { label: '其他杂费', unit: '元', tip: '如通信、停车、临时用工等', group: 'other', default: 0, step: 1 },
 
   // 收入

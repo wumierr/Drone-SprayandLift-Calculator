@@ -918,10 +918,17 @@ const UI = {
   renderParamForm() {
     const form = document.getElementById('paramForm');
     form.innerHTML = '';
-    FIELD_ORDER.param.forEach(key => this.appendField(form, key, 'spray'));
+    const adv = document.getElementById('paramAdvGrid');
+    if (adv) adv.innerHTML = '';
+    FIELD_ORDER.param.forEach(key => {
+      const def = FIELD_DEFS[key];
+      const target = (def && def.advanced && adv) ? adv : form;
+      this.appendField(target, key, 'spray');
+    });
     this.syncParamFormFromPlant();
     this.updateCalcBasisVisibility();
     this.renderPlotsEditor();
+    this.restoreAdvState();
   },
 
   syncParamFormFromPlant() {
@@ -963,9 +970,15 @@ const UI = {
       const wrap = document.createElement('div');
       wrap.className = 'form-grid';
       content.appendChild(wrap);
-      FIELD_ORDER[tab.key].forEach(key => this.appendField(wrap, key, 'spray'));
+      const adv = document.getElementById('costAdvGrid');
+      FIELD_ORDER[tab.key].forEach(key => {
+        const def = FIELD_DEFS[key];
+        const target = (def && def.advanced && adv) ? adv : wrap;
+        this.appendField(target, key, 'spray');
+      });
     });
     this.syncCostFormFromState();
+    this.restoreAdvState();
   },
 
   switchCostTab(tabKey, mode) {
@@ -1007,8 +1020,38 @@ const UI = {
     const form = document.getElementById('timingForm');
     if (!form) return;
     form.innerHTML = '';
-    FIELD_ORDER.timing.forEach(key => this.appendField(form, key, 'timing'));
+    const adv = document.getElementById('timingAdvGrid');
+    if (adv) adv.innerHTML = '';
+    FIELD_ORDER.timing.forEach(key => {
+      const def = FIELD_DEFS[key];
+      const target = (def && def.advanced && adv) ? adv : form;
+      this.appendField(target, key, 'timing');
+    });
     this.syncTimingFormFromState();
+    this.restoreAdvState();
+  },
+
+  /* 高级设置折叠展开状态记忆 */
+  restoreAdvState() {
+    let st = {};
+    try { st = JSON.parse(localStorage.getItem('drone_spray_adv_v1') || '{}'); } catch (e) { st = {}; }
+    [['paramAdv', 'param'], ['costAdv', 'cost'], ['timingAdv', 'timing']].forEach(([id, k]) => {
+      const el = document.getElementById(id);
+      if (el) el.open = !!st[k];
+    });
+  },
+
+  bindAdvState() {
+    [['paramAdv', 'param'], ['costAdv', 'cost'], ['timingAdv', 'timing']].forEach(([id, k]) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('toggle', () => {
+        let st = {};
+        try { st = JSON.parse(localStorage.getItem('drone_spray_adv_v1') || '{}'); } catch (e) { st = {}; }
+        st[k] = el.open;
+        localStorage.setItem('drone_spray_adv_v1', JSON.stringify(st));
+      });
+    });
   },
 
   syncTimingFormFromState() {
@@ -2006,6 +2049,9 @@ const UI = {
     document.getElementById('inputValue').addEventListener('keydown', e => {
       if (e.key === 'Enter') document.getElementById('inputOk').click();
     });
+
+    // 高级设置折叠状态记忆
+    this.bindAdvState();
 
     // 农户档案
     document.getElementById('farmersBtn').addEventListener('click', () => this.openFarmersModal());

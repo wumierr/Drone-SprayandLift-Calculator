@@ -72,9 +72,7 @@
     <button class="mode-btn" data-mode="haul">📦 吊运模式</button>
   </div>
 
-  <main class="app-main">
-    <!-- 左侧：用药类型 -->
-    <section class="panel plant-panel" aria-label="用药类型">
+      <section class="panel plant-panel" aria-label="用药类型">
       <div class="panel-title"><span>🧪</span> 用药类型 <span class="hint">点击选择，可自定义增减</span></div>
       <div class="plant-grid" id="plantGrid"><!-- JS 注入 --></div>
       <div class="plant-info" id="plantInfo">
@@ -94,7 +92,55 @@
       </div>
     </section>
 
+    <!-- 地块与作业组（高频输入区） -->
+
+    <section class="panel plots-panel" aria-label="地块与作业组">
+      <div class="panel-title"><span>🗺️</span> 地块与作业组 <span class="hint">相邻地块同组号 = 连片连续作业</span></div>
+      <div id="plotsEditor" aria-label="地块编辑器"></div>
+      <div id="plotsTableWrap"></div>
+    </section>
+
     <!-- 右侧：结果卡片 -->
+
+    <section class="panel param-panel" aria-label="作业参数">
+      <div class="panel-title"><span>📋</span> 作业参数 <span class="hint">（所有数值均可修改，鼠标悬停查看说明）</span></div>
+      <div class="form-grid" id="paramForm"><!-- JS 注入 --></div>
+      <details class="adv-details" id="paramAdv">
+        <summary>⚙️ 高级设置（棵数折算/需水量/系数等）</summary>
+        <div class="form-grid" id="paramAdvGrid"></div>
+      </details>
+    </section>
+
+    <!-- 成本明细 -->
+
+    <section class="panel cost-panel" aria-label="成本明细">
+      <div class="panel-title"><span>💰</span> 成本明细</div>
+      <div class="cost-tabs" id="costTabs"><!-- JS 注入 --></div>
+      <div class="tab-content-container" id="tabContentContainer"><!-- JS 注入 --></div>
+      <details class="adv-details" id="costAdv">
+        <summary>⚙️ 高级设置（折旧/保险/防护等）</summary>
+        <div class="form-grid" id="costAdvGrid"></div>
+      </details>
+    </section>
+
+    <!-- 收入与利润 -->
+
+    <section class="panel income-panel" aria-label="收入与利润">
+      <div class="panel-title"><span>💵</span> 收入参数</div>
+      <div class="form-grid" id="incomeForm"><!-- JS 注入 --></div>
+    </section>
+
+    <!-- 成本汇总表 -->
+
+    <section class="panel timing-param-panel" id="timingParamPanel" aria-label="时间参数">
+      <div class="panel-title"><span>⚙️</span> 时间参数 <span class="hint">（用于作业时间估算）</span></div>
+      <div class="form-grid" id="timingForm"><!-- JS 注入 --></div>
+      <details class="adv-details" id="timingAdv">
+        <summary>⚙️ 高级设置（飞行估算/充电细则）</summary>
+        <div class="form-grid" id="timingAdvGrid"></div>
+      </details>
+    </section>
+  
     <section class="panel result-panel" aria-label="计算结果">
       <div class="panel-title"><span>📊</span> 计算结果 <span class="mode-tag" id="modeTag">打药模式</span></div>
 
@@ -141,8 +187,6 @@
           <div class="extra-row"><span>💊 是否包药</span><b id="rPesticideIncluded">—</b></div>
           <div class="extra-row"><span>⛽ 每次充电油钱</span><b id="rChargeOil">—</b></div>
         </div>
-        <!-- 多地块明细表（仅多地块模式显示） -->
-        <div id="plotsTableWrap" style="display:none;"></div>
       </div>
 
       <!-- 吊运模式结果 -->
@@ -195,26 +239,7 @@
     </section>
 
     <!-- 参数设置 -->
-    <section class="panel param-panel" aria-label="作业参数">
-      <div class="panel-title"><span>📋</span> 作业参数 <span class="hint">（所有数值均可修改，鼠标悬停查看说明）</span></div>
-      <div id="plotsEditor" aria-label="地块编辑器"></div>
-      <div class="form-grid" id="paramForm"><!-- JS 注入 --></div>
-    </section>
 
-    <!-- 成本明细 -->
-    <section class="panel cost-panel" aria-label="成本明细">
-      <div class="panel-title"><span>💰</span> 成本明细</div>
-      <div class="cost-tabs" id="costTabs"><!-- JS 注入 --></div>
-      <div class="tab-content-container" id="tabContentContainer"><!-- JS 注入 --></div>
-    </section>
-
-    <!-- 收入与利润 -->
-    <section class="panel income-panel" aria-label="收入与利润">
-      <div class="panel-title"><span>💵</span> 收入参数</div>
-      <div class="form-grid" id="incomeForm"><!-- JS 注入 --></div>
-    </section>
-
-    <!-- 成本汇总表 -->
     <section class="panel summary-panel" aria-label="成本汇总">
       <div class="panel-title"><span>🧮</span> 成本汇总 <span class="hint" id="summaryFormula"></span></div>
       <table class="summary-table">
@@ -230,6 +255,7 @@
     </section>
 
     <!-- 作业时间估算（仅打药模式） -->
+
     <section class="panel timing-panel" id="timingPanel" aria-label="作业时间估算">
       <div class="panel-title"><span>⏱️</span> 作业时间估算 <span class="hint" id="timingModeHint"></span></div>
       <div class="timing-grid">
@@ -286,10 +312,7 @@
     </section>
 
     <!-- 时间参数（仅打药模式） -->
-    <section class="panel timing-param-panel" id="timingParamPanel" aria-label="时间参数">
-      <div class="panel-title"><span>⚙️</span> 时间参数 <span class="hint">（用于作业时间估算）</span></div>
-      <div class="form-grid" id="timingForm"><!-- JS 注入 --></div>
-    </section>
+
   </main>
 
   <!-- 模态框：导入 -->

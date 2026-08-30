@@ -105,6 +105,10 @@
     <section class="panel param-panel" aria-label="作业参数">
       <div class="panel-title"><span>📋</span> 作业参数 <span class="hint">（所有数值均可修改，鼠标悬停查看说明）</span></div>
       <div class="form-grid" id="paramForm"><!-- JS 注入 --></div>
+      <details class="adv-details" id="paramAdv">
+        <summary>⚙️ 高级设置（棵数折算/需水量/系数等）</summary>
+        <div class="form-grid" id="paramAdvGrid"></div>
+      </details>
     </section>
 
     <!-- 成本明细 -->
@@ -113,6 +117,10 @@
       <div class="panel-title"><span>💰</span> 成本明细</div>
       <div class="cost-tabs" id="costTabs"><!-- JS 注入 --></div>
       <div class="tab-content-container" id="tabContentContainer"><!-- JS 注入 --></div>
+      <details class="adv-details" id="costAdv">
+        <summary>⚙️ 高级设置（折旧/保险/防护等）</summary>
+        <div class="form-grid" id="costAdvGrid"></div>
+      </details>
     </section>
 
     <!-- 收入与利润 -->
@@ -127,6 +135,10 @@
     <section class="panel timing-param-panel" id="timingParamPanel" aria-label="时间参数">
       <div class="panel-title"><span>⚙️</span> 时间参数 <span class="hint">（用于作业时间估算）</span></div>
       <div class="form-grid" id="timingForm"><!-- JS 注入 --></div>
+      <details class="adv-details" id="timingAdv">
+        <summary>⚙️ 高级设置（飞行估算/充电细则）</summary>
+        <div class="form-grid" id="timingAdvGrid"></div>
+      </details>
     </section>
   
     <section class="panel result-panel" aria-label="计算结果">

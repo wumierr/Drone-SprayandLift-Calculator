@@ -1614,3 +1614,20 @@ html, body {
 .wo-settle-title { font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
 .wo-settlement .summary-table { font-size: 13px; }
 .wo-settlement .summary-table th, .wo-settlement .summary-table td { padding: 6px 8px; }
+
+/* 高级设置折叠区 */
+.adv-details {
+  margin-top: 12px;
+  border-top: 1px dashed var(--input-border);
+  padding-top: 8px;
+}
+.adv-details summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 6px 2px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.adv-details summary:hover { color: var(--accent); }
+.adv-details[open] summary { margin-bottom: 10px; }
