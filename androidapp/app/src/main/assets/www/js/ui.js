@@ -118,10 +118,29 @@ const UI = {
           ...saved.workOrder
         };
       }
+      this.ensurePlots();
     } else {
       this.state.plant = { ...PLANT_DATABASE[this.state.field.plantKey || 'shajun'] };
       // 全新访问：按类型 defaultBasis 预置基准
       this.state.field.calcBasis = this.getBasisOf(this.state.plant);
+      this.ensurePlots();
+    }
+  },
+
+  /* 地块列表为空时按旧字段合成一张卡（单/多地块统一后的迁移） */
+  ensurePlots() {
+    const f = this.state.field;
+    if (!Array.isArray(f.plots)) f.plots = [];
+    if (f.plots.length === 0) {
+      f.plots = [{
+        id: 'p_default',
+        name: '地块1',
+        area: Number(f.area) || 0,
+        treeCount: Number(f.treeCount) || 0,
+        transferMin: 0,
+        groupId: 1,
+        farmerId: 'farmer_default'
+      }];
     }
   },
 
@@ -518,40 +537,9 @@ const UI = {
     document.querySelectorAll('input[name="radio-calcBasis"]').forEach(r => {
       r.checked = r.value === basis;
     });
-    // 多地块模式下尺寸在各地块行填写，交由 updatePlotModeVisibility 处理
-    if (this.state.field.plotMode) {
-      this.updatePlotModeVisibility();
-      return;
-    }
-    const areaWrap = document.getElementById('inp-area');
-    const treeWrap = document.getElementById('inp-treeCount');
-    const treesPerMu = document.getElementById('inp-treesPerMu');
-    if (areaWrap) areaWrap.closest('.field').style.display = basis === 'tree' ? 'none' : '';
-    if (treeWrap) treeWrap.closest('.field').style.display = basis === 'area' ? 'none' : '';
-    if (treesPerMu) treesPerMu.readOnly = basis === 'tree';
-  },
-
-  /* ---------- 多地块模式 ---------- */
-  updatePlotModeVisibility() {
-    const plotsMode = !!this.state.field.plotMode;
-    document.querySelectorAll('input[name="radio-plotMode"]').forEach(r => {
-      r.checked = (r.value === 'plots') === plotsMode;
-    });
-    const editor = document.getElementById('plotsEditor');
-    if (editor) editor.style.display = plotsMode ? '' : 'none';
-    // 多地块时隐藏单地块的亩数/棵数输入（尺寸在各地块行填写）
-    const areaEl = document.getElementById('inp-area');
-    const treeEl = document.getElementById('inp-treeCount');
-    if (areaEl) areaEl.closest('.field').style.display = plotsMode ? 'none' : (this.state.field.calcBasis === 'tree' ? 'none' : '');
-    if (treeEl) treeEl.closest('.field').style.display = plotsMode ? 'none' : (this.state.field.calcBasis === 'area' ? 'none' : '');
-    // 多地块按亩填写，计算基准切换一并隐藏（棵数基准仅单地块模式）
-    const basisEl = document.getElementById('inp-calcBasis');
-    if (basisEl) basisEl.closest('.field').style.display = plotsMode ? 'none' : '';
-    const wrap = document.getElementById('plotsTableWrap');
-    if (wrap) wrap.style.display = plotsMode ? '' : 'none';
-  },
-
-  renderPlotsEditor() {
+    // 地块卡尺寸字段跟随基准（亩数/棵数），重绘编辑器
+    this.renderPlotsEditor();
+  },  renderPlotsEditor() {
     const wrap = document.getElementById('plotsEditor');
     if (!wrap) return;
     const plots = this.state.field.plots || [];
@@ -917,7 +905,6 @@ const UI = {
     this.syncParamFormFromPlant();
     this.updateCalcBasisVisibility();
     this.renderPlotsEditor();
-    this.updatePlotModeVisibility();
   },
 
   syncParamFormFromPlant() {
@@ -930,8 +917,6 @@ const UI = {
     setVal('inp-waterPerTree', p.waterPerTree);
     setVal('inp-pesticideWaterPerSet', p.pesticideWaterPerSet);
     setVal('inp-droneSavingCoeff', p.droneSavingCoeff);
-    setVal('inp-area', this.state.field.area);
-    setVal('inp-treeCount', this.state.field.treeCount);
     setVal('inp-existingPesticideSets', this.state.field.existingPesticideSets);
   },
 
@@ -1196,7 +1181,7 @@ const UI = {
     } else if (mode === 'timing') {
       this.state.timing[key] = val;
     } else {
-      if (key === 'area' || key === 'calcBasis' || key === 'treeCount' || key === 'droneTank') {
+      if (key === 'calcBasis' || key === 'droneTank') {
         this.state.field[key] = val;
       } else if (key === 'existingPesticideSets') {
         this.state.field.existingPesticideSets = val;
@@ -1219,7 +1204,7 @@ const UI = {
       return this.state.timing[key];
     } else {
       // field 类参数（不在 plant 内）
-      if (key === 'area' || key === 'calcBasis' || key === 'treeCount' || key === 'droneTank') return this.state.field[key];
+      if (key === 'calcBasis' || key === 'droneTank') return this.state.field[key];
       if (key === 'existingPesticideSets') return this.state.field.existingPesticideSets;
       // plant 类参数
       if (FIELD_ORDER.param.includes(key)) return this.state.plant[key];
@@ -1277,9 +1262,7 @@ const UI = {
   /* ---------- 计算 & 渲染结果 ---------- */
   compute() {
     if (this.state.mode === 'spray') {
-      const r = this.state.field.plotMode
-        ? Calculator.computePlots(this.state)
-        : Calculator.compute(this.state);
+      const r = Calculator.computePlots(this.state);
       this.renderSprayResults(r);
       this.renderPlotsTable(r);
       this.renderSummary(r, 'spray');
@@ -1798,8 +1781,9 @@ const UI = {
       this.state.income = { ...DEFAULT_INCOME };
       this.state.timing = { ...DEFAULT_TIMING };
       this.state.plant = keepPlant || { ...PLANT_DATABASE.shajun };
-      // 基准随类型预置
+      // 基准随类型预置；地块合成单卡
       this.state.field.calcBasis = this.getBasisOf(this.state.plant);
+      this.ensurePlots();
       this.toast('打药模式已恢复默认', 'success');
     } else {
       this.state.haulField = { ...DEFAULT_HAUL_FIELD };
@@ -1829,17 +1813,6 @@ const UI = {
         document.querySelectorAll('.viz-block').forEach(b => b.classList.remove('active'));
       });
     }
-
-    // 地块模式切换（单地块/多地块）
-    document.querySelectorAll('input[name="radio-plotMode"]').forEach(r => {
-      r.addEventListener('change', () => {
-        this.state.field.plotMode = r.value === 'plots';
-        this.updatePlotModeVisibility();
-        this.compute();
-        this.save();
-        this.toast(r.value === 'plots' ? '已切换为多地块模式' : '已切换为单地块模式', 'success');
-      });
-    });
 
     // 地块编辑器事件委托（行内编辑/增删/档位，重渲染后依然有效）
     const plotsEditor = document.getElementById('plotsEditor');
@@ -1925,7 +1898,9 @@ const UI = {
       Storage.addHistory({
         mode: this.state.mode,
         plant: this.state.mode === 'spray' ? this.state.plant.name : '吊运',
-        area: this.state.mode === 'spray' ? this.state.field.area : this.state.haulField.totalWeight,
+        area: this.state.mode === 'spray'
+          ? (this._lastResult && this._lastResult.area != null ? this._lastResult.area : this.state.field.area)
+          : this.state.haulField.totalWeight,
         pesticide: r.pesticide || r.totalTrips || 0,
         water: r.water || 0,
         totalCost: r.totalCost,

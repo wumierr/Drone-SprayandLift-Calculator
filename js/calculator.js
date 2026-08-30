@@ -1,15 +1,13 @@
 /* ============================================================
    calculator.js — 计算核心
-   公式：
-     【果树类 calcMode='tree'】（按人工打药水量计算药量）
-       药量(套) = (亩数 × 每棵水量 × 每亩棵数 ÷ 一套药需水量) × 无人机省药系数
-     【面积类 calcMode='area'】（按每亩水量计算药量）
-       药量(套) = (亩数 × 每亩水量 ÷ 一套药需水量) × 无人机省药系数
-
-     注意：药量公式中的"每棵水量/每亩水量"是【人工打药稀释水量】，
-          用于计算需要多少套药剂；
-          而下方的"实际用水量"用的是植物的 waterPerMu，
-          即【无人机实际喷洒水量】，两者独立、互不影响。
+   公式（打药模式统一走 computePlots，compute() 已删除）：
+     药量（人工打药稀释水量口径）：
+       果树林型（defaultBasis='tree'）
+         按棵数：棵数 × 每棵水量 ÷ 一套药需水量 × 省药系数
+         按亩数：亩数 × 每亩棵数 × 每棵水量 ÷ 一套药需水量 × 省药系数
+       大田型（defaultBasis='area'）
+         亩数 × 每亩水量 ÷ 一套药需水量 × 省药系数
+     无人机实际喷洒水量 = 亩数 × 每亩水量（与药量口径独立）
 
      7舍8入取整：小数部分 ≥0.8 进1，否则舍去
        例：5.7→5，5.8→6，5.9→6
@@ -42,294 +40,6 @@ const Calculator = {
     const intPart = parseInt(str.substring(0, dotIdx), 10);
     const firstDecimal = parseInt(str.charAt(dotIdx + 1), 10);
     return intPart + (firstDecimal >= 8 ? 1 : 0);
-  },
-
-  /**
-   * 主计算函数
-   * @param {Object} state - 完整状态 { plant, field, costs, income }
-   * @returns {Object} 计算结果
-   *
-   * 双路线药剂计算：
-   *   路线A（主显示）：existingPesticideSets = 用户填的现有库存套数
-   *   路线B（参考）：pesticide/pesticideRounded = 按水量公式算的参考需要套数
-   *   主卡片显示 existingPesticideSets（最高优先级）
-   *   参考行显示 pesticideRounded（7舍8入后）
-   *   药剂成本（包药时）= max(0, 参考取整 - 现有) × 单价  —— 即需补购的量
-   */
-  compute(state) {
-    const { plant, field, costs, income } = state;
-    const existingSets = Number(field.existingPesticideSets) || 0;
-
-    /* 计算基准：'tree' 按棵数（亩数 = 棵数 ÷ 每亩棵数 反推）| 'area' 按亩数 */
-    const calcBasis = field.calcBasis === 'tree' ? 'tree' : 'area';
-    const treeCount = Number(field.treeCount) || 0;
-    let area = Number(field.area) || 0;
-    if (calcBasis === 'tree' && treeCount > 0) {
-      const treesPerMu = Number(plant.treesPerMu) || 0;
-      area = treesPerMu > 0 ? treeCount / treesPerMu : 0;
-    }
-
-    const result = {
-      pesticide: 0,                  // 参考药量（小数原值）
-      pesticideRounded: 0,           // 参考药量（7舍8入取整）
-      existingSets: existingSets,    // 现有药量（主显示）
-      needToBuy: 0,                  // 需补购套数 = max(0, 参考-现有)
-      stockStatus: 'none',           // 库存状态：enough/sufficient/short/none
-      water: 0,                      // 实际喷洒水量（升）
-      concentration: 0,              // 参考浓度（套/100升，用参考取整套数算）
-      cycles: 0,                     // 循环数
-      costBreakdown: {},             // 成本明细
-      totalCost: 0,                  // 总成本
-      income: 0,                     // 收入
-      profit: 0,                     // 利润
-      costPerMu: 0,                  // 每亩成本
-      profitPerMu: 0,                // 每亩利润
-      flightHeight: plant.flightHeight,
-      pesticideIncluded: costs.pesticideIncluded === true,
-      area: area,                    // 实际采用亩数（棵数基准时为反推值）
-      calcBasis: calcBasis,
-      treeCount: treeCount
-    };
-
-    if (area <= 0) return result;
-
-    /* 1. 参考药量（按人工打药稀释水量计算）
-          棵数基准：棵数 × 每棵水量 ÷ 一套药需水量（直接按棵，避免反推浮点误差） */
-    let pesticideRaw;
-    const pesticideWaterPerSet = Math.max(0.01, Number(plant.pesticideWaterPerSet) || 1);
-    if (calcBasis === 'tree' && treeCount > 0) {
-      pesticideRaw = (treeCount * (Number(plant.waterPerTree) || 0)) / pesticideWaterPerSet;
-    } else if ((plant.defaultBasis || plant.calcMode) === 'tree') {
-      const treesPerMu = Number(plant.treesPerMu) || 0;
-      const waterPerTree = Number(plant.waterPerTree) || 0;
-      pesticideRaw = (area * waterPerTree * treesPerMu) / pesticideWaterPerSet;
-    } else {
-      pesticideRaw = (area * Number(plant.waterPerMu)) / pesticideWaterPerSet;
-    }
-    pesticideRaw *= Number(plant.droneSavingCoeff) || 1;
-    result.pesticide = pesticideRaw;
-    result.usedSets = pesticideRaw;                    // 合计小数用量（结算用）
-    result.pesticideRounded = this.round78(pesticideRaw);  // 采购取整
-
-    /* 1.5 现有药量与补购计算（双路线核心） */
-    result.needToBuy = Math.max(0, result.pesticideRounded - existingSets);
-    if (existingSets <= 0) {
-      result.stockStatus = 'none';        // 无库存
-    } else if (existingSets >= result.pesticideRounded) {
-      result.stockStatus = 'enough';      // 库存充足
-    } else {
-      result.stockStatus = 'short';       // 库存不足
-    }
-
-    /* 2. 实际用水量（无人机喷洒量，独立于药量计算） */
-    result.water = area * Number(plant.waterPerMu);
-
-    /* 2.5 参考浓度（套/100升）—— 用参考取整套数和实际喷洒水量 */
-    result.concentration = result.water > 0
-      ? (result.pesticideRounded / result.water) * 100
-      : 0;
-
-    /* 3. 循环数 */
-    const cycleArea = Math.max(0.01, Number(costs.cycleArea) || 1);
-    result.cycles = Math.ceil(area / cycleArea);
-
-    /* 4. 循环成本（电池+充电+油钱 或 仅电池折旧） */
-    const cycleUnitCost = costs.useThreePhase
-      ? Number(costs.cycleCostThreePhase) || 0
-      : Number(costs.cycleCost) || 0;
-    result.costBreakdown.cycle = result.cycles * cycleUnitCost;
-
-    /* 5. 交通成本 */
-    const distance = Number(costs.distance) || 0;
-    const fuelConsumption = Number(costs.fuelConsumption) || 0;
-    const fuelPrice = Number(costs.fuelPrice) || 0;
-    const roundTripKm = distance * 2;
-    const fuelCost = roundTripKm * (fuelConsumption / 100) * fuelPrice;
-    const vehicleDep = roundTripKm * (Number(costs.vehicleDepreciation) || 0);
-    result.costBreakdown.transport = fuelCost + vehicleDep + (Number(costs.tolls) || 0);
-
-    /* 6. 人工成本（住宿天数独立于作业天数） */
-    const workers = Number(costs.workers) || 0;
-    const days = Number(costs.days) || 0;
-    const dailyWage = Number(costs.dailyWage) || 0;
-    const mealCost = Number(costs.mealCost) || 0;
-    const accommodation = Number(costs.accommodation) || 0;
-    const accommodationDays = Number(costs.accommodationDays) || 0;
-    result.costBreakdown.labor = workers * days * (dailyWage + mealCost)
-                               + accommodation * accommodationDays;
-
-    /* 7. 药剂成本（仅当 pesticideIncluded=true 时计入）
-       用 needToBuy（需补购套数）× 单价
-       即：现有库存够则不花钱，不足则补差额 */
-    const pesticidePrice = Number(costs.pesticidePrice) || 0;
-    if (result.pesticideIncluded) {
-      result.costBreakdown.pesticide = result.needToBuy * pesticidePrice;
-    } else {
-      // 不包药：药剂农户自备，作业方不承担药剂成本
-      result.costBreakdown.pesticide = 0;
-    }
-
-    /* 8. 设备折旧 & 维修 & 保险（每亩分摊） */
-    const perMuCost = (Number(costs.droneDepreciation) || 0)
-                    + (Number(costs.maintenanceReserve) || 0)
-                    + (Number(costs.insurance) || 0);
-    result.costBreakdown.equipment = area * perMuCost;
-
-    /* 9. 其他成本（每次作业固定） */
-    result.costBreakdown.other = (Number(costs.protectiveGear) || 0)
-                               + (Number(costs.cleaningCost) || 0)
-                               + (Number(costs.miscCost) || 0);
-
-    /* 10. 汇总 */
-    result.totalCost = Object.values(result.costBreakdown).reduce((a, b) => a + b, 0);
-
-    /* 11. 收入 */
-    const pricePerMu = Number(income.pricePerMu) || 0;
-    const subsidy = Number(income.subsidy) || 0;
-    result.income = area * pricePerMu + subsidy;
-
-    /* 12. 利润 */
-    result.profit = result.income - result.totalCost;
-
-    /* 13. 每亩指标 */
-    result.costPerMu = area > 0 ? result.totalCost / area : 0;
-    result.profitPerMu = area > 0 ? result.profit / area : 0;
-
-    /* 14. 作业时间估算 */
-    result.timing = this.computeTiming(state, result);
-
-    return result;
-  },
-
-  /* ============================================================
-     ★★★ 作业时间计算（打药模式专用）★★★
-     实际作业流程建模：
-       1. 先兑水兑药：首批必须在飞行前完成（串行）
-       2. 再加药装载、飞行循环
-       3. 总水量超过单批兑水量时分多批，第 2..N 批可与飞行并行
-          （利用升降、充电等待的地面空闲），兑药总时长成为瓶颈时延长总时间
-     公式：
-       兑药轮数 = ⌈总水量 ÷ 单批兑水量⌉（每轮耗时 = 基础兑药时间，与水量无关）
-       飞行阶段时长 = 飞行作业 + 来回升降 + 加药装载 + 电池等待
-       总作业时间 = max(兑药总时长, 首批兑药 + 飞行阶段时长)
-       单循环地面时间 T = 来回升降 + 加药装载 + 飞行作业/循环数
-         （加药装载是真实串行耗时，不能被飞行抵消；充电可以——
-          这就是"加药时间高优先级于充电时间"的含义）
-     ============================================================ */
-  computeTiming(state, r) {
-    const t = state.timing || window.DEFAULT_TIMING || {};
-    const flightSpeed = Math.max(0.01, Number(t.flightSpeed) || 2.5);
-    const lineSpacing = Math.max(0.1, Number(t.lineSpacing) || 2);
-    const manualFlightTime = Math.max(0, Number(t.manualFlightTime) || 0);
-    const roundTripTime = Math.max(0, Number(t.roundTripTime) || 0);
-    const loadTime = Math.max(0, Number(t.loadTime) || 0);
-    const baseMixTime = Math.max(0, Number(t.baseMixTime) || 0);
-    const batchCapacity = Math.max(1, Number(t.batchCapacity) || 1000);
-    const batteryCount = Math.max(1, Math.floor(Number(t.batteryCount) || 1));
-    const generatorChargeTime = Math.max(0.1, Number(t.generatorChargeTime) || 8);
-    const threePhaseChargeTime = Math.max(0.1, Number(t.threePhaseChargeTime) || 5);
-    const chargeMode = t.chargeMode || 'generator';
-    const chargeAfterWork = t.chargeAfterWork !== false;
-
-    // 棵数基准时用反推亩数（r.area 由 compute() 传入）
-    const area = (r && r.area != null) ? r.area : (Number(state.field.area) || 0);
-    const totalWater = r.water || 0;
-    const cycles = r.cycles || 0;
-
-    /* 1. 兑水兑药批次（首批串行在前，其余批次与飞行并行） */
-    let mixRounds = 0;
-    let mixTotalTime = 0;
-    let firstMixTime = 0;
-    if (totalWater > 0) {
-      mixRounds = Math.max(1, Math.ceil(totalWater / batchCapacity));
-      mixTotalTime = mixRounds * baseMixTime;
-      firstMixTime = baseMixTime;   // 飞行开始前必须完成首批
-    }
-
-    /* 2. 飞行作业时间（高优先级：manualFlightTime > 0 时用此值，否则估算） */
-    let flightLength = 0;
-    let flightTimeMin = 0;
-    let flightTimeSource = 'estimate';  // 'estimate' or 'manual'
-    if (manualFlightTime > 0) {
-      flightTimeMin = manualFlightTime;
-      flightTimeSource = 'manual';
-      // 飞行长度不计算（手动模式不需要）
-    } else {
-      flightLength = area > 0 ? (area * 666.67) / lineSpacing : 0;
-      const flightTimeSec = flightLength / flightSpeed;
-      flightTimeMin = flightTimeSec / 60;
-      flightTimeSource = 'estimate';
-    }
-
-    /* 3. 来回升降 + 加药装载（都是每循环真实串行耗时） */
-    const roundTripTotal = cycles * (roundTripTime + loadTime);
-
-    /* 3.5 单次循环时间 T = 来回升降 + 加药装载 + 飞行作业/循环数 */
-    const perCycleFlight = cycles > 0 ? flightTimeMin / cycles : 0;
-    const T = roundTripTime + loadTime + perCycleFlight;
-
-    /* 4. 电池等待时间（事件驱动模拟，时刻相对首批兑药完成点） */
-    const batteryResult = this.computeBatteryWait(
-      cycles,
-      T,
-      batteryCount,
-      chargeMode,
-      generatorChargeTime,
-      threePhaseChargeTime
-    );
-    const batteryWait = batteryResult.total;
-    // 飞行阶段时长（相对值）：飞行 + 升降 + 装载 + 电池等待
-    const flightSpan = batteryResult.cycleEnd > 0
-      ? batteryResult.cycleEnd
-      : (cycles > 0 ? cycles * T : 0);
-
-    /* 5. 结束后充电（如果勾选）——先按相对时刻计算，再统一平移 */
-    const afterWorkCharge = chargeAfterWork ? this.computeAfterWorkCharge(
-      batteryResult.batteries_final, batteryResult.cycleEnd, batteryCount, chargeMode,
-      generatorChargeTime, threePhaseChargeTime
-    ) : { total: 0, blocks: [] };
-
-    /* 6. 时刻平移：所有飞行/充电事件发生在首批兑药完成之后 */
-    batteryResult.cycles.forEach(c => {
-      c.tStart += firstMixTime;
-      c.tEnd += firstMixTime;
-      c.chargeStart += firstMixTime;
-      c.chargeEnd += firstMixTime;
-    });
-    afterWorkCharge.blocks.forEach(b => {
-      b.startAt += firstMixTime;
-      b.endAt += firstMixTime;
-    });
-
-    /* 7. 总作业时间（不含结束后充电）：
-          首批兑药 + 飞行阶段 与 兑药总时长 取大者（后续批次并行兑药） */
-    const totalTime = Math.max(mixTotalTime, firstMixTime + flightSpan);
-    const totalTimeWithCharge = totalTime + afterWorkCharge.total;
-
-    return {
-      mixTotalTime: mixTotalTime,
-      mixRounds: mixRounds,
-      batchCapacity: batchCapacity,
-      firstMixTime: firstMixTime,
-      flightSpan: flightSpan,
-      flightLength: flightLength,
-      flightTimeMin: flightTimeMin,
-      flightTimeSource: flightTimeSource,    // 'manual' or 'estimate'
-      roundTripTotal: roundTripTotal,
-      loadTime: loadTime,
-      T: T,
-      perCycleFlight: perCycleFlight,
-      batteryWait: batteryWait,
-      batteryCycles: batteryResult.cycles,
-      noWaitCount: batteryResult.noWaitCount,
-      totalTime: totalTime,
-      afterWorkCharge: afterWorkCharge.total,
-      afterWorkBlocks: afterWorkCharge.blocks,
-      totalTimeWithCharge: totalTimeWithCharge,
-      batteryCount: batteryCount,
-      chargeMode: chargeMode,
-      chargeAfterWork: chargeAfterWork
-    };
   },
 
   /* ============================================================
@@ -555,7 +265,6 @@ const Calculator = {
     const { plant, field, costs, income, timing } = state;
     const plots = Array.isArray(field.plots) ? field.plots : [];
     const existingSets = Number(field.existingPesticideSets) || 0;
-    const calcBasis = 'area';   // 地块按亩数计算（棵数基准仅单地块模式）
     const droneTank = Math.max(1, Number(field.droneTank) || 85);
     const groupMoveTime = Math.max(0, Number(field.groupMoveTime) || 0);
     const groupTripsOv = (field.groupTrips && typeof field.groupTrips === 'object') ? field.groupTrips : {};
@@ -563,6 +272,7 @@ const Calculator = {
     const t = timing || window.DEFAULT_TIMING || {};
     const flightSpeed = Math.max(0.01, Number(t.flightSpeed) || 2.5);
     const lineSpacing = Math.max(0.1, Number(t.lineSpacing) || 2);
+    const roundTripTime = Math.max(0, Number(t.roundTripTime) || 0);
     const loadTime = Math.max(0, Number(t.loadTime) || 0);
     const baseMixTime = Math.max(0, Number(t.baseMixTime) || 0);
     const batchCapacity = Math.max(1, Number(t.batchCapacity) || 1000);
@@ -574,11 +284,29 @@ const Calculator = {
     const pesticideWaterPerSet = Math.max(0.01, Number(plant.pesticideWaterPerSet) || 1);
     const savingCoeff = Number(plant.droneSavingCoeff) || 1;
 
+    /* 计算基准：'tree' 地块按棵数（亩数反推）| 'area' 按亩数。
+       药量永远按"人工打药稀释水量"口径：果树林型 = 面积×每亩棵数×每棵水量，
+       大田型 = 面积×每亩水量；两者都再 ÷一套药需水量 × 省药系数 */
+    const calcBasis = field.calcBasis === 'tree' ? 'tree' : 'area';
+    const typeTree = (plant.defaultBasis || plant.calcMode) === 'tree';
+
     /* 第 1 步：逐地块原始数据（水量/药量/所属组） */
     const rows = [];
     plots.forEach((p, i) => {
-      const area = Number(p.area) || 0;
-      const water = area * (Number(plant.waterPerMu) || 0);
+      let area, water, pesticideRaw;
+      if (calcBasis === 'tree') {
+        const treeCount = Number(p.treeCount) || 0;
+        const treesPerMu = Number(plant.treesPerMu) || 0;
+        area = treesPerMu > 0 ? treeCount / treesPerMu : 0;
+        water = area * (Number(plant.waterPerMu) || 0);
+        pesticideRaw = (treeCount * (Number(plant.waterPerTree) || 0)) / pesticideWaterPerSet * savingCoeff;
+      } else {
+        area = Number(p.area) || 0;
+        water = area * (Number(plant.waterPerMu) || 0);
+        pesticideRaw = typeTree
+          ? (area * (Number(plant.treesPerMu) || 0) * (Number(plant.waterPerTree) || 0)) / pesticideWaterPerSet * savingCoeff
+          : water / pesticideWaterPerSet * savingCoeff;
+      }
       rows.push({
         id: p.id != null ? p.id : i,
         name: p.name || `地块${i + 1}`,
@@ -588,7 +316,8 @@ const Calculator = {
         groupId: Math.max(1, Math.round(Number(p.groupId) || 1)),
         transferMin: Math.max(0, Number(p.transferMin) || 0),
         flightMin: area > 0 ? (area * 666.67) / lineSpacing / flightSpeed / 60 : 0,
-        pesticideRaw: water > 0 ? (water / pesticideWaterPerSet) * savingCoeff : 0,
+        pesticideRaw: pesticideRaw,
+        treeCount: Number(p.treeCount) || 0,
         pesticideRounded: 0
       });
     });
@@ -606,6 +335,15 @@ const Calculator = {
       g.transferMin = Math.max(g.transferMin, r.transferMin);   // 组转场取组内最大（保守）
     });
     const groups = [...groupMap.values()].sort((a, b) => a.id - b.id);
+    // 手动飞行时间：覆盖估算总飞行时长，按各组飞行占比分摊
+    const rawFlightTotal = rows.reduce((sum, r) => sum + r.flightMin, 0);
+    const manualFlightTime = Math.max(0, Number(t.manualFlightTime) || 0);
+    const flightTimeSource = manualFlightTime > 0 ? 'manual' : 'estimate';
+    const totalFlightMin = manualFlightTime > 0 ? manualFlightTime : rawFlightTotal;
+    groups.forEach(g => {
+      g.flightMin = rawFlightTotal > 0 ? g.flightMin / rawFlightTotal * totalFlightMin : 0;
+    });
+
     groups.forEach(g => {
       const ov = Math.round(Number(groupTripsOv[g.id]) || 0);
       g.tripsOverride = ov > 0 ? ov : 0;
@@ -613,7 +351,7 @@ const Calculator = {
       g.trips = g.tripsOverride > 0 ? g.tripsOverride : g.minTrips;
       g.perTripWater = g.trips > 0 ? g.water / g.trips : 0;
       const perTripSpray = g.trips > 0 ? g.flightMin / g.trips : 0;
-      g.perTripTime = 2 * g.transferMin + loadTime + perTripSpray;
+      g.perTripTime = 2 * g.transferMin + roundTripTime + loadTime + perTripSpray;
     });
     // 回填每块地所属组的趟数信息（展示用）；药量保持小数（三层口径：块级不取整）
     rows.forEach(r => {
@@ -627,7 +365,6 @@ const Calculator = {
     const totalTrips = groups.reduce((sum, g) => sum + g.trips, 0);
     const totalTransfer = groups.reduce((sum, g) => sum + g.trips * 2 * g.transferMin, 0);
     const totalLoad = groups.reduce((sum, g) => sum + g.trips * loadTime, 0);
-    const totalFlightMin = rows.reduce((sum, r) => sum + r.flightMin, 0);
     const totalMove = groups.length > 0 ? (groups.length - 1) * groupMoveTime : 0;
     const weightedTSum = groups.reduce((sum, g) => sum + g.trips * g.perTripTime, 0);
 
@@ -640,6 +377,7 @@ const Calculator = {
       droneTank: droneTank,
       area: totalArea,
       calcBasis: calcBasis,
+      treeCount: rows.reduce((sum, r) => sum + r.treeCount, 0),
       water: totalWater,
       totalTrips: totalTrips,
       totalTransfer: totalTransfer,
@@ -731,7 +469,7 @@ const Calculator = {
     result.timing = {
       mixTotalTime: mixTotalTime, mixRounds: mixRounds, batchCapacity: batchCapacity,
       firstMixTime: firstMixTime, flightSpan: flightSpan,
-      flightLength: 0, flightTimeMin: totalFlightMin, flightTimeSource: 'estimate',
+      flightLength: 0, flightTimeMin: totalFlightMin, flightTimeSource: flightTimeSource,
       roundTripTotal: totalTransfer + totalLoad, totalTransfer: totalTransfer, totalLoad: totalLoad,
       T: avgT, perCycleFlight: 0,
       batteryWait: batteryWait, batteryCycles: batteryResult.cycles,

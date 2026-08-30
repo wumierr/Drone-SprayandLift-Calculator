@@ -56,7 +56,7 @@ test('js/ui.js 无原生 prompt()/confirm() 调用（注释除外）', () => {
 });
 
 function freshState() {
-  return vm.runInContext(`({
+  const s = vm.runInContext(`({
     mode: 'spray',
     plant: { ...PLANT_DATABASE.shajun },
     field: { ...DEFAULT_FIELD },
@@ -67,6 +67,11 @@ function freshState() {
     haulCosts: { ...DEFAULT_HAUL_COSTS },
     haulIncome: { ...DEFAULT_HAUL_INCOME }
   })`, ctx);
+  // 与 UI.ensurePlots 一致：默认合成一张地块卡
+  if (!Array.isArray(s.field.plots) || s.field.plots.length === 0) {
+    s.field.plots = [{ id: 'p_default', name: '地块1', area: s.field.area || 0, treeCount: s.field.treeCount || 0, groupId: 1 }];
+  }
+  return s;
 }
 
 /* ============================================================
@@ -98,18 +103,21 @@ test('fmt 去尾零一致', () => {
 /* ============================================================
    Calculator.compute（打药模式）
    ============================================================ */
-test('打药默认参数（果树 10 亩）', () => {
-  const r = C.compute(freshState());
-  eq(r.pesticide.toFixed(3), '5.600', '参考药量 = 10×3×80÷300×0.7');
+test('打药统一计算（果树 10 亩 = 单卡）', () => {
+  const r = C.computePlots(freshState());
+  ok(Math.abs(r.pesticide - 5.6) < 1e-9, `需求合计=${r.pesticide} 应为 10×80×3÷300×0.7=5.6`);
   eq(r.pesticideRounded, 5, '7舍8入后 5');
   eq(r.water, 200, '实际水量 10×20');
-  eq(r.cycles, 5, '循环数 ⌈10÷2⌉');
+  eq(r.totalTrips, 3, '趟数 ⌈200÷85⌉=3');
+  eq(r.cycles, 1, '电池循环 ⌈3÷6⌉=1');
   eq(r.pesticideIncluded, false, '默认不包药');
   eq(r.costBreakdown.pesticide, 0, '不包药药剂成本为 0');
+  eq(r.stockStatus, 'none', '无库存');
 });
 
 test('costs 缺字段时 pesticideIncluded 应回落为 false（历史 bug：曾翻转为 true）', () => {
-  const r = C.compute({ plant: { ...ctx.window.PLANT_DATABASE.shajun }, field: { area: 10 }, costs: {}, income: {} });
+  const s = { plant: { ...ctx.window.PLANT_DATABASE.shajun }, field: { plots: [{ id: 'a', area: 10, groupId: 1 }] }, costs: {}, income: {} };
+  const r = C.computePlots(s);
   eq(r.pesticideIncluded, false, '缺字段 ≠ 包药');
 });
 
@@ -118,10 +126,12 @@ test('包药时药剂成本 = 需补购套数 × 单价', () => {
   s.costs.pesticideIncluded = true;   // 包药
   s.costs.pesticidePrice = 80;
   s.field.existingPesticideSets = 3;  // 库存 3，参考需 5 → 补购 2
-  const r = C.compute(s);
-  eq(r.needToBuy, 2, '补购 2 套');
-  eq(r.costBreakdown.pesticide, 160, '2×80=160');
+  const r = C.computePlots(s);
+  eq(r.pesticideRounded, 5, '采购 5 套');
+  eq(r.needToBuy, 2, '补购 5−3=2 套');
+  eq(r.costBreakdown.pesticide, 160, '作业方成本 2×80=160（补购口径）');
   eq(r.stockStatus, 'short', '库存不足');
+  ok(Math.abs(r.settlement[0].usedSets - 5.6) < 1e-9, '结算按小数用量 5.6（不扣库存）');
 });
 
 /* ============================================================
@@ -141,31 +151,29 @@ test('慢充场景等待逐步累积（T=5 充8 N=2）', () => {
 /* ============================================================
    作业时间估算（兑药调度模型：首批串行，其余批次与飞行并行）
    ============================================================ */
-test('computeTiming 手动飞行时间优先于估算', () => {
+test('手动飞行时间优先于估算', () => {
   const s = freshState();
   s.timing.manualFlightTime = 45;
-  const r = C.compute(s);
+  const r = C.computePlots(s);
   eq(r.timing.flightTimeMin, 45, '直接采用手动值');
   eq(r.timing.flightTimeSource, 'manual', '来源标记 manual');
 });
 
 test('单批兑药：首批串行 + 飞行阶段（默认参数 10 亩 200L）', () => {
-  const r = C.compute(freshState());
-  const t = r.timing;
+  const t = C.computePlots(freshState()).timing;
   eq(t.mixRounds, 1, '200L ≤ 1000L 单批');
   eq(t.firstMixTime, 10, '首批兑药 = baseMixTime');
-  // T = 升降3 + 装载1 + 飞行22.222/5 = 8.444；T>充电8 → 无电池等待
-  ok(Math.abs(t.T - 8.4444) < 0.001, `T=${t.T} 应为 8.4444`);
+  // 趟数 ⌈200÷85⌉=3；T = 升降3+装载1+飞行22.222/3 = 11.407；T>充电8 → 无等待
   eq(t.batteryWait, 0, '无电池等待');
-  ok(Math.abs(t.flightSpan - 42.2222) < 0.01, `flightSpan=${t.flightSpan} 应为 5×8.4444`);
-  ok(Math.abs(t.totalTime - (10 + 42.2222)) < 0.01, `总时间=${t.totalTime} = 首批10 + 飞行阶段42.22`);
+  ok(Math.abs(t.flightSpan - 3 * (4 + 22.2222 / 3)) < 0.01, `飞行阶段=${t.flightSpan} 应为 3×11.407`);
+  ok(Math.abs(t.totalTime - (10 + 3 * (4 + 22.2222 / 3))) < 0.01, `总时间=${t.totalTime} = 首批10 + 飞行阶段`);
 });
 
 test('兑药瓶颈：多批串行流水超过飞行阶段时取 max', () => {
   const s = freshState();
   s.timing.batchCapacity = 60;   // 200L → ⌈200/60⌉=4 批
   s.timing.baseMixTime = 20;     // 4×20=80min > 首批20+飞行42.2=62.2
-  const t = C.compute(s).timing;
+  const t = C.computePlots(s).timing;
   eq(t.mixRounds, 4, '分 4 批');
   ok(Math.abs(t.mixTotalTime - 80) < 0.001, `兑药总时长=${t.mixTotalTime}`);
   ok(Math.abs(t.totalTime - 80) < 0.01, `总时间=${t.totalTime} 由兑药瓶颈决定`);
@@ -173,18 +181,18 @@ test('兑药瓶颈：多批串行流水超过飞行阶段时取 max', () => {
 
 test('电池模拟时刻平移：首批兑药完成后才开始飞行', () => {
   const s = freshState();
-  const t = C.compute(s).timing;
+  const t = C.computePlots(freshState()).timing;
   ok(t.batteryCycles.length > 0, '有循环明细');
-  ok(Math.abs(t.batteryCycles[0].tStart - 10) < 0.001, `首循环 tStart=${t.batteryCycles[0].tStart} 应=首批兑药10min`);
+  ok(Math.abs(t.batteryCycles[0].tStart - 10) < 0.001, `首趟 tStart=${t.batteryCycles[0].tStart} 应=首批兑药10min`);
 });
 
 test('加药装载计入单循环地面时间（真实串行耗时）', () => {
   const s = freshState();
   s.timing.loadTime = 2;
   s.timing.roundTripTime = 3;
-  const t = C.compute(s).timing;
-  ok(Math.abs(t.T - (3 + 2 + 22.2222 / 5)) < 0.001, `T=${t.T} 含装载2min`);
-  ok(Math.abs(t.roundTripTotal - 5 * 5) < 0.001, `升降+装载合计=${t.roundTripTotal}`);
+  const t = C.computePlots(s).timing;
+  ok(Math.abs(t.T - (3 + 2 + 22.2222 / 3)) < 0.001, `T=${t.T} = 升降3+装载2+每趟喷洒`);
+  ok(Math.abs(t.roundTripTotal - 3 * 2) < 0.001, `装载合计=${t.roundTripTotal} = 3趟×2min（转场输入已删，升降在T内）`);
 });
 
 /* ============================================================
@@ -221,40 +229,41 @@ test('computeHaul 兼容 { haul: {...} } 完整 state 形式', () => {
 test('棵数基准：药量按棵直算，亩数反推供成本/收入/时间', () => {
   const s = freshState();
   s.field.calcBasis = 'tree';
-  s.field.treeCount = 160;   // 果树 80棵/亩 → 反推 2 亩
-  const r = C.compute(s);
+  s.field.plots = [{ id: 'a', name: '地块1', treeCount: 160, groupId: 1 }];  // 80棵/亩 → 反推 2 亩
+  const r = C.computePlots(s);
   ok(Math.abs(r.area - 2) < 1e-9, `反推亩数=${r.area} 应为 2`);
   ok(Math.abs(r.pesticide - 1.12) < 1e-9, `药量=${r.pesticide} 应为 160×3÷300×0.7=1.12`);
   eq(r.pesticideRounded, 1, '7舍8入 → 1');
   eq(r.water, 40, '水量 = 2亩×20升');
-  eq(r.cycles, 1, '循环 = ⌈2÷2⌉');
+  eq(r.totalTrips, 1, '趟数 ⌈40÷85⌉=1');
   eq(r.income, 50, '收入 = 2×25');
 });
 
 test('棵数基准与亩数基准数值一致（160棵 = 2亩）', () => {
   const byTree = freshState();
   byTree.field.calcBasis = 'tree';
-  byTree.field.treeCount = 160;
+  byTree.field.plots = [{ id: 'a', treeCount: 160, groupId: 1 }];
   const byArea = freshState();
-  byArea.field.area = 2;
-  const a = C.compute(byTree), b = C.compute(byArea);
+  byArea.field.plots = [{ id: 'a', area: 2, groupId: 1 }];
+  const a = C.computePlots(byTree), b = C.computePlots(byArea);
   ok(Math.abs(a.pesticide - b.pesticide) < 1e-9, '药量一致');
   ok(Math.abs(a.water - b.water) < 1e-9, '水量一致');
   ok(Math.abs(a.totalCost - b.totalCost) < 1e-9, '总成本一致');
   ok(Math.abs(a.timing.totalTime - b.timing.totalTime) < 1e-9, '作业时间一致');
 });
 
-test('类型 defaultBasis 决定基准（含旧 calcMode 兼容）', () => {
+test('类型 defaultBasis 决定面积模式药量公式（稀释 vs 每亩水量）', () => {
   const s = freshState();
-  eq(s.plant.defaultBasis, 'tree', '杀菌默认按棵数');
-  // 引擎的面积公式分支读 defaultBasis || calcMode
-  s.plant = { ...ctx.window.PLANT_DATABASE.shajun, defaultBasis: 'area' };
-  const r = C.compute({ plant: s.plant, field: { area: 10 }, costs: {}, income: {} });
-  ok(r.water === 200, '面积基准下水量按每亩水量');
+  eq(s.plant.defaultBasis, 'tree', '杀菌默认按棵数（果树林型）');
+  // 大田型：面积模式药量 = 面积×每亩水量口径
+  const field_type = { ...ctx.window.PLANT_DATABASE.shajun, defaultBasis: 'area' };
+  const r = C.computePlots({ plant: field_type, field: { plots: [{ id: 'a', area: 10, groupId: 1 }] }, costs: {}, income: {} });
+  ok(Math.abs(r.pesticide - (10 * 20 / 300) * 0.7) < 1e-9, '大田型药量=面积×每亩水量÷需水量×系数');
   // 旧快照只有 calcMode 字段也能工作
-  const legacy = { ...ctx.window.PLANT_DATABASE.shajun, calcMode: 'area', defaultBasis: undefined };
-  legacy.defaultBasis = undefined;
-  eq(legacy.calcMode, 'area', '旧字段存在');
+  const legacy = { ...ctx.window.PLANT_DATABASE.shajun, calcMode: 'area' };
+  delete legacy.defaultBasis;
+  const r2 = C.computePlots({ plant: legacy, field: { plots: [{ id: 'a', area: 10, groupId: 1 }] }, costs: {}, income: {} });
+  ok(Math.abs(r2.pesticide - (10 * 20 / 300) * 0.7) < 1e-9, '旧 calcMode=area 走每亩水量口径');
 });
 
 test('旧作物快照注册为自定义类型（迁移逻辑纯数据验证）', () => {
@@ -331,16 +340,16 @@ test('药量三层口径：块级小数 → 合计小数 → 取整采购（不�
     { id: 'b', name: 'B', area: 20, groupId: 1, transferMin: 3 },
     { id: 'c', name: 'C', area: 5, groupId: 1, transferMin: 0 }
   ];
-  s.plant.pesticideWaterPerSet = 100;  // 块级小数：1.4 / 2.8 / 0.7
+  s.plant.pesticideWaterPerSet = 100;  // 稀释口径块级小数：10亩→16.8, 20亩→33.6, 5亩→8.4
   const r = C.computePlots(s);
-  ok(Math.abs(r.pesticide - 4.9) < 1e-9, `合计小数用量=${r.pesticide} 应为 4.9`);
-  eq(r.pesticideRounded, 5, '合计后 7舍8入 → 采购 5');
-  eq(r.needToBuy, 5, '无库存需补 5 套');
+  ok(Math.abs(r.pesticide - 58.8) < 1e-9, `合计小数用量=${r.pesticide} 应为 58.8`);
+  eq(r.pesticideRounded, 59, '合计后 7舍8入 → 采购 59');
+  eq(r.needToBuy, 59, '无库存需补 59 套');
   s.field.existingPesticideSets = 2;
   const r2 = C.computePlots(s);
-  eq(r2.needToBuy, 3, '库存 2 补 3');
+  eq(r2.needToBuy, 57, '库存 2 补 57');
   // 块级小数保留（明细表展示）
-  ok(Math.abs(r.plots[0].pesticideRaw - 1.4) < 1e-9, 'A 块小数用量 1.4');
+  ok(Math.abs(r.plots[0].pesticideRaw - 16.8) < 1e-9, 'A 块小数用量 16.8');
 });
 
 test('农户结算四数据（含不包药分支）', () => {
@@ -356,16 +365,18 @@ test('农户结算四数据（含不包药分支）', () => {
   const st1 = r1.settlement[0];
   ok(Math.abs(st1.area - 30) < 1e-9, '地块大小 30 亩');
   ok(Math.abs(st1.sprayFee - 750) < 1e-9, '打药钱 30×25=750');
-  ok(Math.abs(st1.usedSets - 1.4) < 1e-9, `用药量 ${st1.usedSets} 应为 1.4 套`);
+  // 稀释口径：30亩×80棵×3升÷300×0.7 = 16.8 套
+  ok(Math.abs(st1.usedSets - 16.8) < 1e-9, `用药量 ${st1.usedSets} 应为 16.8 套`);
   eq(st1.pesticideFee, 0, '不包药 → 药钱 0');
   eq(st1.included, false, '默认不包药');
   // 包药开关
   s.costs.pesticideIncluded = true;
   const r2 = C.computePlots(s);
   eq(r2.settlement[0].included, true, '包药标记');
-  ok(Math.abs(r2.settlement[0].pesticideFee - 112) < 1e-9, '包药药钱 112');
-  // 作业方药剂成本按补购口径（与结算药钱解耦）
-  eq(r2.costBreakdown.pesticide, r2.needToBuy * 80, '作业方成本=补购×单价');
+  ok(Math.abs(r2.settlement[0].pesticideFee - 1344) < 1e-9, '包药药钱 16.8×80=1344');
+  // 作业方药剂成本按补购口径（与结算药钱解耦）：采购 round78(16.8)=17
+  eq(r2.pesticideRounded, 17, '采购 17 套');
+  eq(r2.costBreakdown.pesticide, 17 * 80, '作业方成本=补购×单价');
 });
 
 test('多地块：总时长=调度模型 + 组间移动（组级覆盖）', () => {
@@ -384,9 +395,9 @@ test('多地块：总时长=调度模型 + 组间移动（组级覆盖）', () =
   // 组转场取组内最大 5 分 → 8×2×5=80
   ok(Math.abs(t.totalTransfer - 80) < 0.01, `转场合计=${t.totalTransfer} 应为 8×2×5`);
   // 组内飞行 22.22+44.44+11.11=77.78，每趟喷洒 77.78÷8
-  // 每趟时间 = 2×5 + 1 + 9.72 = 20.72 → 8 趟 = 165.78
-  ok(Math.abs(t.flightSpan - 165.7778) < 0.01, `飞行阶段=${t.flightSpan} 应为 165.78`);
-  ok(Math.abs(t.totalTime - 175.7778) < 0.01, `总时间=${t.totalTime} = 首批10+165.78`);
+  // 每趟时间 = 2×5(转场) + 3(升降) + 1(装载) + 9.72 = 23.72 → 8 趟 = 189.78
+  ok(Math.abs(t.flightSpan - 189.7778) < 0.01, `飞行阶段=${t.flightSpan} 应为 189.78`);
+  ok(Math.abs(t.totalTime - 199.7778) < 0.01, `总时间=${t.totalTime} = 首批10+189.78`);
   eq(t.batteryCycles.length, 8, '8 趟参与电池竞争');
   ok(Math.abs(t.batteryCycles[0].tStart - 10) < 0.01, '首趟平移到首批兑药后');
 });

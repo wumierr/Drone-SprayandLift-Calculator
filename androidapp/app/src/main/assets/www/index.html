@@ -196,14 +196,7 @@
     <!-- 参数设置 -->
     <section class="panel param-panel" aria-label="作业参数">
       <div class="panel-title"><span>📋</span> 作业参数 <span class="hint">（所有数值均可修改，鼠标悬停查看说明）</span></div>
-      <div class="field plot-mode-field">
-        <label>地块模式</label>
-        <div class="field-radio">
-          <label><input type="radio" name="radio-plotMode" value="single" checked><span>单地块</span></label>
-          <label><input type="radio" name="radio-plotMode" value="plots"><span>多地块</span></label>
-        </div>
-      </div>
-      <div id="plotsEditor" style="display:none;" aria-label="地块编辑器"></div>
+      <div id="plotsEditor" aria-label="地块编辑器"></div>
       <div class="form-grid" id="paramForm"><!-- JS 注入 --></div>
     </section>
 
