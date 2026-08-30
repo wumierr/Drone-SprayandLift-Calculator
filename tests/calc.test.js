@@ -474,6 +474,34 @@ test('农户档案文本往返', () => {
   eq(back.farmers[1].phone, '13800000000', '电话');
 });
 
+test('多农户同组：共享趟数，账务按农户独立（低依赖高解耦）', () => {
+  const s = freshState();
+  s.field.plotMode = true;
+  s.field.plots = [
+    { id: 'a', name: 'A东', area: 10, groupId: 1, transferMin: 5, farmerId: 'fA' },
+    { id: 'b', name: 'B西', area: 20, groupId: 1, transferMin: 5, farmerId: 'fB' }
+  ];
+  s.farmers = [
+    { id: 'fA', name: '农户甲', pricePerMu: 30, enabled: true },
+    { id: 'fB', name: '农户乙', pricePerMu: 0, enabled: true }   // 无档案价 → 回退全局 25
+  ];
+  s.costs.pesticideIncluded = true;
+  const r = C.computePlots(s);
+  // 同组连片：水量 200+400=600 → 组趟数 ⌈600÷85⌉=8
+  eq(r.groups.length, 1, '1 个作业组');
+  eq(r.groups[0].trips, 8, '组趟数 8（跨农户共享）');
+  eq(r.totalTrips, 8, '总趟数');
+  // 分户账务
+  eq(r.settlement.length, 2, '两户各自结算');
+  const fa = r.settlement.find(x => x.farmerId === 'fA');
+  const fb = r.settlement.find(x => x.farmerId === 'fB');
+  ok(Math.abs(fa.area - 10) < 1e-9, '甲 地块 10 亩');
+  ok(Math.abs(fa.sprayFee - 300) < 1e-9, '甲 打药 10×30=300');
+  ok(Math.abs(fb.sprayFee - 500) < 1e-9, '乙 打药 20×25=500（回退全局价）');
+  ok(Math.abs(fa.usedSets + fb.usedSets - r.pesticide) < 1e-9, '分户用量之和=合计');
+  ok(Math.abs(r.income - 800) < 1e-9, `收入=${r.income} 应为 300+500`);
+});
+
 /* ============================================================
    Storage：文本导出 → 导入 往返（打药）
    ============================================================ */

@@ -584,6 +584,7 @@ const Calculator = {
         name: p.name || `地块${i + 1}`,
         area: area,
         water: water,
+        farmerId: p.farmerId || 'farmer_default',
         groupId: Math.max(1, Math.round(Number(p.groupId) || 1)),
         transferMin: Math.max(0, Number(p.transferMin) || 0),
         flightMin: area > 0 ? (area * 666.67) / lineSpacing / flightSpeed / 60 : 0,
@@ -698,17 +699,34 @@ const Calculator = {
 
     const totalTime = Math.max(mixTotalTime, firstMixTime + flightSpan);
 
-    /* 结算数据（农户维度；提交2 先聚合为单行，提交4 按真实农户拆分） */
+    /* 结算按农户聚合：面积/水量/药量线性归属，作业组不影响账务（低依赖高解耦）。
+       打药钱 = 农户档案默认单价 × 其地块面积；档案无价（0）回退全局每亩收费 */
     const pesticidePrice = Number(costs.pesticidePrice) || 0;
-    result.settlement = [{
-      farmerId: 'all',
-      farmerName: field.farmerName || '全部农户',
-      area: totalArea,
-      sprayFee: totalArea * (Number(income.pricePerMu) || 0),
-      usedSets: usedSets,
-      pesticideFee: result.pesticideIncluded ? usedSets * pesticidePrice : 0,
-      included: result.pesticideIncluded === true
-    }];
+    const farmerMeta = Array.isArray(state.farmers) ? state.farmers : [];
+    const farmerMap = new Map();
+    rows.forEach(r => {
+      const fid = r.farmerId || 'farmer_default';
+      let f = farmerMap.get(fid);
+      if (!f) {
+        const meta = farmerMeta.find(x => x.id === fid);
+        f = {
+          farmerId: fid,
+          farmerName: meta ? meta.name : '未知农户',
+          area: 0, sprayFee: 0, usedSets: 0, pesticideFee: 0,
+          included: result.pesticideIncluded === true
+        };
+        farmerMap.set(fid, f);
+      }
+      f.area += r.area;
+      f.usedSets += r.pesticideRaw;
+    });
+    farmerMap.forEach(f => {
+      const meta = farmerMeta.find(x => x.id === f.farmerId);
+      const price = (meta && meta.pricePerMu > 0) ? meta.pricePerMu : (Number(income.pricePerMu) || 0);
+      f.sprayFee = f.area * price;
+      f.pesticideFee = f.included ? f.usedSets * pesticidePrice : 0;
+    });
+    result.settlement = [...farmerMap.values()].sort((a, b) => a.farmerName.localeCompare(b.farmerName, 'zh'));
 
     result.timing = {
       mixTotalTime: mixTotalTime, mixRounds: mixRounds, batchCapacity: batchCapacity,
@@ -741,7 +759,7 @@ const Calculator = {
     result.costBreakdown.other = (Number(costs.protectiveGear) || 0)
       + (Number(costs.cleaningCost) || 0) + (Number(costs.miscCost) || 0);
     result.totalCost = Object.values(result.costBreakdown).reduce((a, b) => a + b, 0);
-    result.income = totalArea * (Number(income.pricePerMu) || 0) + (Number(income.subsidy) || 0);
+    result.income = result.settlement.reduce((sum, f) => sum + f.sprayFee, 0) + (Number(income.subsidy) || 0);
     result.profit = result.income - result.totalCost;
     result.costPerMu = totalArea > 0 ? result.totalCost / totalArea : 0;
     result.profitPerMu = totalArea > 0 ? result.profit / totalArea : 0;
