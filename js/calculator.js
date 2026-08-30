@@ -266,7 +266,6 @@ const Calculator = {
     const plots = Array.isArray(field.plots) ? field.plots : [];
     const existingSets = Number(field.existingPesticideSets) || 0;
     const droneTank = Math.max(1, Number(field.droneTank) || 85);
-    const groupMoveTime = Math.max(0, Number(field.groupMoveTime) || 0);
     const groupTripsOv = (field.groupTrips && typeof field.groupTrips === 'object') ? field.groupTrips : {};
 
     const t = timing || window.DEFAULT_TIMING || {};
@@ -314,7 +313,6 @@ const Calculator = {
         water: water,
         farmerId: p.farmerId || 'farmer_default',
         groupId: Math.max(1, Math.round(Number(p.groupId) || 1)),
-        transferMin: Math.max(0, Number(p.transferMin) || 0),
         flightMin: area > 0 ? (area * 666.67) / lineSpacing / flightSpeed / 60 : 0,
         pesticideRaw: pesticideRaw,
         treeCount: Number(p.treeCount) || 0,
@@ -327,12 +325,11 @@ const Calculator = {
     rows.forEach(r => {
       let g = groupMap.get(r.groupId);
       if (!g) {
-        g = { id: r.groupId, water: 0, flightMin: 0, transferMin: 0, minTrips: 0, trips: 0, tripsOverride: 0, perTripWater: 0, perTripTime: 0 };
+        g = { id: r.groupId, water: 0, flightMin: 0, minTrips: 0, trips: 0, tripsOverride: 0, perTripWater: 0, perTripTime: 0 };
         groupMap.set(r.groupId, g);
       }
       g.water += r.water;
       g.flightMin += r.flightMin;
-      g.transferMin = Math.max(g.transferMin, r.transferMin);   // 组转场取组内最大（保守）
     });
     const groups = [...groupMap.values()].sort((a, b) => a.id - b.id);
     // 手动飞行时间：覆盖估算总飞行时长，按各组飞行占比分摊
@@ -351,7 +348,7 @@ const Calculator = {
       g.trips = g.tripsOverride > 0 ? g.tripsOverride : g.minTrips;
       g.perTripWater = g.trips > 0 ? g.water / g.trips : 0;
       const perTripSpray = g.trips > 0 ? g.flightMin / g.trips : 0;
-      g.perTripTime = 2 * g.transferMin + roundTripTime + loadTime + perTripSpray;
+      g.perTripTime = roundTripTime + loadTime + perTripSpray;
     });
     // 回填每块地所属组的趟数信息（展示用）；药量保持小数（三层口径：块级不取整）
     rows.forEach(r => {
@@ -363,16 +360,12 @@ const Calculator = {
     const totalArea = rows.reduce((sum, r) => sum + r.area, 0);
     const totalWater = rows.reduce((sum, r) => sum + r.water, 0);
     const totalTrips = groups.reduce((sum, g) => sum + g.trips, 0);
-    const totalTransfer = groups.reduce((sum, g) => sum + g.trips * 2 * g.transferMin, 0);
     const totalLoad = groups.reduce((sum, g) => sum + g.trips * loadTime, 0);
-    const totalMove = groups.length > 0 ? (groups.length - 1) * groupMoveTime : 0;
     const weightedTSum = groups.reduce((sum, g) => sum + g.trips * g.perTripTime, 0);
 
     const result = {
       plots: rows,
       groups: groups,
-      groupMoveTime: groupMoveTime,
-      totalMove: totalMove,
       plotMode: true,
       droneTank: droneTank,
       area: totalArea,
@@ -380,7 +373,6 @@ const Calculator = {
       treeCount: rows.reduce((sum, r) => sum + r.treeCount, 0),
       water: totalWater,
       totalTrips: totalTrips,
-      totalTransfer: totalTransfer,
       totalLoad: totalLoad,
       totalFlightMin: totalFlightMin,
       pesticide: 0, pesticideRounded: 0,
@@ -427,7 +419,7 @@ const Calculator = {
     const avgT = totalTrips > 0 ? weightedTSum / totalTrips : 0;
     const batteryResult = this.computeBatteryWait(totalTrips, avgT, batteryCount, chargeMode, genTime, threeTime);
     const batteryWait = batteryResult.total;
-    const flightSpan = totalTrips > 0 ? weightedTSum + batteryWait + totalMove : 0;
+    const flightSpan = totalTrips > 0 ? weightedTSum + batteryWait : 0;
     batteryResult.cycles.forEach(c => {
       c.tStart += firstMixTime; c.tEnd += firstMixTime;
       c.chargeStart += firstMixTime; c.chargeEnd += firstMixTime;
@@ -472,7 +464,7 @@ const Calculator = {
       mixTotalTime: mixTotalTime, mixRounds: mixRounds, batchCapacity: batchCapacity,
       firstMixTime: firstMixTime, flightSpan: flightSpan,
       flightLength: 0, flightTimeMin: totalFlightMin, flightTimeSource: flightTimeSource,
-      roundTripTotal: totalTransfer + totalLoad, totalTransfer: totalTransfer, totalLoad: totalLoad,
+      roundTripTotal: totalLoad, totalLoad: totalLoad,
       T: avgT, perCycleFlight: 0,
       batteryWait: batteryWait, batteryCycles: batteryResult.cycles,
       noWaitCount: batteryResult.noWaitCount,

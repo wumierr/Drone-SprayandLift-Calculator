@@ -153,13 +153,11 @@ const Storage = {
       lines.push(`  现有药剂套数: ${state.field.existingPesticideSets}`);
       if (state.field.plotMode && Array.isArray(state.field.plots) && state.field.plots.length) {
         lines.push(`  机载装药上限: ${state.field.droneTank != null ? state.field.droneTank : 85} 升`);
-        lines.push(`  组间移动时间: ${state.field.groupMoveTime != null ? state.field.groupMoveTime : 10} 分钟`);
-        lines.push('');
         lines.push('【地块列表】');
         state.field.plots.forEach(p => {
-          const parts = [`名称=${p.name || ''}`, `亩数=${p.area != null ? p.area : 0}`,
+          const parts = [`名称=${p.name || ''}`, `亩数=${p.area != null ? p.area : 0}`, `棵数=${p.treeCount != null ? p.treeCount : 0}`,
             `农户=${p.farmerId || 'farmer_default'}`,
-            `组=${Math.max(1, Math.round(Number(p.groupId) || 1))}`, `转场=${p.transferMin != null ? p.transferMin : 5}`];
+            `组=${Math.max(1, Math.round(Number(p.groupId) || 1))}`];
           lines.push(`  [地块] ${parts.join(' | ')}`);
         });
         const gt = state.field.groupTrips || {};
@@ -330,7 +328,6 @@ const Storage = {
       // 打药-作业
       '亩数': ['field', 'area', parseFloat],
       '机载装药上限': ['field', 'droneTank', parseFloat],
-      '组间移动时间': ['field', 'groupMoveTime', parseFloat],
       '现有药剂套数': ['field', 'existingPesticideSets', parseFloat],
       // 打药-循环与油费（旧的 单次循环成本/三相电循环成本 行自动忽略）
       '电池折旧': ['costs', 'batteryDepreciation', parseFloat],
@@ -497,9 +494,9 @@ const Storage = {
           id: 'imp' + result.field.plots.length,
           name: kv['名称'] || '',
           area: parseFloat(kv['亩数']) || 0,
+          treeCount: parseFloat(kv['棵数']) || 0,
           farmerId: kv['农户'] || 'farmer_default',
           groupId: parseInt(kv['组'], 10) || 1,
-          transferMin: parseFloat(kv['转场']) != null && !isNaN(parseFloat(kv['转场'])) ? parseFloat(kv['转场']) : 5,
           tripsOverride: parseFloat(kv['趟数覆盖']) || 0
         });
         return;
