@@ -141,6 +141,16 @@ const Storage = {
       lines.push('【作业参数】');
       lines.push(`  亩数: ${state.field.area}`);
       lines.push(`  现有药剂套数: ${state.field.existingPesticideSets}`);
+      if (state.field.plotMode && Array.isArray(state.field.plots) && state.field.plots.length) {
+        lines.push(`  机载装药上限: ${state.field.droneTank != null ? state.field.droneTank : 85} 升`);
+        lines.push('');
+        lines.push('【地块列表】');
+        state.field.plots.forEach(p => {
+          const parts = [`名称=${p.name || ''}`, `亩数=${p.area != null ? p.area : 0}`, `棵数=${p.treeCount != null ? p.treeCount : 0}`,
+            `转场=${p.transferMin != null ? p.transferMin : 5}`, `趟数覆盖=${p.tripsOverride || 0}`];
+          lines.push(`  [地块] ${parts.join(' | ')}`);
+        });
+      }
       lines.push('');
       lines.push('【循环成本】');
       lines.push(`  单次循环成本: ${state.costs.cycleCost} 元`);
@@ -184,14 +194,23 @@ const Storage = {
         lines.push(`  航线间距: ${state.timing.lineSpacing} 米`);
         lines.push(`  手动飞行时间: ${state.timing.manualFlightTime} min`);
         lines.push(`  来回升降时间: ${state.timing.roundTripTime} min/循环`);
+        lines.push(`  加药装载时间: ${state.timing.loadTime != null ? state.timing.loadTime : 1} min/循环`);
         lines.push(`  基础兑药时间: ${state.timing.baseMixTime} min/轮`);
-        lines.push(`  兑水速度: ${state.timing.waterMixRate} min/100L`);
+        lines.push(`  单批兑水量: ${state.timing.batchCapacity != null ? state.timing.batchCapacity : 1000} 升`);
         lines.push(`  拥有电池数量: ${state.timing.batteryCount} 块`);
         lines.push(`  发电机充电时间: ${state.timing.generatorChargeTime} min/块`);
         lines.push(`  三相电充电时间: ${state.timing.threePhaseChargeTime} min/块`);
         const modeLabels = { generator: '仅发电机', threePhase: '仅三相电', dual: '三相电+发电机' };
         lines.push(`  充电模式: ${state.timing.chargeMode} （${modeLabels[state.timing.chargeMode] || ''}）`);
         lines.push(`  作业结束充满电: ${state.timing.chargeAfterWork ? '是' : '否'}`);
+      }
+      // 工单覆盖值（已完成量在 JSON 中精确往返；文本段仅保留套数与备注）
+      const wo = state.workOrder;
+      if (wo && (wo.actualSets || wo.note)) {
+        lines.push('');
+        lines.push('【工单】');
+        if (wo.actualSets) lines.push(`  实际用药套数: ${wo.actualSets}`);
+        if (wo.note) lines.push(`  工单备注: ${wo.note}`);
       }
     }
 
@@ -214,7 +233,8 @@ const Storage = {
       timing: state.timing ? { ...state.timing } : null,
       haulField: { ...state.haulField },
       haulCosts: { ...state.haulCosts },
-      haulIncome: { ...state.haulIncome }
+      haulIncome: { ...state.haulIncome },
+      workOrder: state.workOrder ? { ...state.workOrder } : null
     }, null, 2);
   },
 
@@ -240,6 +260,7 @@ const Storage = {
   },
 
   _normalizeImport(obj) {
+    const woDefaults = { completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' };
     const result = {
       mode: obj.mode || 'spray',
       plant: obj.plant || { ...window.PLANT_DATABASE.fruit_tree },
@@ -249,7 +270,8 @@ const Storage = {
       timing: Object.assign({}, window.DEFAULT_TIMING, obj.timing || {}),
       haulField: Object.assign({}, window.DEFAULT_HAUL_FIELD, obj.haulField || {}),
       haulCosts: Object.assign({}, window.DEFAULT_HAUL_COSTS, obj.haulCosts || {}),
-      haulIncome: Object.assign({}, window.DEFAULT_HAUL_INCOME, obj.haulIncome || {})
+      haulIncome: Object.assign({}, window.DEFAULT_HAUL_INCOME, obj.haulIncome || {}),
+      workOrder: Object.assign({}, woDefaults, obj.workOrder || {})
     };
     return result;
   },
@@ -264,7 +286,8 @@ const Storage = {
       timing: { ...window.DEFAULT_TIMING },
       haulField: { ...window.DEFAULT_HAUL_FIELD },
       haulCosts: { ...window.DEFAULT_HAUL_COSTS },
-      haulIncome: { ...window.DEFAULT_HAUL_INCOME }
+      haulIncome: { ...window.DEFAULT_HAUL_INCOME },
+      workOrder: { completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' }
     };
 
     // 检测模式
@@ -283,6 +306,7 @@ const Storage = {
       '无人机省药系数': ['plant', 'droneSavingCoeff', parseFloat],
       // 打药-作业
       '亩数': ['field', 'area', parseFloat],
+      '机载装药上限': ['field', 'droneTank', parseFloat],
       '现有药剂套数': ['field', 'existingPesticideSets', parseFloat],
       // 打药-循环
       '单次循环成本': ['costs', 'cycleCost', parseFloat],
@@ -306,16 +330,21 @@ const Storage = {
       // 打药-收入
       '每亩收费': ['income', 'pricePerMu', parseFloat],
       '补贴': ['income', 'subsidy', parseFloat],
+      // 工单
+      '实际用药套数': ['workOrder', 'actualSets', parseFloat],
+      '工单备注': ['workOrder', 'note', (v) => v],
       // 时间参数
       '飞行速度': ['timing', 'flightSpeed', parseFloat],
       '航线间距': ['timing', 'lineSpacing', parseFloat],
       '手动飞行时间': ['timing', 'manualFlightTime', parseFloat],
       '来回升降时间': ['timing', 'roundTripTime', parseFloat],
+      '加药装载时间': ['timing', 'loadTime', parseFloat],
       '基础兑药时间': ['timing', 'baseMixTime', parseFloat],
-      '兑水速度': ['timing', 'waterMixRate', parseFloat],
+      '单批兑水量': ['timing', 'batchCapacity', parseFloat],
       '拥有电池数量': ['timing', 'batteryCount', parseFloat],
       '发电机充电时间': ['timing', 'generatorChargeTime', parseFloat],
       '三相电充电时间': ['timing', 'threePhaseChargeTime', parseFloat],
+      // 注：旧版导出的"兑水速度"行已废弃，无映射时自动忽略
       '充电模式': ['timing', 'chargeMode', (v) => ({
         '仅发电机': 'generator',
         '仅三相电': 'threePhase',
@@ -375,6 +404,25 @@ const Storage = {
 
     const lines = text.split('\n');
     lines.forEach(line => {
+      // 地块行（多地块模式）：  [地块] 名称=xx | 亩数=12 | 棵数=0 | 转场=5 | 趟数覆盖=0
+      if (line.includes('[地块]')) {
+        const kv = {};
+        line.replace(/^\s*\[地块\]\s*/, '').split('|').forEach(seg => {
+          const idx = seg.indexOf('=');
+          if (idx > -1) kv[seg.slice(0, idx).trim()] = seg.slice(idx + 1).trim();
+        });
+        result.field.plotMode = true;
+        if (!Array.isArray(result.field.plots)) result.field.plots = [];
+        result.field.plots.push({
+          id: 'imp' + result.field.plots.length,
+          name: kv['名称'] || '',
+          area: parseFloat(kv['亩数']) || 0,
+          treeCount: parseFloat(kv['棵数']) || 0,
+          transferMin: parseFloat(kv['转场']) != null && !isNaN(parseFloat(kv['转场'])) ? parseFloat(kv['转场']) : 5,
+          tripsOverride: parseFloat(kv['趟数覆盖']) || 0
+        });
+        return;
+      }
       // 匹配 "  字段名: 值 单位" 形式
       const m = line.match(/^\s*([^:：【】]+)[:：]\s*([^\s\n]+)/);
       if (!m) return;

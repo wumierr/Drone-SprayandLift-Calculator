@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN" data-theme="day">
 <head>
-<!-- 独立 HTML 版本 - 所有 CSS/JS 已内联 - 可直接双击打开 -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
   <meta name="theme-color" content="#2e7d32" media="(prefers-color-scheme: light)" />
@@ -13,9 +12,8 @@
   <meta name="apple-mobile-web-app-title" content="无人机打药" />
   <meta name="format-detection" content="telephone=no" />
   <title>🚁 无人机打药计算器</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCIgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0Ij4KICA8cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIxMiIgZmlsbD0iIzJlN2QzMiIvPgogIDxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDgsOCkgc2NhbGUoMC42KSI+CiAgICA8ZWxsaXBzZSBjeD0iMzIiIGN5PSIzMiIgcng9IjE0IiByeT0iNiIgZmlsbD0iIzM3NDc0ZiIvPgogICAgPGNpcmNsZSBjeD0iOCIgY3k9IjEyIiByPSI5IiBmaWxsPSJub25lIiBzdHJva2U9IiNjZmQ4ZGMiIHN0cm9rZS13aWR0aD0iMiIvPgogICAgPGNpcmNsZSBjeD0iNTYiIGN5PSIxMiIgcj0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjY2ZkOGRjIiBzdHJva2Utd2lkdGg9IjIiLz4KICAgIDxjaXJjbGUgY3g9IjgiIGN5PSI1MiIgcj0iOSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjY2ZkOGRjIiBzdHJva2Utd2lkdGg9IjIiLz4KICAgIDxjaXJjbGUgY3g9IjU2IiBjeT0iNTIiIHI9IjkiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2NmZDhkYyIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgICA8bGluZSB4MT0iOCIgeTE9IjEyIiB4Mj0iMzIiIHkyPSIzMiIgc3Ryb2tlPSIjNDU1YTY0IiBzdHJva2Utd2lkdGg9IjMiLz4KICAgIDxsaW5lIHgxPSI1NiIgeTE9IjEyIiB4Mj0iMzIiIHkyPSIzMiIgc3Ryb2tlPSIjNDU1YTY0IiBzdHJva2Utd2lkdGg9IjMiLz4KICAgIDxsaW5lIHgxPSI4IiB5MT0iNTIiIHgyPSIzMiIgeTI9IjMyIiBzdHJva2U9IiM0NTVhNjQiIHN0cm9rZS13aWR0aD0iMyIvPgogICAgPGxpbmUgeDE9IjU2IiB5MT0iNTIiIHgyPSIzMiIgeTI9IjMyIiBzdHJva2U9IiM0NTVhNjQiIHN0cm9rZS13aWR0aD0iMyIvPgogICAgPGNpcmNsZSBjeD0iMjgiIGN5PSI0MCIgcj0iMiIgZmlsbD0iIzRmYzNmNyIvPgogICAgPGNpcmNsZSBjeD0iMzIiIGN5PSI0MiIgcj0iMiIgZmlsbD0iIzRmYzNmNyIvPgogICAgPGNpcmNsZSBjeD0iMzYiIGN5PSI0MCIgcj0iMiIgZmlsbD0iIzRmYzNmNyIvPgogIDwvZz4KPC9zdmc+Cg==">
-  
-  
+  <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
   <style>
 /* ============================================================
    无人机打药计算器 - 样式表
@@ -1502,7 +1500,61 @@ html, body {
 ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
 
-</style>
+/* ============================================================
+   多地块模式（地块编辑器 + 明细表）& 工单
+   ============================================================ */
+.plot-mode-field { margin-bottom: 10px; }
+.plot-mode-field > label { font-size: 13px; color: var(--text-secondary); margin-bottom: 4px; display: block; }
+
+.plot-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px; margin-bottom: 10px;
+}
+.plot-presets { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+.plot-presets .btn { min-height: 32px; padding: 4px 10px; }
+
+.plot-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr 44px;
+  gap: 8px; align-items: center;
+  margin-bottom: 8px;
+}
+.plot-row input[type="text"] {
+  height: 42px; padding: 8px 10px;
+  background: var(--input-bg); border: 1px solid var(--input-border);
+  border-radius: 8px; color: var(--text-primary); font-size: 14px;
+  min-width: 0;
+}
+.plot-row input:focus { outline: none; border-color: var(--accent); }
+.plot-row .unit-suffix input { width: 100%; }
+.plot-row .plot-del { flex: none; }
+.plot-add { width: 100%; margin-top: 2px; }
+
+.plots-table { margin-top: 8px; font-size: 13px; }
+.plots-table th, .plots-table td { padding: 6px 8px; }
+
+/* 工单文本块：等宽、可选中复制 */
+.workorder-text {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 12px; line-height: 1.7;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md, 12px);
+  padding: 12px; margin: 8px 0 0;
+  white-space: pre-wrap; word-break: break-all;
+  color: var(--text-primary);
+  user-select: text; -webkit-user-select: text;
+  max-height: 45vh; overflow: auto;
+}
+.workorder-quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+
+@media (max-width: 500px) {
+  .plot-row { grid-template-columns: 1fr 1fr; }
+  .plot-row .plot-name { grid-column: 1 / -1; }
+}
+
+  </style>
 </head>
 <body>
   <!-- 顶部装饰：飘动的云/远山 -->
@@ -1541,7 +1593,7 @@ html, body {
     <div class="header-left">
       <span class="app-logo" aria-hidden="true">🚁</span>
       <h1>无人机作业计算器</h1>
-      <span class="app-version">v2.0</span>
+      <span class="app-version">v3.0</span>
     </div>
     <div class="header-actions">
       <button id="presetBtn" class="icon-btn" title="预设管理" aria-label="预设管理">📚</button>
@@ -1621,6 +1673,8 @@ html, body {
           <div class="extra-row"><span>🧪 浓度 现有/参考</span><b id="rConcentration">—</b></div>
           <div class="extra-row"><span>💊 是否包药</span><b id="rPesticideIncluded">—</b></div>
         </div>
+        <!-- 多地块明细表（仅多地块模式显示） -->
+        <div id="plotsTableWrap" style="display:none;"></div>
       </div>
 
       <!-- 吊运模式结果 -->
@@ -1667,6 +1721,7 @@ html, body {
 
       <div class="btn-row">
         <button id="calcBtn" class="btn btn-primary">🚁 开始计算</button>
+        <button id="workOrderBtn" class="btn btn-secondary">🧾 生成工单</button>
         <button id="resetBtn" class="btn btn-secondary">🔄 恢复默认</button>
       </div>
     </section>
@@ -1674,6 +1729,14 @@ html, body {
     <!-- 参数设置 -->
     <section class="panel param-panel" aria-label="作业参数">
       <div class="panel-title"><span>📋</span> 作业参数 <span class="hint">（所有数值均可修改，鼠标悬停查看说明）</span></div>
+      <div class="field plot-mode-field">
+        <label>地块模式</label>
+        <div class="field-radio">
+          <label><input type="radio" name="radio-plotMode" value="single" checked><span>单地块</span></label>
+          <label><input type="radio" name="radio-plotMode" value="plots"><span>多地块</span></label>
+        </div>
+      </div>
+      <div id="plotsEditor" style="display:none;" aria-label="地块编辑器"></div>
       <div class="form-grid" id="paramForm"><!-- JS 注入 --></div>
     </section>
 
@@ -1723,7 +1786,7 @@ html, body {
         </div>
         <div class="timing-card">
           <div class="timing-icon">🔄</div>
-          <div class="timing-label">来回升降</div>
+          <div class="timing-label">升降与加药</div>
           <div class="timing-value"><span id="tRoundTrip">0</span></div>
           <div class="timing-sub" id="tRoundTripDetail">—</div>
         </div>
@@ -1818,6 +1881,20 @@ html, body {
       <div class="modal-actions">
         <button class="btn btn-secondary danger" id="clearHistoryBtn">🗑 清空历史</button>
         <button class="btn btn-secondary" data-close>关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：作业工单 -->
+  <div class="modal" id="workOrderModal" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-title">🧾 作业工单 <button class="modal-close" data-close>✕</button></div>
+      <p class="modal-hint">上方可快捷修改实际变动的数值（即时重算并保存），下方纯文本工单可一键复制留存或发给现场人员。</p>
+      <div class="workorder-quick" id="workOrderQuick"><!-- JS 注入 --></div>
+      <div id="workOrderText" class="workorder-text" tabindex="0"><!-- JS 注入 --></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="copyWorkOrder">📋 复制全文</button>
+        <button class="btn btn-primary" data-close>完成</button>
       </div>
     </div>
   </div>
@@ -2034,9 +2111,10 @@ const DEFAULT_TIMING = {
   flightSpeed: 2.5,           // 飞行速度（m/s）
   lineSpacing: 2,             // 航线间距（米）
   manualFlightTime: 0,        // 手动输入飞行作业时间（min，高优先级，0表示用估算）
-  roundTripTime: 3,           // 飞行来回升降时间（min/循环）
-  baseMixTime: 10,            // 基础兑药时间（min/轮）
-  waterMixRate: 1.5,          // 兑水速度（min/100L）：每加100升水需多少分钟
+  roundTripTime: 3,           // 来回升降时间（min/循环）
+  loadTime: 1,                // 加药装载时间（min/循环）：给无人机药箱加药液的真实串行耗时
+  baseMixTime: 10,            // 基础兑药时间（min/轮，与水量无关）
+  batchCapacity: 1000,        // 单批兑水量（升/轮）：配药桶一批能兑的量，总水量超过则分多批
   batteryCount: 2,            // 拥有电池数量（块）
   generatorChargeTime: 8,     // 发电机充电时间（min/块）
   threePhaseChargeTime: 5,    // 三相电充电时间（min/块）
@@ -2047,8 +2125,13 @@ const DEFAULT_TIMING = {
 /* 默认作业参数 */
 const DEFAULT_FIELD = {
   area: 10,               // 作业亩数
+  treeCount: 0,           // 果树棵数（calcBasis='tree' 时作为主输入，亩数反推）
+  calcBasis: 'area',      // 计算基准：'area' 按亩数 | 'tree' 按棵数（选果树类时自动预置'tree'）
   plantKey: 'fruit_tree', // 默认植物
-  existingPesticideSets: 0 // 现有药剂套数（用户填，0表示无库存，作为主显示）
+  existingPesticideSets: 0, // 现有药剂套数（用户填，0表示无库存，作为主显示）
+  droneTank: 85,          // 机载装药上限（升/趟）：无人机药箱最大装载量
+  plotMode: false,        // 多地块模式：true 时按地块列表计算
+  plots: []               // 地块列表 [{id, name, area, treeCount, transferMin, tripsOverride}]
 };
 
 /* 表单字段定义（用于动态渲染 + tooltip 说明 + 输入验证）
@@ -2061,7 +2144,13 @@ const DEFAULT_FIELD = {
 */
 const FIELD_DEFS = {
   // 作业参数
-  area: { label: '作业亩数', unit: '亩', tip: '本次需要打药的总亩数（建议 1-1000）', group: 'param', default: 10, step: 0.1, minHard: 0.01, warnBelow: 0.1, warnAbove: 10000, priority: 'high' },
+  calcBasis: { label: '计算基准', unit: '', tip: '按棵数：直接填果树棵数算药量，亩数=棵数÷每亩棵数反推；按亩数：维持原方式。选果树类时默认按棵数', group: 'param', type: 'radio', options: [
+    { value: 'area', label: '按亩数' },
+    { value: 'tree', label: '按棵数' }
+  ], default: 'area' },
+  treeCount: { label: '果树棵数', unit: '棵', tip: '本次作业的果树总棵数（按棵数计算时使用，亩数自动反推）', group: 'param', default: 0, step: 1, integer: true, min: 0, priority: 'high' },
+  droneTank: { label: '机载装药上限', unit: '升/趟', tip: '无人机药箱一次最多装载的药液量（多地块模式按此算每块地最少趟数）。T40约40-50升，T60/T100更大，可超配到85', group: 'param', default: 85, step: 1, integer: true, minHard: 1, warnBelow: 10 },
+  area: { label: '作业亩数', unit: '亩', tip: '本次需要打药的总亩数（建议 1-1000）。按棵数计算时由棵数自动反推', group: 'param', default: 10, step: 0.1, minHard: 0.01, warnBelow: 0.1, warnAbove: 10000, priority: 'high' },
   existingPesticideSets: { label: '现有药剂套数', unit: '套', tip: '已库存的药剂套数（主显示，作为主要参考）。0表示无库存，将完全按公式参考量采购', group: 'param', default: 0, step: 1, integer: true, min: 0, priority: 'high' },
   flightHeight: { label: '飞行高度', unit: '米', tip: '无人机距离作物冠层的建议高度，影响覆盖均匀度（建议 1-5 米）', group: 'param', default: 2.0, step: 0.1, min: 0.5, warnBelow: 0.5, warnAbove: 10 },
   waterPerMu: { label: '每亩水量', unit: '升', tip: '每亩地需要喷洒的药液总量（升/亩，建议 1-50）', group: 'param', default: 20, step: 0.1, min: 0.1, warnBelow: 0.5 },
@@ -2110,8 +2199,9 @@ const FIELD_DEFS = {
   lineSpacing: { label: '航线间距', unit: '米', tip: '相邻航线间距，影响喷幅覆盖。一般 1.5-3 米（建议 1-5）。填了飞行作业时间后此字段禁用', group: 'timing', default: 2, step: 0.1, minHard: 0.5, warnBelow: 0.5, warnAbove: 10 },
   manualFlightTime: { label: '飞行作业时间（手动）', unit: 'min', tip: '高优先级：手动输入飞行作业时间。填了则用此值计算（显示"准确时间"），不填或0则用飞行速度×航线间距估算（显示"参考时间"）', group: 'timing', default: 0, step: 0.5, min: 0, priority: 'high' },
   roundTripTime: { label: '来回升降时间', unit: 'min/循环', tip: '每次循环的起飞、降落、转场时间。一般 2-5 分钟', group: 'timing', default: 3, step: 0.5, min: 0, warnAbove: 30 },
-  baseMixTime: { label: '基础兑药时间', unit: 'min/轮', tip: '每轮兑药桶加药剂搅拌的基础时间，与水量无关', group: 'timing', default: 10, step: 1, min: 0, warnAbove: 60 },
-  waterMixRate: { label: '兑水速度', unit: 'min/100L', tip: '每加100升水需要的时间（普通农户水管约1-2 min/100L）', group: 'timing', default: 1.5, step: 0.1, minHard: 0.01, warnBelow: 0.1, warnAbove: 30 },
+  loadTime: { label: '加药装载时间', unit: 'min/循环', tip: '每趟飞行前给无人机药箱加药液的时间。真实串行耗时，不能被飞行抵消（充电可以）。一般 0.5-2 分钟', group: 'timing', default: 1, step: 0.5, min: 0, warnAbove: 15 },
+  baseMixTime: { label: '基础兑药时间', unit: 'min/轮', tip: '每批兑水兑药搅拌的时间，与水量无关', group: 'timing', default: 10, step: 1, min: 0, warnAbove: 60 },
+  batchCapacity: { label: '单批兑水量', unit: '升', tip: '配药桶一批能兑的药液量。总水量超过此值分多批：首批必须在飞行前兑完（串行），第2批起可与飞行并行', group: 'timing', default: 1000, step: 50, min: 1, minHard: 1, warnBelow: 10 },
   batteryCount: { label: '拥有电池数量', unit: '块', tip: '作业用电池数量（至少 1 块）。2块轮流、3块以上更宽松', group: 'timing', default: 2, step: 1, integer: true, minHard: 1, warnBelow: 1, warnAbove: 20 },
   generatorChargeTime: { label: '发电机充电时间', unit: 'min/块', tip: '发电机给单块电池充满的时间，一般 6-10 min', group: 'timing', default: 8, step: 0.5, minHard: 0.1, warnBelow: 1, warnAbove: 60 },
   threePhaseChargeTime: { label: '三相电充电时间', unit: 'min/块', tip: '三相电给单块电池充满的时间，一般 4-6 min', group: 'timing', default: 5, step: 0.5, minHard: 0.1, warnBelow: 1, warnAbove: 60 },
@@ -2125,13 +2215,13 @@ const FIELD_DEFS = {
 
 /* 顺序字段分组（控制表单渲染顺序） */
 const FIELD_ORDER = {
-  param: ['area', 'existingPesticideSets', 'flightHeight', 'waterPerMu', 'treesPerMu', 'waterPerTree', 'pesticideWaterPerSet', 'droneSavingCoeff'],
+  param: ['calcBasis', 'treeCount', 'area', 'droneTank', 'existingPesticideSets', 'flightHeight', 'waterPerMu', 'treesPerMu', 'waterPerTree', 'pesticideWaterPerSet', 'droneSavingCoeff'],
   cycle: ['cycleCost', 'cycleCostThreePhase', 'cycleArea', 'useThreePhase'],
   transport: ['distance', 'fuelConsumption', 'fuelPrice', 'tolls', 'vehicleDepreciation'],
   labor: ['workers', 'days', 'dailyWage', 'mealCost', 'accommodation', 'accommodationDays'],
   other: ['pesticidePrice', 'pesticideIncluded', 'droneDepreciation', 'maintenanceReserve', 'protectiveGear', 'cleaningCost', 'insurance', 'miscCost'],
   income: ['pricePerMu', 'subsidy'],
-  timing: ['manualFlightTime', 'flightSpeed', 'lineSpacing', 'roundTripTime', 'baseMixTime', 'waterMixRate', 'batteryCount', 'generatorChargeTime', 'threePhaseChargeTime', 'chargeMode', 'chargeAfterWork']
+  timing: ['manualFlightTime', 'flightSpeed', 'lineSpacing', 'roundTripTime', 'loadTime', 'baseMixTime', 'batchCapacity', 'batteryCount', 'generatorChargeTime', 'threePhaseChargeTime', 'chargeMode', 'chargeAfterWork']
 };
 
 // 暴露到全局
@@ -2271,7 +2361,7 @@ window.HAUL_FIELD_DEFS = HAUL_FIELD_DEFS;
 window.HAUL_FIELD_ORDER = HAUL_FIELD_ORDER;
 window.HAUL_TAB_CONFIG = HAUL_TAB_CONFIG;
 
-</script>
+  </script>
   <script>
 /* ============================================================
    calculator.js — 计算核心
@@ -2333,8 +2423,17 @@ const Calculator = {
    */
   compute(state) {
     const { plant, field, costs, income } = state;
-    const area = Number(field.area) || 0;
     const existingSets = Number(field.existingPesticideSets) || 0;
+
+    /* 计算基准：'tree' 按棵数（亩数 = 棵数 ÷ 每亩棵数 反推）| 'area' 按亩数 */
+    const calcBasis = field.calcBasis === 'tree' ? 'tree' : 'area';
+    const treeCount = Number(field.treeCount) || 0;
+    let area = Number(field.area) || 0;
+    if (calcBasis === 'tree' && treeCount > 0) {
+      const treesPerMu = Number(plant.treesPerMu) || 0;
+      area = treesPerMu > 0 ? treeCount / treesPerMu : 0;
+    }
+
     const result = {
       pesticide: 0,                  // 参考药量（小数原值）
       pesticideRounded: 0,           // 参考药量（7舍8入取整）
@@ -2351,15 +2450,21 @@ const Calculator = {
       costPerMu: 0,                  // 每亩成本
       profitPerMu: 0,                // 每亩利润
       flightHeight: plant.flightHeight,
-      pesticideIncluded: costs.pesticideIncluded !== false
+      pesticideIncluded: costs.pesticideIncluded === true,
+      area: area,                    // 实际采用亩数（棵数基准时为反推值）
+      calcBasis: calcBasis,
+      treeCount: treeCount
     };
 
     if (area <= 0) return result;
 
-    /* 1. 参考药量（按人工打药稀释水量计算） */
+    /* 1. 参考药量（按人工打药稀释水量计算）
+          棵数基准：棵数 × 每棵水量 ÷ 一套药需水量（直接按棵，避免反推浮点误差） */
     let pesticideRaw;
     const pesticideWaterPerSet = Math.max(0.01, Number(plant.pesticideWaterPerSet) || 1);
-    if (plant.calcMode === 'tree') {
+    if (calcBasis === 'tree' && treeCount > 0) {
+      pesticideRaw = (treeCount * (Number(plant.waterPerTree) || 0)) / pesticideWaterPerSet;
+    } else if (plant.calcMode === 'tree') {
       const treesPerMu = Number(plant.treesPerMu) || 0;
       const waterPerTree = Number(plant.waterPerTree) || 0;
       pesticideRaw = (area * waterPerTree * treesPerMu) / pesticideWaterPerSet;
@@ -2462,55 +2567,47 @@ const Calculator = {
 
   /* ============================================================
      ★★★ 作业时间计算（打药模式专用）★★★
+     实际作业流程建模：
+       1. 先兑水兑药：首批必须在飞行前完成（串行）
+       2. 再加药装载、飞行循环
+       3. 总水量超过单批兑水量时分多批，第 2..N 批可与飞行并行
+          （利用升降、充电等待的地面空闲），兑药总时长成为瓶颈时延长总时间
      公式：
-       【兑水兑药时间】（按水量分轮，每轮最多1000升）
-         总轮数 = ⌈总水量 ÷ 1000⌉
-         每轮水量 = 总水量 ÷ 总轮数
-         每轮兑水时间 = (每轮水量 ÷ 100) × 兑水速度
-         每轮兑药时间 = 基础兑药时间
-         每轮实际 = max(每轮兑水, 每轮兑药)  （同时进行，取较大者）
-         总兑水兑药 = 每轮实际 × 总轮数
-       【飞行作业时间】
-         飞行长度 = 亩数 × 666.67 ÷ 航线间距 (米)
-         飞行时间 = 飞行长度 ÷ 飞行速度 (秒) ÷ 60 (分钟)
-       【来回升降时间】
-         来回升降 = 循环数 × 来回升降时间
-       【电池等待时间】（事件驱动模拟）
-         见 computeBatteryWait 方法
-       【总作业时间】
-         总时间 = 兑水兑药 + 飞行作业 + 来回升降 + 电池等待
+       兑药轮数 = ⌈总水量 ÷ 单批兑水量⌉（每轮耗时 = 基础兑药时间，与水量无关）
+       飞行阶段时长 = 飞行作业 + 来回升降 + 加药装载 + 电池等待
+       总作业时间 = max(兑药总时长, 首批兑药 + 飞行阶段时长)
+       单循环地面时间 T = 来回升降 + 加药装载 + 飞行作业/循环数
+         （加药装载是真实串行耗时，不能被飞行抵消；充电可以——
+          这就是"加药时间高优先级于充电时间"的含义）
      ============================================================ */
   computeTiming(state, r) {
-    const t = state.timing || DEFAULT_TIMING;
+    const t = state.timing || window.DEFAULT_TIMING || {};
     const flightSpeed = Math.max(0.01, Number(t.flightSpeed) || 2.5);
     const lineSpacing = Math.max(0.1, Number(t.lineSpacing) || 2);
     const manualFlightTime = Math.max(0, Number(t.manualFlightTime) || 0);
     const roundTripTime = Math.max(0, Number(t.roundTripTime) || 0);
+    const loadTime = Math.max(0, Number(t.loadTime) || 0);
     const baseMixTime = Math.max(0, Number(t.baseMixTime) || 0);
-    const waterMixRate = Math.max(0, Number(t.waterMixRate) || 0);
+    const batchCapacity = Math.max(1, Number(t.batchCapacity) || 1000);
     const batteryCount = Math.max(1, Math.floor(Number(t.batteryCount) || 1));
     const generatorChargeTime = Math.max(0.1, Number(t.generatorChargeTime) || 8);
     const threePhaseChargeTime = Math.max(0.1, Number(t.threePhaseChargeTime) || 5);
     const chargeMode = t.chargeMode || 'generator';
     const chargeAfterWork = t.chargeAfterWork !== false;
 
-    const area = Number(state.field.area) || 0;
+    // 棵数基准时用反推亩数（r.area 由 compute() 传入）
+    const area = (r && r.area != null) ? r.area : (Number(state.field.area) || 0);
     const totalWater = r.water || 0;
     const cycles = r.cycles || 0;
 
-    /* 1. 兑水兑药时间 */
-    let mixTotalTime = 0;
+    /* 1. 兑水兑药批次（首批串行在前，其余批次与飞行并行） */
     let mixRounds = 0;
-    let perRoundWater = 0;
-    let perRoundWaterTime = 0;
-    let perRoundActual = 0;
+    let mixTotalTime = 0;
+    let firstMixTime = 0;
     if (totalWater > 0) {
-      mixRounds = Math.ceil(totalWater / 1000);
-      if (mixRounds < 1) mixRounds = 1;
-      perRoundWater = totalWater / mixRounds;
-      perRoundWaterTime = (perRoundWater / 100) * waterMixRate;
-      perRoundActual = Math.max(perRoundWaterTime, baseMixTime);
-      mixTotalTime = perRoundActual * mixRounds;
+      mixRounds = Math.max(1, Math.ceil(totalWater / batchCapacity));
+      mixTotalTime = mixRounds * baseMixTime;
+      firstMixTime = baseMixTime;   // 飞行开始前必须完成首批
     }
 
     /* 2. 飞行作业时间（高优先级：manualFlightTime > 0 时用此值，否则估算） */
@@ -2528,14 +2625,14 @@ const Calculator = {
       flightTimeSource = 'estimate';
     }
 
-    /* 3. 来回升降时间 */
-    const roundTripTotal = cycles * roundTripTime;
+    /* 3. 来回升降 + 加药装载（都是每循环真实串行耗时） */
+    const roundTripTotal = cycles * (roundTripTime + loadTime);
 
-    /* 3.5 单次循环时间 T = 来回升降 + 飞行作业/循环数 */
+    /* 3.5 单次循环时间 T = 来回升降 + 加药装载 + 飞行作业/循环数 */
     const perCycleFlight = cycles > 0 ? flightTimeMin / cycles : 0;
-    const T = roundTripTime + perCycleFlight;
+    const T = roundTripTime + loadTime + perCycleFlight;
 
-    /* 4. 电池等待时间（事件驱动模拟） */
+    /* 4. 电池等待时间（事件驱动模拟，时刻相对首批兑药完成点） */
     const batteryResult = this.computeBatteryWait(
       cycles,
       T,
@@ -2545,27 +2642,45 @@ const Calculator = {
       threePhaseChargeTime
     );
     const batteryWait = batteryResult.total;
+    // 飞行阶段时长（相对值）：飞行 + 升降 + 装载 + 电池等待
+    const flightSpan = batteryResult.cycleEnd > 0
+      ? batteryResult.cycleEnd
+      : (cycles > 0 ? cycles * T : 0);
 
-    /* 5. 结束后充电（如果勾选） */
+    /* 5. 结束后充电（如果勾选）——先按相对时刻计算，再统一平移 */
     const afterWorkCharge = chargeAfterWork ? this.computeAfterWorkCharge(
       batteryResult.batteries_final, batteryResult.cycleEnd, batteryCount, chargeMode,
       generatorChargeTime, threePhaseChargeTime
     ) : { total: 0, blocks: [] };
 
-    /* 6. 总作业时间（不含结束后充电） */
-    const totalTime = mixTotalTime + flightTimeMin + roundTripTotal + batteryWait;
+    /* 6. 时刻平移：所有飞行/充电事件发生在首批兑药完成之后 */
+    batteryResult.cycles.forEach(c => {
+      c.tStart += firstMixTime;
+      c.tEnd += firstMixTime;
+      c.chargeStart += firstMixTime;
+      c.chargeEnd += firstMixTime;
+    });
+    afterWorkCharge.blocks.forEach(b => {
+      b.startAt += firstMixTime;
+      b.endAt += firstMixTime;
+    });
+
+    /* 7. 总作业时间（不含结束后充电）：
+          首批兑药 + 飞行阶段 与 兑药总时长 取大者（后续批次并行兑药） */
+    const totalTime = Math.max(mixTotalTime, firstMixTime + flightSpan);
     const totalTimeWithCharge = totalTime + afterWorkCharge.total;
 
     return {
       mixTotalTime: mixTotalTime,
       mixRounds: mixRounds,
-      perRoundWater: perRoundWater,
-      perRoundWaterTime: perRoundWaterTime,
-      perRoundActual: perRoundActual,
+      batchCapacity: batchCapacity,
+      firstMixTime: firstMixTime,
+      flightSpan: flightSpan,
       flightLength: flightLength,
       flightTimeMin: flightTimeMin,
       flightTimeSource: flightTimeSource,    // 'manual' or 'estimate'
       roundTripTotal: roundTripTotal,
+      loadTime: loadTime,
       T: T,
       perCycleFlight: perCycleFlight,
       batteryWait: batteryWait,
@@ -2788,129 +2903,251 @@ const Calculator = {
   },
 
   /* ============================================================
-     ★★★ 吊运模式计算 ★★★
-     公式：
-       单价换算：元/斤 = 毛数 × 0.1
-       总躺数 = ⌈总斤数 ÷ 一躺多少斤⌉
-         （一躺 = 一个来回：装货→飞→卸货→飞回）
-       电池循环数 = ⌈总躺数 ÷ 多少躺一组电池⌉
-         （一组电池从满电用到换电算一个循环）
-       电池循环成本 = 电池循环数 × (三相电 ? 三相电成本 : 电池循环成本)
-       无人机人工 = 人数 × 天数 × (日薪 + 餐费) + 住宿费 × 住宿天数
-       采摘人工 = 包采摘 ? 总斤数 × (采摘毛数 × 0.1) : 0
-       交通 = (单程×2) × 油耗/100 × 油价 + 路桥费 + 车折旧×(单程×2)
-       设备折旧 = (总斤数 ÷ 100) × (无人机折旧 + 维修储备 + 保险)
-       其他 = 防护装备 + 清洗费 + 杂费
-       总成本 = 电池循环 + 无人机人工 + 采摘人工 + 交通 + 设备 + 其他
-       总收入 = 总斤数 × (吊运毛数 × 0.1)
-       粗利润 = 总收入 - 总成本
-       每斤成本 = 总成本 ÷ 总斤数
-       每斤利润 = 粗利润 ÷ 总斤数
+     ★★★ 多地块模式计算（computePlots）★★★
+     每地块：
+       总水量 = 棵数×每棵水量（棵数基准）| 亩数×每亩水量（亩数基准）
+       最少趟数 = ⌈总水量 ÷ 机载装药上限⌉（可手动覆盖趟数）
+       每趟加药量 = 总水量 ÷ 趟数
+       参考药量(套) = 7舍8入(该地块稀释水量 ÷ 一套药需水量 × 省药系数)（逐块保守取整后求和）
+       单趟时间 = 转场往返(2×单程) + 加药装载 + 该趟喷洒时间
+     汇总：
+       电池循环成本按总面积 ÷ 单循环亩数（与单地块口径一致）
+       电池等待按总趟数模拟（每次落地 = 一次换电竞争事件）
+       总时长 = max(兑药总时长, 首批兑药 + 飞行阶段)（与单地块同一调度模型）
      ============================================================ */
-  computeHaul(state) {
-    const { field, costs, income } = state;
-    const totalWeight = Number(field.totalWeight) || 0;
+  computePlots(state) {
+    const { plant, field, costs, income, timing } = state;
+    const plots = Array.isArray(field.plots) ? field.plots : [];
+    const existingSets = Number(field.existingPesticideSets) || 0;
+    const calcBasis = field.calcBasis === 'tree' ? 'tree' : 'area';
+    const droneTank = Math.max(1, Number(field.droneTank) || 85);
+
+    const t = timing || window.DEFAULT_TIMING || {};
+    const flightSpeed = Math.max(0.01, Number(t.flightSpeed) || 2.5);
+    const lineSpacing = Math.max(0.1, Number(t.lineSpacing) || 2);
+    const loadTime = Math.max(0, Number(t.loadTime) || 0);
+    const baseMixTime = Math.max(0, Number(t.baseMixTime) || 0);
+    const batchCapacity = Math.max(1, Number(t.batchCapacity) || 1000);
+    const batteryCount = Math.max(1, Math.floor(Number(t.batteryCount) || 1));
+    const genTime = Math.max(0.1, Number(t.generatorChargeTime) || 8);
+    const threeTime = Math.max(0.1, Number(t.threePhaseChargeTime) || 5);
+    const chargeMode = t.chargeMode || 'generator';
+
+    const pesticideWaterPerSet = Math.max(0.01, Number(plant.pesticideWaterPerSet) || 1);
+    const savingCoeff = Number(plant.droneSavingCoeff) || 1;
+
+    const rows = [];
+    let totalArea = 0, totalWater = 0, totalTrips = 0;
+    let totalTransfer = 0, totalLoad = 0, totalFlightMin = 0;
+    let weightedTSum = 0;
+
+    plots.forEach((p, i) => {
+      const treeCount = Number(p.treeCount) || 0;
+      const pArea = Number(p.area) || 0;
+      let area, water;
+      if (calcBasis === 'tree') {
+        const treesPerMu = Number(plant.treesPerMu) || 0;
+        area = treesPerMu > 0 ? treeCount / treesPerMu : 0;
+        water = treeCount * (Number(plant.waterPerTree) || 0);
+      } else {
+        area = pArea;
+        water = pArea * (Number(plant.waterPerMu) || 0);
+      }
+      const minTrips = water > 0 ? Math.ceil(water / droneTank) : 0;
+      const tripsOverride = Number(p.tripsOverride) || 0;
+      const trips = tripsOverride > 0 ? tripsOverride : minTrips;
+      const perTripWater = trips > 0 ? water / trips : 0;
+      const transferMin = Math.max(0, Number(p.transferMin) || 0);
+      const flightMin = area > 0
+        ? (area * 666.67) / lineSpacing / flightSpeed / 60 : 0;
+      const perTripSpray = trips > 0 ? flightMin / trips : 0;
+      const perTripTime = 2 * transferMin + loadTime + perTripSpray;
+      const pRaw = water > 0
+        ? this.round78(((calcBasis === 'tree' ? treeCount * (Number(plant.waterPerTree) || 0)
+                        : water) / pesticideWaterPerSet) * savingCoeff)
+        : 0;
+
+      rows.push({
+        id: p.id != null ? p.id : i,
+        name: p.name || `地块${i + 1}`,
+        area: area, treeCount: treeCount, water: water,
+        minTrips: minTrips, trips: trips, tripsOverride: tripsOverride,
+        perTripWater: perTripWater, transferMin: transferMin,
+        flightMin: flightMin, perTripTime: perTripTime,
+        pesticideRounded: pRaw
+      });
+
+      totalArea += area;
+      totalWater += water;
+      totalTrips += trips;
+      totalTransfer += trips * 2 * transferMin;
+      totalLoad += trips * loadTime;
+      totalFlightMin += flightMin;
+      if (trips > 0) weightedTSum += trips * perTripTime;
+    });
+
     const result = {
-      totalTrips: 0,              // 总躺数
-      batteryCycles: 0,           // 电池循环数
-      costBreakdown: {},
-      totalCost: 0,
-      income: 0,
-      profit: 0,
-      costPerJin: 0,
-      profitPerJin: 0,
-      flightHeight: field.flightHeight,
-      pickupIncluded: costs.pickupIncluded !== false,
-      pricePerJinYuan: 0,         // 换算后的吊运单价（元/斤）
-      pickupPricePerJinYuan: 0    // 换算后的采摘单价（元/斤）
+      plots: rows,
+      plotMode: true,
+      droneTank: droneTank,
+      area: totalArea,
+      calcBasis: calcBasis,
+      water: totalWater,
+      totalTrips: totalTrips,
+      totalTransfer: totalTransfer,
+      totalLoad: totalLoad,
+      totalFlightMin: totalFlightMin,
+      pesticide: 0, pesticideRounded: 0,
+      existingSets: existingSets, needToBuy: 0, stockStatus: 'none',
+      concentration: 0, cycles: 0,
+      costBreakdown: {}, totalCost: 0, income: 0, profit: 0,
+      costPerMu: 0, profitPerMu: 0,
+      flightHeight: plant.flightHeight,
+      pesticideIncluded: costs.pesticideIncluded === true
     };
-
-    if (totalWeight <= 0) return result;
-
-    /* 1. 单价换算：毛 → 元（1元=10毛） */
-    result.pricePerJinYuan = (Number(income.pricePerJin) || 0) * 0.1;
-    result.pickupPricePerJinYuan = (Number(costs.pickupPricePerJin) || 0) * 0.1;
-
-    /* 2. 总躺数 = ⌈总斤数 ÷ 一躺多少斤⌉
-          一躺 = 一个来回（装货→飞行→卸货→飞回） */
-    const weightPerTrip = Math.max(0.01, Number(costs.weightPerTrip) || 1);
-    result.totalTrips = Math.ceil(totalWeight / weightPerTrip);
-
-    /* 3. 电池循环数 = ⌈总躺数 ÷ 多少躺一组电池⌉
-          一组电池从满电用到换电算一个循环 */
-    const tripsPerBatteryCycle = Math.max(1, Number(costs.tripsPerBatteryCycle) || 1);
-    result.batteryCycles = Math.ceil(result.totalTrips / tripsPerBatteryCycle);
-
-    /* 4. 电池循环成本 = 电池循环数 × 单次成本 */
-    const batteryCycleUnitCost = costs.useThreePhase
-      ? Number(costs.batteryCycleCostThreePhase) || 0
-      : Number(costs.batteryCycleCost) || 0;
-    result.costBreakdown.battery = result.batteryCycles * batteryCycleUnitCost;
-
-    /* 5. 无人机人工（按天计算，独立于采摘）
-          = 人数 × 天数 × (日薪 + 餐费) + 住宿费 × 住宿天数 */
-    const droneWorkers = Number(costs.droneWorkers) || 0;
-    const droneDays = Number(costs.droneDays) || 0;
-    const droneDailyWage = Number(costs.droneDailyWage) || 0;
-    const droneMealCost = Number(costs.droneMealCost) || 0;
-    const droneAccommodation = Number(costs.droneAccommodation) || 0;
-    const droneAccommodationDays = Number(costs.droneAccommodationDays) || 0;
-    result.costBreakdown.droneLabor = droneWorkers * droneDays * (droneDailyWage + droneMealCost)
-                                    + droneAccommodation * droneAccommodationDays;
-
-    /* 6. 采摘人工（按斤计算，可选）
-          = 包采摘 ? 总斤数 × (采摘毛数 × 0.1) : 0 */
-    if (result.pickupIncluded) {
-      result.costBreakdown.pickupLabor = totalWeight * result.pickupPricePerJinYuan;
-    } else {
-      result.costBreakdown.pickupLabor = 0;
+    if (rows.length === 0) {
+      result.timing = this._emptyPlotTiming();
+      return result;
     }
 
-    /* 7. 交通成本（与打药模式逻辑相同）
-          = (单程×2) × 油耗/100 × 油价 + 路桥费 + 车折旧×(单程×2) */
+    /* 参考药量：逐块 7舍8入后求和（每块地按整套备药，保守） */
+    result.pesticide = rows.reduce((s, r) => s + r.pesticideRounded, 0);
+    result.pesticideRounded = result.pesticide;
+    result.needToBuy = Math.max(0, result.pesticideRounded - existingSets);
+    result.stockStatus = existingSets <= 0 ? 'none'
+      : (existingSets >= result.pesticideRounded ? 'enough' : 'short');
+    result.concentration = totalWater > 0 ? (result.pesticideRounded / totalWater) * 100 : 0;
+
+    /* 兑药批次（与单地块同一调度模型） */
+    const mixRounds = totalWater > 0 ? Math.max(1, Math.ceil(totalWater / batchCapacity)) : 0;
+    const mixTotalTime = mixRounds * baseMixTime;
+    const firstMixTime = mixRounds > 0 ? baseMixTime : 0;
+
+    /* 电池循环成本：按总面积 ÷ 单循环亩数（成本口径与单地块一致） */
+    const cycleArea = Math.max(0.01, Number(costs.cycleArea) || 1);
+    result.cycles = Math.ceil(totalArea / cycleArea);
+    const cycleUnitCost = costs.useThreePhase
+      ? Number(costs.cycleCostThreePhase) || 0
+      : Number(costs.cycleCost) || 0;
+    result.costBreakdown.cycle = result.cycles * cycleUnitCost;
+
+    /* 电池等待：按总趟数模拟（每次落地重新竞争电池），T 取加权平均单趟时间 */
+    const avgT = totalTrips > 0 ? weightedTSum / totalTrips : 0;
+    const batteryResult = this.computeBatteryWait(totalTrips, avgT, batteryCount, chargeMode, genTime, threeTime);
+    const batteryWait = batteryResult.total;
+    const flightSpan = totalTrips > 0 ? weightedTSum + batteryWait : 0;
+    batteryResult.cycles.forEach(c => {
+      c.tStart += firstMixTime; c.tEnd += firstMixTime;
+      c.chargeStart += firstMixTime; c.chargeEnd += firstMixTime;
+    });
+    const afterWorkCharge = t.chargeAfterWork !== false ? this.computeAfterWorkCharge(
+      batteryResult.batteries_final, batteryResult.cycleEnd, batteryCount, chargeMode, genTime, threeTime
+    ) : { total: 0, blocks: [] };
+    afterWorkCharge.blocks.forEach(b => { b.startAt += firstMixTime; b.endAt += firstMixTime; });
+
+    const totalTime = Math.max(mixTotalTime, firstMixTime + flightSpan);
+
+    result.timing = {
+      mixTotalTime: mixTotalTime, mixRounds: mixRounds, batchCapacity: batchCapacity,
+      firstMixTime: firstMixTime, flightSpan: flightSpan,
+      flightLength: 0, flightTimeMin: totalFlightMin, flightTimeSource: 'estimate',
+      roundTripTotal: totalTransfer + totalLoad, totalTransfer: totalTransfer, totalLoad: totalLoad,
+      T: avgT, perCycleFlight: 0,
+      batteryWait: batteryWait, batteryCycles: batteryResult.cycles,
+      noWaitCount: batteryResult.noWaitCount,
+      totalTime: totalTime,
+      afterWorkCharge: afterWorkCharge.total, afterWorkBlocks: afterWorkCharge.blocks,
+      totalTimeWithCharge: totalTime + afterWorkCharge.total,
+      batteryCount: batteryCount, chargeMode: chargeMode,
+      chargeAfterWork: t.chargeAfterWork !== false,
+      plotUnits: '趟'
+    };
+
+    /* 成本/收入（与单地块同口径，面积取总面积） */
     const distance = Number(costs.distance) || 0;
-    const fuelConsumption = Number(costs.fuelConsumption) || 0;
-    const fuelPrice = Number(costs.fuelPrice) || 0;
     const roundTripKm = distance * 2;
-    const fuelCost = roundTripKm * (fuelConsumption / 100) * fuelPrice;
-    const vehicleDep = roundTripKm * (Number(costs.vehicleDepreciation) || 0);
-    result.costBreakdown.transport = fuelCost + vehicleDep + (Number(costs.tolls) || 0);
-
-    /* 8. 设备折旧（按100斤分摊，吊运按重量计损）
-          = (总斤数 ÷ 100) × (无人机折旧 + 维修储备 + 保险) */
-    const per100JinCost = (Number(costs.droneDepreciation) || 0)
-                        + (Number(costs.maintenanceReserve) || 0)
-                        + (Number(costs.insurance) || 0);
-    result.costBreakdown.equipment = (totalWeight / 100) * per100JinCost;
-
-    /* 9. 其他成本（每次作业固定）
-          = 防护装备 + 清洗费 + 杂费 */
+    result.costBreakdown.transport = roundTripKm * ((Number(costs.fuelConsumption) || 0) / 100) * (Number(costs.fuelPrice) || 0)
+      + roundTripKm * (Number(costs.vehicleDepreciation) || 0) + (Number(costs.tolls) || 0);
+    result.costBreakdown.labor = (Number(costs.workers) || 0) * (Number(costs.days) || 0)
+      * ((Number(costs.dailyWage) || 0) + (Number(costs.mealCost) || 0))
+      + (Number(costs.accommodation) || 0) * (Number(costs.accommodationDays) || 0);
+    result.costBreakdown.pesticide = result.pesticideIncluded
+      ? result.needToBuy * (Number(costs.pesticidePrice) || 0) : 0;
+    result.costBreakdown.equipment = totalArea * ((Number(costs.droneDepreciation) || 0)
+      + (Number(costs.maintenanceReserve) || 0) + (Number(costs.insurance) || 0));
     result.costBreakdown.other = (Number(costs.protectiveGear) || 0)
-                               + (Number(costs.cleaningCost) || 0)
-                               + (Number(costs.miscCost) || 0);
-
-    /* 10. 总成本 = 电池循环 + 无人机人工 + 采摘人工 + 交通 + 设备 + 其他 */
+      + (Number(costs.cleaningCost) || 0) + (Number(costs.miscCost) || 0);
     result.totalCost = Object.values(result.costBreakdown).reduce((a, b) => a + b, 0);
-
-    /* 11. 总收入 = 总斤数 × (吊运毛数 × 0.1) */
-    result.income = totalWeight * result.pricePerJinYuan;
-
-    /* 12. 粗利润 = 总收入 - 总成本 */
+    result.income = totalArea * (Number(income.pricePerMu) || 0) + (Number(income.subsidy) || 0);
     result.profit = result.income - result.totalCost;
-
-    /* 13. 每斤指标 */
-    result.costPerJin = totalWeight > 0 ? result.totalCost / totalWeight : 0;
-    result.profitPerJin = totalWeight > 0 ? result.profit / totalWeight : 0;
+    result.costPerMu = totalArea > 0 ? result.totalCost / totalArea : 0;
+    result.profitPerMu = totalArea > 0 ? result.profit / totalArea : 0;
 
     return result;
   },
 
+  _emptyPlotTiming() {
+    return {
+      mixTotalTime: 0, mixRounds: 0, batchCapacity: 1000, firstMixTime: 0,
+      flightSpan: 0, flightLength: 0, flightTimeMin: 0, flightTimeSource: 'estimate',
+      roundTripTotal: 0, totalTransfer: 0, totalLoad: 0, T: 0, perCycleFlight: 0,
+      batteryWait: 0, batteryCycles: [], noWaitCount: 0, totalTime: 0,
+      afterWorkCharge: 0, afterWorkBlocks: [], totalTimeWithCharge: 0,
+      batteryCount: 1, chargeMode: 'generator', chargeAfterWork: true, plotUnits: '趟'
+    };
+  },
+
   /**
-   * 格式化数字显示
+   * 续药计算：剩余水量 ÷ 一套药需水量 × 省药系数 → 7舍8入
+   */
+  computeRefillSets(restWater, pesticideWaterPerSet, savingCoeff) {
+    if (!(restWater > 0)) return 0;
+    return this.round78(
+      (restWater / Math.max(0.01, Number(pesticideWaterPerSet) || 1)) * (Number(savingCoeff) || 1)
+    );
+  },
+
+  /* ============================================================
+     ★★★ 吊运模式计算（HAUL）—— 与打药模式完全独立 ★★★
+     ※ 历史上本文件曾有两个 computeHaul 定义（后定义覆盖前定义），
+       现仅保留唯一实现。UI 传参形式：{ field, costs, income }
+       （haulField/haulCosts/haulIncome 已展开），亦兼容
+       { haul: { field, costs, income } } 完整 state 形式。
+     公式：
+       【收入】
+         总收入(元) = 总斤数 × 吊运单价(毛) × 0.1
+         例：1000斤 × 8毛 × 0.1 = 800元
+       【电池循环】
+         总躺数 = ⌈总斤数 ÷ 每躺斤数⌉         （一躺=一个来回）
+         电池循环数 = ⌈总躺数 ÷ 每组电池躺数⌉  （多少躺换一次电池）
+         电池循环成本 = 电池循环数 × (三相电 ? 三相电成本 : 普通成本)
+       【无人机人工（按天）】
+         无人机人工 = 人数 × 天数 × (日薪 + 餐费) + 住宿费 × 住宿天数
+       【采摘人工（按斤，可选）】
+         采摘人工 = 包采摘 ? 总斤数 × 采摘单价(毛) × 0.1 : 0
+       【交通】
+         油费 = 单程×2 × 油耗/100 × 油价
+         车折旧 = 单程×2 × 元/公里
+         交通 = 油费 + 车折旧 + 路桥费
+       【设备折旧（按100斤）】
+         设备折旧 = (总斤数 ÷ 100) × (无人机折旧 + 维修储备 + 保险)
+       【其他】
+         其他 = 防护装备 + 清洗费 + 杂费
+       【汇总】
+         总成本 = 电池循环 + 无人机人工 + 采摘人工 + 交通 + 设备折旧 + 其他
+         利润 = 总收入 - 总成本
+         每斤利润 = 利润 ÷ 总斤数
+         每躺利润 = 利润 ÷ 总躺数
+     ============================================================ */
+
+  /**
+   * 格式化数字显示（去掉小数尾零："2.50"→"2.5"，"2.00"→"2"，"100"→"100"）
    */
   fmt(num, decimals = 2) {
     if (typeof num !== 'number' || isNaN(num)) return '0';
-    return num.toFixed(decimals).replace(/\.?0+$/, (m) => m.includes('.') ? '' : m);
+    return num.toFixed(decimals)
+      .replace(/(\.\d*?)0+$/, '$1')
+      .replace(/\.$/, '');
   },
 
   /**
@@ -3072,7 +3309,7 @@ const Calculator = {
 
 window.Calculator = Calculator;
 
-</script>
+  </script>
   <script>
 /* ============================================================
    storage.js — 本地存储 / 预设 / 历史记录 / 导入导出
@@ -3124,6 +3361,7 @@ const Storage = {
       field: { ...state.field },
       costs: { ...state.costs },
       income: { ...state.income },
+      timing: state.timing ? { ...state.timing } : null,
       haulField: { ...state.haulField },
       haulCosts: { ...state.haulCosts },
       haulIncome: { ...state.haulIncome },
@@ -3216,6 +3454,16 @@ const Storage = {
       lines.push('【作业参数】');
       lines.push(`  亩数: ${state.field.area}`);
       lines.push(`  现有药剂套数: ${state.field.existingPesticideSets}`);
+      if (state.field.plotMode && Array.isArray(state.field.plots) && state.field.plots.length) {
+        lines.push(`  机载装药上限: ${state.field.droneTank != null ? state.field.droneTank : 85} 升`);
+        lines.push('');
+        lines.push('【地块列表】');
+        state.field.plots.forEach(p => {
+          const parts = [`名称=${p.name || ''}`, `亩数=${p.area != null ? p.area : 0}`, `棵数=${p.treeCount != null ? p.treeCount : 0}`,
+            `转场=${p.transferMin != null ? p.transferMin : 5}`, `趟数覆盖=${p.tripsOverride || 0}`];
+          lines.push(`  [地块] ${parts.join(' | ')}`);
+        });
+      }
       lines.push('');
       lines.push('【循环成本】');
       lines.push(`  单次循环成本: ${state.costs.cycleCost} 元`);
@@ -3257,13 +3505,25 @@ const Storage = {
         lines.push('【时间参数】');
         lines.push(`  飞行速度: ${state.timing.flightSpeed} m/s`);
         lines.push(`  航线间距: ${state.timing.lineSpacing} 米`);
+        lines.push(`  手动飞行时间: ${state.timing.manualFlightTime} min`);
         lines.push(`  来回升降时间: ${state.timing.roundTripTime} min/循环`);
+        lines.push(`  加药装载时间: ${state.timing.loadTime != null ? state.timing.loadTime : 1} min/循环`);
         lines.push(`  基础兑药时间: ${state.timing.baseMixTime} min/轮`);
-        lines.push(`  兑水速度: ${state.timing.waterMixRate} min/100L`);
+        lines.push(`  单批兑水量: ${state.timing.batchCapacity != null ? state.timing.batchCapacity : 1000} 升`);
         lines.push(`  拥有电池数量: ${state.timing.batteryCount} 块`);
         lines.push(`  发电机充电时间: ${state.timing.generatorChargeTime} min/块`);
         lines.push(`  三相电充电时间: ${state.timing.threePhaseChargeTime} min/块`);
-        lines.push(`  充电模式: ${state.timing.chargeMode}`);
+        const modeLabels = { generator: '仅发电机', threePhase: '仅三相电', dual: '三相电+发电机' };
+        lines.push(`  充电模式: ${state.timing.chargeMode} （${modeLabels[state.timing.chargeMode] || ''}）`);
+        lines.push(`  作业结束充满电: ${state.timing.chargeAfterWork ? '是' : '否'}`);
+      }
+      // 工单覆盖值（已完成量在 JSON 中精确往返；文本段仅保留套数与备注）
+      const wo = state.workOrder;
+      if (wo && (wo.actualSets || wo.note)) {
+        lines.push('');
+        lines.push('【工单】');
+        if (wo.actualSets) lines.push(`  实际用药套数: ${wo.actualSets}`);
+        if (wo.note) lines.push(`  工单备注: ${wo.note}`);
       }
     }
 
@@ -3286,7 +3546,8 @@ const Storage = {
       timing: state.timing ? { ...state.timing } : null,
       haulField: { ...state.haulField },
       haulCosts: { ...state.haulCosts },
-      haulIncome: { ...state.haulIncome }
+      haulIncome: { ...state.haulIncome },
+      workOrder: state.workOrder ? { ...state.workOrder } : null
     }, null, 2);
   },
 
@@ -3312,6 +3573,7 @@ const Storage = {
   },
 
   _normalizeImport(obj) {
+    const woDefaults = { completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' };
     const result = {
       mode: obj.mode || 'spray',
       plant: obj.plant || { ...window.PLANT_DATABASE.fruit_tree },
@@ -3321,7 +3583,8 @@ const Storage = {
       timing: Object.assign({}, window.DEFAULT_TIMING, obj.timing || {}),
       haulField: Object.assign({}, window.DEFAULT_HAUL_FIELD, obj.haulField || {}),
       haulCosts: Object.assign({}, window.DEFAULT_HAUL_COSTS, obj.haulCosts || {}),
-      haulIncome: Object.assign({}, window.DEFAULT_HAUL_INCOME, obj.haulIncome || {})
+      haulIncome: Object.assign({}, window.DEFAULT_HAUL_INCOME, obj.haulIncome || {}),
+      workOrder: Object.assign({}, woDefaults, obj.workOrder || {})
     };
     return result;
   },
@@ -3336,7 +3599,8 @@ const Storage = {
       timing: { ...window.DEFAULT_TIMING },
       haulField: { ...window.DEFAULT_HAUL_FIELD },
       haulCosts: { ...window.DEFAULT_HAUL_COSTS },
-      haulIncome: { ...window.DEFAULT_HAUL_INCOME }
+      haulIncome: { ...window.DEFAULT_HAUL_INCOME },
+      workOrder: { completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' }
     };
 
     // 检测模式
@@ -3355,6 +3619,7 @@ const Storage = {
       '无人机省药系数': ['plant', 'droneSavingCoeff', parseFloat],
       // 打药-作业
       '亩数': ['field', 'area', parseFloat],
+      '机载装药上限': ['field', 'droneTank', parseFloat],
       '现有药剂套数': ['field', 'existingPesticideSets', parseFloat],
       // 打药-循环
       '单次循环成本': ['costs', 'cycleCost', parseFloat],
@@ -3378,16 +3643,26 @@ const Storage = {
       // 打药-收入
       '每亩收费': ['income', 'pricePerMu', parseFloat],
       '补贴': ['income', 'subsidy', parseFloat],
+      // 工单
+      '实际用药套数': ['workOrder', 'actualSets', parseFloat],
+      '工单备注': ['workOrder', 'note', (v) => v],
       // 时间参数
       '飞行速度': ['timing', 'flightSpeed', parseFloat],
       '航线间距': ['timing', 'lineSpacing', parseFloat],
+      '手动飞行时间': ['timing', 'manualFlightTime', parseFloat],
       '来回升降时间': ['timing', 'roundTripTime', parseFloat],
+      '加药装载时间': ['timing', 'loadTime', parseFloat],
       '基础兑药时间': ['timing', 'baseMixTime', parseFloat],
-      '兑水速度': ['timing', 'waterMixRate', parseFloat],
+      '单批兑水量': ['timing', 'batchCapacity', parseFloat],
       '拥有电池数量': ['timing', 'batteryCount', parseFloat],
       '发电机充电时间': ['timing', 'generatorChargeTime', parseFloat],
       '三相电充电时间': ['timing', 'threePhaseChargeTime', parseFloat],
-      '充电模式': ['timing', 'chargeMode', (v) => v],
+      // 注：旧版导出的"兑水速度"行已废弃，无映射时自动忽略
+      '充电模式': ['timing', 'chargeMode', (v) => ({
+        '仅发电机': 'generator',
+        '仅三相电': 'threePhase',
+        '三相电+发电机': 'dual'
+      }[v] || v)],
       // 吊运-作业
       '总斤数': ['haulField', 'totalWeight', parseFloat],
       // 吊运-电池循环
@@ -3407,8 +3682,28 @@ const Storage = {
     const boolMap = {
       '使用三相电': ['costs', 'useThreePhase'],
       '包药': ['costs', 'pesticideIncluded'],
-      '包采摘': ['haulCosts', 'pickupIncluded']
+      '包采摘': ['haulCosts', 'pickupIncluded'],
+      '作业结束充满电': ['timing', 'chargeAfterWork']
     };
+
+    // 吊运模式：同名标签实际属于 haulCosts。
+    // 必须在逐行解析前覆盖 fieldMap，否则会被打药映射抢先命中，
+    // 把吊运数值误写入 costs 并丢失 haulCosts 的真实值（历史 bug）。
+    if (result.mode === 'haul') {
+      Object.assign(fieldMap, {
+        '三相电循环成本': ['haulCosts', 'batteryCycleCostThreePhase', parseFloat],
+        '每人日薪': ['haulCosts', 'droneDailyWage', parseFloat],
+        '每人每天餐费': ['haulCosts', 'droneMealCost', parseFloat],
+        '住宿费': ['haulCosts', 'droneAccommodation', parseFloat],
+        '住宿天数': ['haulCosts', 'droneAccommodationDays', parseFloat],
+        '防护装备': ['haulCosts', 'protectiveGear', parseFloat],
+        '清洗费用': ['haulCosts', 'cleaningCost', parseFloat],
+        '维修保养储备': ['haulCosts', 'maintenanceReserve', parseFloat],
+        '保险分摊': ['haulCosts', 'insurance', parseFloat],
+        '无人机折旧': ['haulCosts', 'droneDepreciation', parseFloat],
+        '其他杂费': ['haulCosts', 'miscCost', parseFloat]
+      });
+    }
 
     // 通用字段（两种模式都有，需根据模式分配）
     const commonFields = ['distance', 'fuelConsumption', 'fuelPrice', 'tolls', 'vehicleDepreciation', 'miscCost'];
@@ -3422,6 +3717,25 @@ const Storage = {
 
     const lines = text.split('\n');
     lines.forEach(line => {
+      // 地块行（多地块模式）：  [地块] 名称=xx | 亩数=12 | 棵数=0 | 转场=5 | 趟数覆盖=0
+      if (line.includes('[地块]')) {
+        const kv = {};
+        line.replace(/^\s*\[地块\]\s*/, '').split('|').forEach(seg => {
+          const idx = seg.indexOf('=');
+          if (idx > -1) kv[seg.slice(0, idx).trim()] = seg.slice(idx + 1).trim();
+        });
+        result.field.plotMode = true;
+        if (!Array.isArray(result.field.plots)) result.field.plots = [];
+        result.field.plots.push({
+          id: 'imp' + result.field.plots.length,
+          name: kv['名称'] || '',
+          area: parseFloat(kv['亩数']) || 0,
+          treeCount: parseFloat(kv['棵数']) || 0,
+          transferMin: parseFloat(kv['转场']) != null && !isNaN(parseFloat(kv['转场'])) ? parseFloat(kv['转场']) : 5,
+          tripsOverride: parseFloat(kv['趟数覆盖']) || 0
+        });
+        return;
+      }
       // 匹配 "  字段名: 值 单位" 形式
       const m = line.match(/^\s*([^:：【】]+)[:：]\s*([^\s\n]+)/);
       if (!m) return;
@@ -3452,22 +3766,6 @@ const Storage = {
         }
         return;
       }
-
-      // 通用其他字段（杂费、防护、清洗等需要根据上下文判断）
-      // 如果在吊运模式且字段名匹配打药的字段名，赋给 haulCosts
-      if (result.mode === 'haul') {
-        // 住宿费/住宿天数 在吊运模式属于无人机人工
-        if (key === '住宿费') result.haulCosts.droneAccommodation = parseFloat(valStr) || 0;
-        if (key === '住宿天数') result.haulCosts.droneAccommodationDays = parseFloat(valStr) || 0;
-        if (key === '每人日薪') result.haulCosts.droneDailyWage = parseFloat(valStr) || 0;
-        if (key === '每人每天餐费') result.haulCosts.droneMealCost = parseFloat(valStr) || 0;
-        if (key === '防护装备') result.haulCosts.protectiveGear = parseFloat(valStr) || 0;
-        if (key === '清洗费用') result.haulCosts.cleaningCost = parseFloat(valStr) || 0;
-        if (key === '其他杂费') result.haulCosts.miscCost = parseFloat(valStr) || 0;
-        if (key === '维修保养储备') result.haulCosts.maintenanceReserve = parseFloat(valStr) || 0;
-        if (key === '保险分摊') result.haulCosts.insurance = parseFloat(valStr) || 0;
-        if (key === '无人机折旧') result.haulCosts.droneDepreciation = parseFloat(valStr) || 0;
-      }
     });
 
     // 提取植物名（打药模式）
@@ -3487,7 +3785,7 @@ const Storage = {
 
 window.Storage = Storage;
 
-</script>
+  </script>
   <script>
 /* ============================================================
    ui.js — UI 渲染与交互（支持打药/吊运双模式）
@@ -3505,7 +3803,9 @@ const UI = {
     // 吊运模式状态（完全独立）
     haulField: { ...DEFAULT_HAUL_FIELD },
     haulCosts: { ...DEFAULT_HAUL_COSTS },
-    haulIncome: { ...DEFAULT_HAUL_INCOME }
+    haulIncome: { ...DEFAULT_HAUL_INCOME },
+    // 作业工单覆盖层（已完成量/实际用药/备注）
+    workOrder: { completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' }
   },
 
   /* ---------- 初始化 ---------- */
@@ -3545,6 +3845,9 @@ const UI = {
     document.getElementById('haulResults').style.display = mode === 'haul' ? '' : 'none';
     // 模式标签
     document.getElementById('modeTag').textContent = mode === 'spray' ? '打药模式' : '吊运模式';
+    // 工单按钮仅打药模式可用
+    const woBtn = document.getElementById('workOrderBtn');
+    if (woBtn) woBtn.style.display = mode === 'spray' ? '' : 'none';
     // 植物面板和预设栏：仅打药模式显示
     const plantPanel = document.querySelector('.plant-panel');
     if (plantPanel) plantPanel.style.display = mode === 'spray' ? '' : 'none';
@@ -3582,12 +3885,22 @@ const UI = {
       if (saved.plant) this.state.plant = { ...saved.plant };
       else this.state.plant = { ...PLANT_DATABASE[this.state.field.plantKey || 'fruit_tree'] };
       if (saved.field) this.state.field = { ...this.state.field, ...saved.field };
+      // 旧版存档无 calcBasis：按植物类型预置基准（果树→按棵数）
+      if (saved.field && saved.field.calcBasis === undefined) {
+        this.state.field.calcBasis = this.state.plant.calcMode === 'tree' ? 'tree' : 'area';
+      }
       if (saved.costs) this.state.costs = { ...this.state.costs, ...saved.costs };
       if (saved.income) this.state.income = { ...this.state.income, ...saved.income };
       if (saved.timing) this.state.timing = { ...this.state.timing, ...saved.timing };
       if (saved.haulField) this.state.haulField = { ...this.state.haulField, ...saved.haulField };
       if (saved.haulCosts) this.state.haulCosts = { ...this.state.haulCosts, ...saved.haulCosts };
       if (saved.haulIncome) this.state.haulIncome = { ...this.state.haulIncome, ...saved.haulIncome };
+      if (saved.workOrder) {
+        this.state.workOrder = {
+          ...{ completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' },
+          ...saved.workOrder
+        };
+      }
     } else {
       this.state.plant = { ...PLANT_DATABASE[this.state.field.plantKey || 'fruit_tree'] };
     }
@@ -3616,13 +3929,259 @@ const UI = {
     if (!plant) return;
     this.state.plant = { ...plant };
     this.state.field.plantKey = key;
+    // 切换植物时按其自然基准预置（果树→按棵数，大田→按亩数）
+    this.state.field.calcBasis = plant.calcMode === 'tree' ? 'tree' : 'area';
     document.querySelectorAll('.plant-card').forEach(c => {
       c.classList.toggle('active', c.dataset.key === key);
     });
     this.updatePlantInfo();
     this.syncParamFormFromPlant();
+    this.updateCalcBasisVisibility();
     this.compute();
     this.save();
+  },
+
+  /* 计算基准切换后的输入项显隐：按棵数隐藏亩数、显示棵数并锁定每亩棵数 */
+  updateCalcBasisVisibility() {
+    const basis = this.state.field.calcBasis === 'tree' ? 'tree' : 'area';
+    // 同步单选按钮选中态（切换植物时 state 变了但 DOM 不会自动跟随）
+    document.querySelectorAll('input[name="radio-calcBasis"]').forEach(r => {
+      r.checked = r.value === basis;
+    });
+    // 多地块模式下尺寸在各地块行填写，交由 updatePlotModeVisibility 处理
+    if (this.state.field.plotMode) {
+      this.updatePlotModeVisibility();
+      return;
+    }
+    const areaWrap = document.getElementById('inp-area');
+    const treeWrap = document.getElementById('inp-treeCount');
+    const treesPerMu = document.getElementById('inp-treesPerMu');
+    if (areaWrap) areaWrap.closest('.field').style.display = basis === 'tree' ? 'none' : '';
+    if (treeWrap) treeWrap.closest('.field').style.display = basis === 'area' ? 'none' : '';
+    if (treesPerMu) treesPerMu.readOnly = basis === 'tree';
+  },
+
+  /* ---------- 多地块模式 ---------- */
+  updatePlotModeVisibility() {
+    const plotsMode = !!this.state.field.plotMode;
+    document.querySelectorAll('input[name="radio-plotMode"]').forEach(r => {
+      r.checked = (r.value === 'plots') === plotsMode;
+    });
+    const editor = document.getElementById('plotsEditor');
+    if (editor) editor.style.display = plotsMode ? '' : 'none';
+    // 多地块时隐藏单地块的亩数/棵数输入（尺寸在各地块行填写）
+    const areaEl = document.getElementById('inp-area');
+    const treeEl = document.getElementById('inp-treeCount');
+    if (areaEl) areaEl.closest('.field').style.display = plotsMode ? 'none' : (this.state.field.calcBasis === 'tree' ? 'none' : '');
+    if (treeEl) treeEl.closest('.field').style.display = plotsMode ? 'none' : (this.state.field.calcBasis === 'area' ? 'none' : '');
+    const wrap = document.getElementById('plotsTableWrap');
+    if (wrap) wrap.style.display = plotsMode ? '' : 'none';
+  },
+
+  renderPlotsEditor() {
+    const wrap = document.getElementById('plotsEditor');
+    if (!wrap) return;
+    const plots = this.state.field.plots || [];
+    const basis = this.state.field.calcBasis === 'tree' ? 'tree' : 'area';
+    const sizeLabel = basis === 'tree' ? '棵数' : '亩数';
+    const sizeUnit = basis === 'tree' ? '棵' : '亩';
+    let html = `
+      <div class="plot-toolbar">
+        <span class="hint">按<b>${basis === 'tree' ? '棵数' : '亩数'}</b>填写各地块；趟数留空=按机载上限自动算最少趟数</span>
+        <span class="plot-presets">
+          转场档位
+          <button type="button" class="btn btn-sm btn-secondary plot-preset" data-min="3">保守3m</button>
+          <button type="button" class="btn btn-sm btn-secondary plot-preset" data-min="5">标准5m</button>
+          <button type="button" class="btn btn-sm btn-secondary plot-preset" data-min="8">激进8m</button>
+        </span>
+      </div>`;
+    plots.forEach((p, i) => {
+      const sizeVal = basis === 'tree' ? (p.treeCount || '') : (p.area || '');
+      html += `
+      <div class="plot-row" data-id="${p.id}">
+        <input type="text" class="plot-name" value="${this.escapeHtml(p.name || `地块${i + 1}`)}" placeholder="名称">
+        <div class="unit-suffix" data-unit="${sizeUnit}"><input type="number" class="plot-size" step="0.1" min="0" value="${sizeVal}" placeholder="${sizeLabel}"></div>
+        <div class="unit-suffix" data-unit="min"><input type="number" class="plot-transfer" step="0.5" min="0" value="${p.transferMin != null ? p.transferMin : 5}" placeholder="转场"></div>
+        <div class="unit-suffix" data-unit="趟"><input type="number" class="plot-trips" step="1" min="0" value="${p.tripsOverride || ''}" placeholder="自动"></div>
+        <button type="button" class="icon-btn plot-del" title="删除地块">🗑</button>
+      </div>`;
+    });
+    html += '<button type="button" class="btn btn-secondary btn-sm plot-add">＋ 添加地块</button>';
+    wrap.innerHTML = html;
+  },
+
+  addPlot() {
+    if (!Array.isArray(this.state.field.plots)) this.state.field.plots = [];
+    const n = this.state.field.plots.length;
+    const isTree = this.state.field.calcBasis === 'tree';
+    this.state.field.plots.push({
+      id: 'p' + Date.now().toString(36) + '_' + n,
+      name: `地块${n + 1}`,
+      area: isTree ? 0 : 10,
+      treeCount: isTree ? 100 : 0,
+      transferMin: 5,
+      tripsOverride: 0
+    });
+    this.renderPlotsEditor();
+    this.compute();
+    this.save();
+  },
+
+  /* 地块明细表（结果区） */
+  renderPlotsTable(r) {
+    const wrap = document.getElementById('plotsTableWrap');
+    if (!wrap) return;
+    if (!r || !r.plotMode || !r.plots || r.plots.length === 0) {
+      wrap.innerHTML = '';
+      return;
+    }
+    const fmt = Calculator.fmt.bind(Calculator);
+    const basis = r.calcBasis === 'tree' ? 'tree' : 'area';
+    const sizeHeader = basis === 'tree' ? '棵数' : '亩数';
+    const rows = r.plots.map(p => `
+      <tr>
+        <td>${this.escapeHtml(p.name)}</td>
+        <td>${basis === 'tree' ? fmt(p.treeCount, 0) : fmt(p.area, 1)}</td>
+        <td>${fmt(p.water, 1)}</td>
+        <td>${p.minTrips}</td>
+        <td><b>${p.trips}</b></td>
+        <td>${fmt(p.perTripWater, 1)}</td>
+        <td>${fmt(p.transferMin, 1)}</td>
+        <td>${p.pesticideRounded}</td>
+      </tr>`).join('');
+    wrap.innerHTML = `
+      <div class="panel-title" style="margin-top:12px;"><span>🗺️</span> 地块明细
+        <span class="hint">机载上限 ${r.droneTank} 升/趟 · 共 ${r.totalTrips} 趟 · 转场合计 ${fmt(r.totalTransfer, 1)}min</span>
+      </div>
+      <table class="summary-table plots-table">
+        <thead><tr><th>地块</th><th>${sizeHeader}</th><th>水量(升)</th><th>最少趟</th><th>趟数</th><th>每趟(升)</th><th>转场(min)</th><th>药量(套)</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><td>合计</td><td>${basis === 'tree' ? fmt(r.plots.reduce((s, p) => s + p.treeCount, 0), 0) : fmt(r.area, 1)}</td><td>${fmt(r.water, 1)}</td><td>—</td><td>${r.totalTrips}</td><td>—</td><td>${fmt(r.totalTransfer, 1)}</td><td>${r.pesticideRounded}</td></tr></tfoot>
+      </table>`;
+  },
+
+  /* ============================================================
+     ★★★ 作业工单（快捷修改 + 纯文本输出）★★★
+     - 快捷修改区：已完成量（按地块）、实际用药套数、备注，
+       任一输入即时重算剩余量/续药并保存（state.workOrder 覆盖层）
+     - 纯文本工单：等宽高可读，可整段复制留存或发给现场人员
+     ============================================================ */
+  getWorkOrder() {
+    if (!this.state.workOrder || typeof this.state.workOrder !== 'object') {
+      this.state.workOrder = { completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' };
+    }
+    const wo = this.state.workOrder;
+    if (!wo.completedByPlot) wo.completedByPlot = {};
+    if (wo.completedSingle == null) wo.completedSingle = 0;
+    if (wo.actualSets == null) wo.actualSets = 0;
+    if (wo.note == null) wo.note = '';
+    return wo;
+  },
+
+  openWorkOrder() {
+    if (this.state.mode !== 'spray') {
+      this.toast('工单暂仅支持打药模式', 'warn');
+      return;
+    }
+    this.renderWorkOrderQuick();
+    this.renderWorkOrderText();
+    this.openModal('workOrderModal');
+  },
+
+  renderWorkOrderQuick() {
+    const wrap = document.getElementById('workOrderQuick');
+    if (!wrap) return;
+    const r = this._lastResult;
+    const wo = this.getWorkOrder();
+    let html = '';
+    if (r && r.plotMode) {
+      (r.plots || []).forEach(p => {
+        const done = Number(wo.completedByPlot[p.id]) || 0;
+        const rest = Math.max(0, p.water - done);
+        html += `
+          <div class="field">
+            <label>${this.escapeHtml(p.name)} 已完成(升)</label>
+            <input type="number" class="wo-completed" data-id="${p.id}" min="0" step="1" value="${done || ''}" placeholder="0">
+            <span class="wo-rest hint" data-id="${p.id}">剩余 ${Calculator.fmt(rest, 1)} 升 ≈ ${p.perTripWater > 0 ? Math.ceil(rest / p.perTripWater) : 0} 趟</span>
+          </div>`;
+      });
+    } else {
+      const done = Number(wo.completedSingle) || 0;
+      const rest = Math.max(0, (r ? r.water : 0) - done);
+      html += `
+        <div class="field">
+          <label>已完成水量(升)</label>
+          <input type="number" class="wo-single" min="0" step="1" value="${done || ''}" placeholder="0">
+          <span class="hint" id="woRestSingle">剩余 ${Calculator.fmt(rest, 1)} 升</span>
+        </div>`;
+    }
+    html += `
+      <div class="field">
+        <label>实际用药(套)</label>
+        <input type="number" class="wo-sets" min="0" step="1" value="${wo.actualSets || ''}" placeholder="参考 ${r ? r.pesticideRounded : 0}">
+      </div>
+      <div class="field" style="grid-column: 1 / -1;">
+        <label>备注</label>
+        <input type="text" class="wo-note" value="${this.escapeHtml(wo.note)}" placeholder="如：农户自备2套 / 下午续药">
+      </div>`;
+    wrap.innerHTML = html;
+  },
+
+  renderWorkOrderText() {
+    const el = document.getElementById('workOrderText');
+    if (el) el.textContent = this.buildWorkOrderText();
+  },
+
+  buildWorkOrderText() {
+    const r = this._lastResult;
+    if (!r || this.state.mode !== 'spray') return '';
+    const wo = this.getWorkOrder();
+    const fmt = Calculator.fmt.bind(Calculator);
+    const fdur = Calculator.formatDuration.bind(Calculator);
+    const plant = this.state.plant;
+    const LINE = '──────────────────────';
+    const L = [];
+    const basisText = r.plotMode ? '多地块' : (r.calcBasis === 'tree' ? '按棵数' : '按亩数');
+    L.push('🚁 无人机作业工单');
+    L.push(`日期: ${new Date().toLocaleString('zh-CN')}`);
+    L.push(`作物: ${plant.icon || ''}${plant.name} · ${basisText}${r.plotMode ? ` · 机载上限 ${r.droneTank}升/趟` : ''}`);
+    L.push(LINE);
+
+    if (r.plotMode) {
+      (r.plots || []).forEach(p => {
+        const done = Number(wo.completedByPlot[p.id]) || 0;
+        const rest = Math.max(0, p.water - done);
+        L.push(`【${p.name}】`);
+        L.push(`  ${r.calcBasis === 'tree' ? fmt(p.treeCount, 0) + '棵' : fmt(p.area, 1) + '亩'} | 水量 ${fmt(p.water, 1)}升 | 趟数 ${p.trips} | 每趟 ${fmt(p.perTripWater, 1)}升 | 转场 ${fmt(p.transferMin, 1)}min`);
+        L.push(`  已完成 ${fmt(done, 1)}升 (${p.water > 0 ? fmt(done / p.water * 100, 0) : 0}%) | 剩余 ${fmt(rest, 1)}升 ≈ ${p.perTripWater > 0 ? Math.ceil(rest / p.perTripWater) : 0}趟 | 药量 ${p.pesticideRounded}套`);
+      });
+    } else {
+      const done = Number(wo.completedSingle) || 0;
+      const rest = Math.max(0, r.water - done);
+      L.push('【当前地块】');
+      L.push(`  水量 ${fmt(r.water, 1)}升 | 循环数 ${r.cycles} | 兑药 ${r.timing.mixRounds}批(单批${fmt(r.timing.batchCapacity, 0)}升)`);
+      L.push(`  已完成 ${fmt(done, 1)}升 (${r.water > 0 ? fmt(done / r.water * 100, 0) : 0}%) | 剩余 ${fmt(rest, 1)}升`);
+    }
+
+    L.push(LINE);
+    const doneTotal = r.plotMode
+      ? (r.plots || []).reduce((s, p) => s + (Number(wo.completedByPlot[p.id]) || 0), 0)
+      : (Number(wo.completedSingle) || 0);
+    const restTotal = Math.max(0, r.water - doneTotal);
+    const actualSets = Number(wo.actualSets) > 0 ? Number(wo.actualSets) : r.pesticideRounded;
+    const refillSets = Calculator.computeRefillSets(restTotal, plant.pesticideWaterPerSet, plant.droneSavingCoeff);
+    L.push('【汇总】');
+    L.push(`  总水量 ${fmt(r.water, 1)}升 | 已完成 ${fmt(doneTotal, 1)}升 | 剩余 ${fmt(restTotal, 1)}升`);
+    if (r.plotMode) L.push(`  总趟数 ${r.totalTrips} | 兑药 ${r.timing.mixRounds}批(单批${fmt(r.timing.batchCapacity, 0)}升)`);
+    let timeText = `预计总时长 ${fdur(r.timing.totalTime)}`;
+    if (r.timing.chargeAfterWork && r.timing.afterWorkCharge > 0) timeText += `（另结束后充电 ${fdur(r.timing.afterWorkCharge)}）`;
+    L.push(`  ${timeText}`);
+    L.push(`  药量: 参考 ${r.pesticideRounded}套 | 实际 ${actualSets}套${Number(wo.actualSets) > 0 ? '（手填）' : ''} | 需补购 ${r.needToBuy}套`);
+    if (restTotal > 0) L.push(`  续药提醒: 剩余 ${fmt(restTotal, 1)}升 ≈ 还需 ${refillSets}套（7舍8入）`);
+    L.push(`  成本 ¥${Calculator.fmtMoney(r.totalCost)} | 收入 ¥${Calculator.fmtMoney(r.income)} | 利润 ¥${Calculator.fmtMoney(r.profit)}`);
+    if (wo.note) L.push(`【备注】${wo.note}`);
+    L.push(LINE);
+    return L.join('\n');
   },
 
   updatePlantInfo() {
@@ -3638,6 +4197,9 @@ const UI = {
     form.innerHTML = '';
     FIELD_ORDER.param.forEach(key => this.appendField(form, key, 'spray'));
     this.syncParamFormFromPlant();
+    this.updateCalcBasisVisibility();
+    this.renderPlotsEditor();
+    this.updatePlotModeVisibility();
   },
 
   syncParamFormFromPlant() {
@@ -3651,6 +4213,7 @@ const UI = {
     setVal('inp-pesticideWaterPerSet', p.pesticideWaterPerSet);
     setVal('inp-droneSavingCoeff', p.droneSavingCoeff);
     setVal('inp-area', this.state.field.area);
+    setVal('inp-treeCount', this.state.field.treeCount);
     setVal('inp-existingPesticideSets', this.state.field.existingPesticideSets);
   },
 
@@ -3915,8 +4478,8 @@ const UI = {
     } else if (mode === 'timing') {
       this.state.timing[key] = val;
     } else {
-      if (key === 'area') {
-        this.state.field.area = val;
+      if (key === 'area' || key === 'calcBasis' || key === 'treeCount' || key === 'droneTank') {
+        this.state.field[key] = val;
       } else if (key === 'existingPesticideSets') {
         this.state.field.existingPesticideSets = val;
       } else if (FIELD_ORDER.param.includes(key)) {
@@ -3938,7 +4501,7 @@ const UI = {
       return this.state.timing[key];
     } else {
       // field 类参数（不在 plant 内）
-      if (key === 'area') return this.state.field.area;
+      if (key === 'area' || key === 'calcBasis' || key === 'treeCount' || key === 'droneTank') return this.state.field[key];
       if (key === 'existingPesticideSets') return this.state.field.existingPesticideSets;
       // plant 类参数
       if (FIELD_ORDER.param.includes(key)) return this.state.plant[key];
@@ -3985,6 +4548,10 @@ const UI = {
     if (key === 'manualFlightTime') {
       this.updateFlightFieldsDisabled();
     }
+    // 特殊处理：计算基准切换时更新输入项显隐
+    if (key === 'calcBasis') {
+      this.updateCalcBasisVisibility();
+    }
     this.compute();
     this.save();
   },
@@ -3992,8 +4559,11 @@ const UI = {
   /* ---------- 计算 & 渲染结果 ---------- */
   compute() {
     if (this.state.mode === 'spray') {
-      const r = Calculator.compute(this.state);
+      const r = this.state.field.plotMode
+        ? Calculator.computePlots(this.state)
+        : Calculator.compute(this.state);
       this.renderSprayResults(r);
+      this.renderPlotsTable(r);
       this.renderSummary(r, 'spray');
       this._lastResult = r;
     } else {
@@ -4027,11 +4597,21 @@ const UI = {
     }
     document.getElementById('rPesticideDetail').textContent = stockText;
     document.getElementById('rPesticideFormula').textContent =
-      `主显示=现有 ${r.existingSets} 套 | 参考=亩数×每棵水量×每亩棵数÷一套药水量×省药系数=${fmt(r.pesticide, 2)} → ${r.pesticideRounded} 套（7舍8入）`;
+      r.plotMode
+        ? `主显示=现有 ${r.existingSets} 套 | 参考=各地块7舍8入之和=${r.pesticideRounded} 套（逐块保守取整）`
+        : (r.calcBasis === 'tree'
+          ? `主显示=现有 ${r.existingSets} 套 | 参考=棵数${r.treeCount}×每棵水量÷一套药水量×省药系数=${fmt(r.pesticide, 2)} → ${r.pesticideRounded} 套（7舍8入）`
+          : `主显示=现有 ${r.existingSets} 套 | 参考=亩数×每棵水量×每亩棵数÷一套药水量×省药系数=${fmt(r.pesticide, 2)} → ${r.pesticideRounded} 套（7舍8入）`);
 
     setText('rWater', fmt(r.water, 1));
-    document.getElementById('rWaterDetail').textContent =
-      `${this.state.plant.waterPerMu} 升/亩 × ${fmt(this.state.field.area,1)} 亩`;
+    const effArea = (r.area != null ? r.area : this.state.field.area);
+    if (r.plotMode) {
+      document.getElementById('rWaterDetail').textContent =
+        `Σ ${r.plots.length} 个地块 · 机载上限 ${r.droneTank} 升/趟 · 共 ${r.totalTrips} 趟`;
+    } else {
+      document.getElementById('rWaterDetail').textContent =
+        `${this.state.plant.waterPerMu} 升/亩 × ${fmt(effArea, 1)} 亩${r.calcBasis === 'tree' ? `（按棵数 ${r.treeCount} 棵反推）` : ''}`;
+    }
     document.getElementById('rWaterFormula').textContent =
       `公式: 亩数 × 每亩水量（无人机喷洒量，独立于药量计算）`;
 
@@ -4089,27 +4669,33 @@ const UI = {
     const fmt1 = (n) => Calculator.fmt(n, 1);
     const fdur = (min) => Calculator.formatDuration(min);
 
-    // 兑水兑药
+    // 兑水兑药：首批串行在前，其余批次与飞行并行
     setText('tMixTime', fdur(t.mixTotalTime));
     document.getElementById('tMixDetail').textContent =
       t.mixRounds > 0
-        ? `${t.mixRounds}轮 × max(兑水${fmt1(t.perRoundWaterTime)}min, 兑药${fmt1(this.state.timing.baseMixTime)}min)`
+        ? `${t.mixRounds}批 × ${fmt1(this.state.timing.baseMixTime)}min（首批串行，其余与飞行并行）`
         : '—';
 
     // 飞行作业
     setText('tFlightTime', fdur(t.flightTimeMin));
     const flightLabel = t.flightTimeSource === 'manual' ? '准确时间' : '参考时间';
-    document.getElementById('tFlightDetail').textContent =
-      t.flightTimeSource === 'manual'
-        ? `✓ ${flightLabel}（手动输入）`
-        : (t.flightLength > 0
-            ? `${fmt1(t.flightLength, 0)}米 ÷ ${fmt1(this.state.timing.flightSpeed, 1)}m/s（${flightLabel}）`
-            : '—');
+    if (t.plotUnits) {
+      document.getElementById('tFlightDetail').textContent =
+        `Σ 各地块喷洒时间（多地块）`;
+    } else {
+      document.getElementById('tFlightDetail').textContent =
+        t.flightTimeSource === 'manual'
+          ? `✓ ${flightLabel}（手动输入）`
+          : (t.flightLength > 0
+              ? `${fmt1(t.flightLength, 0)}米 ÷ ${fmt1(this.state.timing.flightSpeed, 1)}m/s（${flightLabel}）`
+              : '—');
+    }
 
-    // 来回升降
+    // 来回升降 + 加药装载
     setText('tRoundTrip', fdur(t.roundTripTotal));
-    document.getElementById('tRoundTripDetail').textContent =
-      `${this.state.timing.roundTripTime}min × 循环数`;
+    document.getElementById('tRoundTripDetail').textContent = t.plotUnits
+      ? `装载${fmt1(t.totalLoad)}min + 转场${fmt1(t.totalTransfer)}min`
+      : `(${this.state.timing.roundTripTime}+装载${t.loadTime != null ? t.loadTime : 0}min) × 循环数`;
 
     // 电池等待
     setText('tBatteryWait', fdur(t.batteryWait));
@@ -4134,8 +4720,8 @@ const UI = {
     }
     document.getElementById('tTotalDetail').textContent = totalDetailText;
 
-    // 公式注释
-    let formulaText = `估算总时间 = 兑水兑药 ${fdur(t.mixTotalTime)} + 飞行作业 ${fdur(t.flightTimeMin)}(${t.flightTimeSource === 'manual' ? '手动' : '估算'}) + 来回升降 ${fdur(t.roundTripTotal)} + 电池等待 ${fdur(t.batteryWait)} = ${fdur(t.totalTime)}`;
+    // 公式注释：首批兑药串行，其余批次与飞行并行，两者取大者
+    let formulaText = `总时间 = max(兑药 ${fdur(t.mixTotalTime)}（${t.mixRounds}批串行流水）, 首批兑药 ${fdur(t.firstMixTime)} + 飞行阶段 ${fdur(t.flightSpan)}（飞行${fdur(t.flightTimeMin)}+升降装载${fdur(t.roundTripTotal)}+电池等待${fdur(t.batteryWait)}）) = ${fdur(t.totalTime)}`;
     if (t.chargeAfterWork && t.afterWorkCharge > 0) {
       formulaText += ` + 结束后充电 ${fdur(t.afterWorkCharge)} = ${fdur(t.totalTimeWithCharge)}`;
     }
@@ -4201,7 +4787,7 @@ const UI = {
 
       block.style.background = color;
       const waitText = c.wait > 0 ? '+' + Calculator.formatDuration(c.wait) : '';
-      const bottleneckText = `瓶颈${bottleneck.toFixed(1)}m`;
+      const bottleneckText = `瓶颈${bottleneck.toFixed(1)}min`;
       const chargerLabel = c.charger === 'generator' ? '发电机' : '三相电';
       block.innerHTML = `
         <div class="viz-block-num">#${c.idx}</div>
@@ -4268,7 +4854,7 @@ const UI = {
         : `<div class="bv-formula-line">• 结束后不充电，作业完成即走</div>`;
       formulaEl.innerHTML = `
         <div class="bv-formula-title">📋 电池充电/等待算法</div>
-        <div class="bv-formula-line">• 单次循环时间 T = ${T.toFixed(1)}min（来回升降 + 飞行作业÷循环数）</div>
+        <div class="bv-formula-line">• 单次循环时间 T = ${T.toFixed(1)}min（升降+加药装载 + 飞行作业÷循环数）</div>
         <div class="bv-formula-line">• 瓶颈 = 充电时间 − T（飞行期间电池在充电，可抵消部分）</div>
         <div class="bv-formula-line">• 等待比例 = 该轮等待 ÷ 瓶颈 → 颜色：0=绿(无等待), 1=红(满瓶颈)</div>
         <div class="bv-formula-line">• ${modeLabel}模式：${t.chargeMode === 'dual' ? '两个充电器并行，每轮记录实际充电器' : '单充电器，电池需排队'}</div>
@@ -4458,7 +5044,8 @@ const UI = {
       timing: this.state.timing,
       haulField: this.state.haulField,
       haulCosts: this.state.haulCosts,
-      haulIncome: this.state.haulIncome
+      haulIncome: this.state.haulIncome,
+      workOrder: this.state.workOrder
     });
   },
 
@@ -4473,6 +5060,8 @@ const UI = {
       this.state.income = { ...DEFAULT_INCOME };
       this.state.timing = { ...DEFAULT_TIMING };
       this.state.plant = keepPlant || { ...PLANT_DATABASE.fruit_tree };
+      // 基准随植物类型预置
+      this.state.field.calcBasis = this.state.plant.calcMode === 'tree' ? 'tree' : 'area';
       this.toast('打药模式已恢复默认', 'success');
     } else {
       if (!confirm('确定恢复吊运模式所有参数为默认值？当前吊运模式的所有参数将被重置。')) return;
@@ -4504,6 +5093,67 @@ const UI = {
       });
     }
 
+    // 地块模式切换（单地块/多地块）
+    document.querySelectorAll('input[name="radio-plotMode"]').forEach(r => {
+      r.addEventListener('change', () => {
+        this.state.field.plotMode = r.value === 'plots';
+        this.updatePlotModeVisibility();
+        this.compute();
+        this.save();
+        this.toast(r.value === 'plots' ? '已切换为多地块模式' : '已切换为单地块模式', 'success');
+      });
+    });
+
+    // 地块编辑器事件委托（行内编辑/增删/档位，重渲染后依然有效）
+    const plotsEditor = document.getElementById('plotsEditor');
+    if (plotsEditor) {
+      plotsEditor.addEventListener('input', e => {
+        const row = e.target.closest('.plot-row');
+        if (!row) return;
+        const plot = (this.state.field.plots || []).find(p => String(p.id) === row.dataset.id);
+        if (!plot) return;
+        if (e.target.classList.contains('plot-name')) {
+          plot.name = e.target.value;
+        } else if (e.target.classList.contains('plot-size')) {
+          const v = parseFloat(e.target.value);
+          if (this.state.field.calcBasis === 'tree') plot.treeCount = isNaN(v) ? 0 : Math.max(0, Math.round(v));
+          else plot.area = isNaN(v) ? 0 : Math.max(0, v);
+        } else if (e.target.classList.contains('plot-transfer')) {
+          const v = parseFloat(e.target.value);
+          plot.transferMin = isNaN(v) ? 0 : Math.max(0, v);
+        } else if (e.target.classList.contains('plot-trips')) {
+          const v = parseFloat(e.target.value);
+          plot.tripsOverride = (!v || v <= 0) ? 0 : Math.max(0, Math.round(v));
+        }
+        this.compute();
+      });
+      plotsEditor.addEventListener('change', () => this.save());
+      plotsEditor.addEventListener('click', e => {
+        if (e.target.closest('.plot-add')) {
+          this.addPlot();
+          return;
+        }
+        const preset = e.target.closest('.plot-preset');
+        if (preset) {
+          const min = parseFloat(preset.dataset.min) || 5;
+          (this.state.field.plots || []).forEach(p => { p.transferMin = min; });
+          this.renderPlotsEditor();
+          this.compute();
+          this.save();
+          this.toast(`全体地块转场已设为 ${min} 分钟`, 'success');
+          return;
+        }
+        const del = e.target.closest('.plot-del');
+        if (del) {
+          const row = del.closest('.plot-row');
+          this.state.field.plots = (this.state.field.plots || []).filter(p => String(p.id) !== row.dataset.id);
+          this.renderPlotsEditor();
+          this.compute();
+          this.save();
+        }
+      });
+    }
+
     document.getElementById('calcBtn').addEventListener('click', () => {
       this.flyDrone();
       this.compute();
@@ -4519,6 +5169,53 @@ const UI = {
         profit: r.profit
       });
     });
+
+    // 作业工单
+    document.getElementById('workOrderBtn').addEventListener('click', () => this.openWorkOrder());
+    document.getElementById('copyWorkOrder').addEventListener('click', () => {
+      const txt = document.getElementById('workOrderText').textContent || '';
+      if (!txt) {
+        this.toast('工单内容为空', 'warn');
+        return;
+      }
+      this.copyToClipboard(txt).then(ok => {
+        this.toast(ok ? '工单已复制到剪贴板 📋' : '复制失败，请长按文本手动选择', ok ? 'success' : 'error');
+      });
+    });
+
+    // 工单快捷修改（事件委托：重渲染后依然有效）
+    const woQuick = document.getElementById('workOrderQuick');
+    if (woQuick) {
+      woQuick.addEventListener('input', e => {
+        const wo = this.getWorkOrder();
+        const r = this._lastResult;
+        if (e.target.classList.contains('wo-completed')) {
+          const v = parseFloat(e.target.value);
+          wo.completedByPlot[e.target.dataset.id] = isNaN(v) ? 0 : Math.max(0, v);
+          const restEl = woQuick.querySelector(`.wo-rest[data-id="${e.target.dataset.id}"]`);
+          const plot = r && r.plots ? r.plots.find(p => String(p.id) === String(e.target.dataset.id)) : null;
+          if (restEl && plot) {
+            const done = wo.completedByPlot[plot.id] || 0;
+            const rest = Math.max(0, plot.water - done);
+            restEl.textContent = `剩余 ${Calculator.fmt(rest, 1)} 升 ≈ ${plot.perTripWater > 0 ? Math.ceil(rest / plot.perTripWater) : 0} 趟`;
+          }
+        } else if (e.target.classList.contains('wo-single')) {
+          const v = parseFloat(e.target.value);
+          wo.completedSingle = isNaN(v) ? 0 : Math.max(0, v);
+          const restEl = document.getElementById('woRestSingle');
+          if (restEl && r) restEl.textContent = `剩余 ${Calculator.fmt(Math.max(0, r.water - wo.completedSingle), 1)} 升`;
+        } else if (e.target.classList.contains('wo-sets')) {
+          const v = parseFloat(e.target.value);
+          wo.actualSets = isNaN(v) ? 0 : Math.max(0, v);
+        } else if (e.target.classList.contains('wo-note')) {
+          wo.note = e.target.value;
+        } else {
+          return;
+        }
+        this.renderWorkOrderText();
+        this.save();
+      });
+    }
 
     document.getElementById('presetBtn').addEventListener('click', () => this.openPresetModal());
     document.getElementById('savePresetBtn').addEventListener('click', () => this.savePresetPrompt());
@@ -4633,9 +5330,17 @@ const UI = {
     if (imported.field) this.state.field = imported.field;
     if (imported.costs) this.state.costs = imported.costs;
     if (imported.income) this.state.income = imported.income;
+    // 时间参数：合并而非整体替换，兼容不含 timing 的旧配置
+    if (imported.timing) {
+      this.state.timing = { ...this.state.timing, ...imported.timing };
+    }
     if (imported.haulField) this.state.haulField = imported.haulField;
     if (imported.haulCosts) this.state.haulCosts = imported.haulCosts;
     if (imported.haulIncome) this.state.haulIncome = imported.haulIncome;
+    // 工单覆盖值（实际用药套数/备注/已完成量）
+    if (imported.workOrder) {
+      this.state.workOrder = { ...this.getWorkOrder(), ...imported.workOrder };
+    }
 
     this.applyMode(this.state.mode);
     this.compute();
@@ -4667,9 +5372,10 @@ const UI = {
     }
     list.innerHTML = presets.map((p, i) => {
       const modeLabel = p.mode === 'haul' ? '📦 吊运' : `🚁 ${p.plant ? p.plant.name : ''}`;
+      // 预设为扁平结构（name/mode/field/haulField...），旧版本曾误用 p.state.* 会直接抛错
       const sizeInfo = p.mode === 'haul'
-        ? `${p.state.haulField.totalWeight} 斤`
-        : `${p.state.field.area} 亩`;
+        ? `${p.haulField ? p.haulField.totalWeight : '—'} 斤`
+        : `${p.field ? p.field.area : '—'} 亩`;
       return `
         <li data-idx="${i}">
           <div>
@@ -4701,12 +5407,14 @@ const UI = {
     if (!p) return;
     this.state.mode = p.mode || 'spray';
     if (p.plant) this.state.plant = { ...p.plant };
-    if (p.field) this.state.field = { ...p.field };
-    if (p.costs) this.state.costs = { ...p.costs };
-    if (p.income) this.state.income = { ...p.income };
-    if (p.haulField) this.state.haulField = { ...p.haulField };
-    if (p.haulCosts) this.state.haulCosts = { ...p.haulCosts };
-    if (p.haulIncome) this.state.haulIncome = { ...p.haulIncome };
+    if (p.field) this.state.field = { ...this.state.field, ...p.field };
+    if (p.costs) this.state.costs = { ...this.state.costs, ...p.costs };
+    if (p.income) this.state.income = { ...this.state.income, ...p.income };
+    // 旧版预设未保存 timing，缺失时保留当前值
+    if (p.timing) this.state.timing = { ...this.state.timing, ...p.timing };
+    if (p.haulField) this.state.haulField = { ...this.state.haulField, ...p.haulField };
+    if (p.haulCosts) this.state.haulCosts = { ...this.state.haulCosts, ...p.haulCosts };
+    if (p.haulIncome) this.state.haulIncome = { ...this.state.haulIncome, ...p.haulIncome };
     this.applyMode(this.state.mode);
     this.compute();
     this.save();
@@ -4776,7 +5484,7 @@ const UI = {
 
 window.UI = UI;
 
-</script>
+  </script>
   <script>
 /* ============================================================
    app.js — 主入口
@@ -4807,14 +5515,14 @@ window.UI = UI;
     }
 
     // 控制台彩蛋
-    console.log('%c🚁 无人机打药计算器 v1.0', 'font-size:20px;color:#2e7d32;font-weight:bold;');
+    console.log('%c🚁 无人机打药计算器 v3.0', 'font-size:20px;color:#2e7d32;font-weight:bold;');
     console.log('%c本地存储不上传 · 可打包 APK · GitHub 友好', 'color:#1565c0;');
     console.log('快捷键：Ctrl/Cmd + Shift + V 一键粘贴导入配置');
   });
 })();
 
-</script>
+  </script>
 
-  <!-- PWA Service Worker 在独立文件中已禁用（file:// 协议不支持） -->
+  <!-- 单文件离线版：无 Service Worker -->
 </body>
 </html>

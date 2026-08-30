@@ -54,7 +54,7 @@
     <div class="header-left">
       <span class="app-logo" aria-hidden="true">🚁</span>
       <h1>无人机作业计算器</h1>
-      <span class="app-version">v2.1</span>
+      <span class="app-version">v3.0</span>
     </div>
     <div class="header-actions">
       <button id="presetBtn" class="icon-btn" title="预设管理" aria-label="预设管理">📚</button>
@@ -134,6 +134,8 @@
           <div class="extra-row"><span>🧪 浓度 现有/参考</span><b id="rConcentration">—</b></div>
           <div class="extra-row"><span>💊 是否包药</span><b id="rPesticideIncluded">—</b></div>
         </div>
+        <!-- 多地块明细表（仅多地块模式显示） -->
+        <div id="plotsTableWrap" style="display:none;"></div>
       </div>
 
       <!-- 吊运模式结果 -->
@@ -180,6 +182,7 @@
 
       <div class="btn-row">
         <button id="calcBtn" class="btn btn-primary">🚁 开始计算</button>
+        <button id="workOrderBtn" class="btn btn-secondary">🧾 生成工单</button>
         <button id="resetBtn" class="btn btn-secondary">🔄 恢复默认</button>
       </div>
     </section>
@@ -187,6 +190,14 @@
     <!-- 参数设置 -->
     <section class="panel param-panel" aria-label="作业参数">
       <div class="panel-title"><span>📋</span> 作业参数 <span class="hint">（所有数值均可修改，鼠标悬停查看说明）</span></div>
+      <div class="field plot-mode-field">
+        <label>地块模式</label>
+        <div class="field-radio">
+          <label><input type="radio" name="radio-plotMode" value="single" checked><span>单地块</span></label>
+          <label><input type="radio" name="radio-plotMode" value="plots"><span>多地块</span></label>
+        </div>
+      </div>
+      <div id="plotsEditor" style="display:none;" aria-label="地块编辑器"></div>
       <div class="form-grid" id="paramForm"><!-- JS 注入 --></div>
     </section>
 
@@ -236,7 +247,7 @@
         </div>
         <div class="timing-card">
           <div class="timing-icon">🔄</div>
-          <div class="timing-label">来回升降</div>
+          <div class="timing-label">升降与加药</div>
           <div class="timing-value"><span id="tRoundTrip">0</span></div>
           <div class="timing-sub" id="tRoundTripDetail">—</div>
         </div>
@@ -331,6 +342,20 @@
       <div class="modal-actions">
         <button class="btn btn-secondary danger" id="clearHistoryBtn">🗑 清空历史</button>
         <button class="btn btn-secondary" data-close>关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：作业工单 -->
+  <div class="modal" id="workOrderModal" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-title">🧾 作业工单 <button class="modal-close" data-close>✕</button></div>
+      <p class="modal-hint">上方可快捷修改实际变动的数值（即时重算并保存），下方纯文本工单可一键复制留存或发给现场人员。</p>
+      <div class="workorder-quick" id="workOrderQuick"><!-- JS 注入 --></div>
+      <div id="workOrderText" class="workorder-text" tabindex="0"><!-- JS 注入 --></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="copyWorkOrder">📋 复制全文</button>
+        <button class="btn btn-primary" data-close>完成</button>
       </div>
     </div>
   </div>

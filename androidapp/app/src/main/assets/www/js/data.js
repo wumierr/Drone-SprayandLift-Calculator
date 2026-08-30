@@ -201,9 +201,10 @@ const DEFAULT_TIMING = {
   flightSpeed: 2.5,           // 飞行速度（m/s）
   lineSpacing: 2,             // 航线间距（米）
   manualFlightTime: 0,        // 手动输入飞行作业时间（min，高优先级，0表示用估算）
-  roundTripTime: 3,           // 飞行来回升降时间（min/循环）
-  baseMixTime: 10,            // 基础兑药时间（min/轮）
-  waterMixRate: 1.5,          // 兑水速度（min/100L）：每加100升水需多少分钟
+  roundTripTime: 3,           // 来回升降时间（min/循环）
+  loadTime: 1,                // 加药装载时间（min/循环）：给无人机药箱加药液的真实串行耗时
+  baseMixTime: 10,            // 基础兑药时间（min/轮，与水量无关）
+  batchCapacity: 1000,        // 单批兑水量（升/轮）：配药桶一批能兑的量，总水量超过则分多批
   batteryCount: 2,            // 拥有电池数量（块）
   generatorChargeTime: 8,     // 发电机充电时间（min/块）
   threePhaseChargeTime: 5,    // 三相电充电时间（min/块）
@@ -214,8 +215,13 @@ const DEFAULT_TIMING = {
 /* 默认作业参数 */
 const DEFAULT_FIELD = {
   area: 10,               // 作业亩数
+  treeCount: 0,           // 果树棵数（calcBasis='tree' 时作为主输入，亩数反推）
+  calcBasis: 'area',      // 计算基准：'area' 按亩数 | 'tree' 按棵数（选果树类时自动预置'tree'）
   plantKey: 'fruit_tree', // 默认植物
-  existingPesticideSets: 0 // 现有药剂套数（用户填，0表示无库存，作为主显示）
+  existingPesticideSets: 0, // 现有药剂套数（用户填，0表示无库存，作为主显示）
+  droneTank: 85,          // 机载装药上限（升/趟）：无人机药箱最大装载量
+  plotMode: false,        // 多地块模式：true 时按地块列表计算
+  plots: []               // 地块列表 [{id, name, area, treeCount, transferMin, tripsOverride}]
 };
 
 /* 表单字段定义（用于动态渲染 + tooltip 说明 + 输入验证）
@@ -228,7 +234,13 @@ const DEFAULT_FIELD = {
 */
 const FIELD_DEFS = {
   // 作业参数
-  area: { label: '作业亩数', unit: '亩', tip: '本次需要打药的总亩数（建议 1-1000）', group: 'param', default: 10, step: 0.1, minHard: 0.01, warnBelow: 0.1, warnAbove: 10000, priority: 'high' },
+  calcBasis: { label: '计算基准', unit: '', tip: '按棵数：直接填果树棵数算药量，亩数=棵数÷每亩棵数反推；按亩数：维持原方式。选果树类时默认按棵数', group: 'param', type: 'radio', options: [
+    { value: 'area', label: '按亩数' },
+    { value: 'tree', label: '按棵数' }
+  ], default: 'area' },
+  treeCount: { label: '果树棵数', unit: '棵', tip: '本次作业的果树总棵数（按棵数计算时使用，亩数自动反推）', group: 'param', default: 0, step: 1, integer: true, min: 0, priority: 'high' },
+  droneTank: { label: '机载装药上限', unit: '升/趟', tip: '无人机药箱一次最多装载的药液量（多地块模式按此算每块地最少趟数）。T40约40-50升，T60/T100更大，可超配到85', group: 'param', default: 85, step: 1, integer: true, minHard: 1, warnBelow: 10 },
+  area: { label: '作业亩数', unit: '亩', tip: '本次需要打药的总亩数（建议 1-1000）。按棵数计算时由棵数自动反推', group: 'param', default: 10, step: 0.1, minHard: 0.01, warnBelow: 0.1, warnAbove: 10000, priority: 'high' },
   existingPesticideSets: { label: '现有药剂套数', unit: '套', tip: '已库存的药剂套数（主显示，作为主要参考）。0表示无库存，将完全按公式参考量采购', group: 'param', default: 0, step: 1, integer: true, min: 0, priority: 'high' },
   flightHeight: { label: '飞行高度', unit: '米', tip: '无人机距离作物冠层的建议高度，影响覆盖均匀度（建议 1-5 米）', group: 'param', default: 2.0, step: 0.1, min: 0.5, warnBelow: 0.5, warnAbove: 10 },
   waterPerMu: { label: '每亩水量', unit: '升', tip: '每亩地需要喷洒的药液总量（升/亩，建议 1-50）', group: 'param', default: 20, step: 0.1, min: 0.1, warnBelow: 0.5 },
@@ -277,8 +289,9 @@ const FIELD_DEFS = {
   lineSpacing: { label: '航线间距', unit: '米', tip: '相邻航线间距，影响喷幅覆盖。一般 1.5-3 米（建议 1-5）。填了飞行作业时间后此字段禁用', group: 'timing', default: 2, step: 0.1, minHard: 0.5, warnBelow: 0.5, warnAbove: 10 },
   manualFlightTime: { label: '飞行作业时间（手动）', unit: 'min', tip: '高优先级：手动输入飞行作业时间。填了则用此值计算（显示"准确时间"），不填或0则用飞行速度×航线间距估算（显示"参考时间"）', group: 'timing', default: 0, step: 0.5, min: 0, priority: 'high' },
   roundTripTime: { label: '来回升降时间', unit: 'min/循环', tip: '每次循环的起飞、降落、转场时间。一般 2-5 分钟', group: 'timing', default: 3, step: 0.5, min: 0, warnAbove: 30 },
-  baseMixTime: { label: '基础兑药时间', unit: 'min/轮', tip: '每轮兑药桶加药剂搅拌的基础时间，与水量无关', group: 'timing', default: 10, step: 1, min: 0, warnAbove: 60 },
-  waterMixRate: { label: '兑水速度', unit: 'min/100L', tip: '每加100升水需要的时间（普通农户水管约1-2 min/100L）', group: 'timing', default: 1.5, step: 0.1, minHard: 0.01, warnBelow: 0.1, warnAbove: 30 },
+  loadTime: { label: '加药装载时间', unit: 'min/循环', tip: '每趟飞行前给无人机药箱加药液的时间。真实串行耗时，不能被飞行抵消（充电可以）。一般 0.5-2 分钟', group: 'timing', default: 1, step: 0.5, min: 0, warnAbove: 15 },
+  baseMixTime: { label: '基础兑药时间', unit: 'min/轮', tip: '每批兑水兑药搅拌的时间，与水量无关', group: 'timing', default: 10, step: 1, min: 0, warnAbove: 60 },
+  batchCapacity: { label: '单批兑水量', unit: '升', tip: '配药桶一批能兑的药液量。总水量超过此值分多批：首批必须在飞行前兑完（串行），第2批起可与飞行并行', group: 'timing', default: 1000, step: 50, min: 1, minHard: 1, warnBelow: 10 },
   batteryCount: { label: '拥有电池数量', unit: '块', tip: '作业用电池数量（至少 1 块）。2块轮流、3块以上更宽松', group: 'timing', default: 2, step: 1, integer: true, minHard: 1, warnBelow: 1, warnAbove: 20 },
   generatorChargeTime: { label: '发电机充电时间', unit: 'min/块', tip: '发电机给单块电池充满的时间，一般 6-10 min', group: 'timing', default: 8, step: 0.5, minHard: 0.1, warnBelow: 1, warnAbove: 60 },
   threePhaseChargeTime: { label: '三相电充电时间', unit: 'min/块', tip: '三相电给单块电池充满的时间，一般 4-6 min', group: 'timing', default: 5, step: 0.5, minHard: 0.1, warnBelow: 1, warnAbove: 60 },
@@ -292,13 +305,13 @@ const FIELD_DEFS = {
 
 /* 顺序字段分组（控制表单渲染顺序） */
 const FIELD_ORDER = {
-  param: ['area', 'existingPesticideSets', 'flightHeight', 'waterPerMu', 'treesPerMu', 'waterPerTree', 'pesticideWaterPerSet', 'droneSavingCoeff'],
+  param: ['calcBasis', 'treeCount', 'area', 'droneTank', 'existingPesticideSets', 'flightHeight', 'waterPerMu', 'treesPerMu', 'waterPerTree', 'pesticideWaterPerSet', 'droneSavingCoeff'],
   cycle: ['cycleCost', 'cycleCostThreePhase', 'cycleArea', 'useThreePhase'],
   transport: ['distance', 'fuelConsumption', 'fuelPrice', 'tolls', 'vehicleDepreciation'],
   labor: ['workers', 'days', 'dailyWage', 'mealCost', 'accommodation', 'accommodationDays'],
   other: ['pesticidePrice', 'pesticideIncluded', 'droneDepreciation', 'maintenanceReserve', 'protectiveGear', 'cleaningCost', 'insurance', 'miscCost'],
   income: ['pricePerMu', 'subsidy'],
-  timing: ['manualFlightTime', 'flightSpeed', 'lineSpacing', 'roundTripTime', 'baseMixTime', 'waterMixRate', 'batteryCount', 'generatorChargeTime', 'threePhaseChargeTime', 'chargeMode', 'chargeAfterWork']
+  timing: ['manualFlightTime', 'flightSpeed', 'lineSpacing', 'roundTripTime', 'loadTime', 'baseMixTime', 'batchCapacity', 'batteryCount', 'generatorChargeTime', 'threePhaseChargeTime', 'chargeMode', 'chargeAfterWork']
 };
 
 // 暴露到全局
