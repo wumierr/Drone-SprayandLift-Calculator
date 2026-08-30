@@ -187,23 +187,18 @@ const Calculator = {
 
   /* ============================================================
      ★★★ 作业时间计算（打药模式专用）★★★
+     实际作业流程建模：
+       1. 先兑水兑药：首批必须在飞行前完成（串行）
+       2. 再加药装载、飞行循环
+       3. 总水量超过单批兑水量时分多批，第 2..N 批可与飞行并行
+          （利用升降、充电等待的地面空闲），兑药总时长成为瓶颈时延长总时间
      公式：
-       【兑水兑药时间】（按水量分轮，每轮最多1000升）
-         总轮数 = ⌈总水量 ÷ 1000⌉
-         每轮水量 = 总水量 ÷ 总轮数
-         每轮兑水时间 = (每轮水量 ÷ 100) × 兑水速度
-         每轮兑药时间 = 基础兑药时间
-         每轮实际 = max(每轮兑水, 每轮兑药)  （同时进行，取较大者）
-         总兑水兑药 = 每轮实际 × 总轮数
-       【飞行作业时间】
-         飞行长度 = 亩数 × 666.67 ÷ 航线间距 (米)
-         飞行时间 = 飞行长度 ÷ 飞行速度 (秒) ÷ 60 (分钟)
-       【来回升降时间】
-         来回升降 = 循环数 × 来回升降时间
-       【电池等待时间】（事件驱动模拟）
-         见 computeBatteryWait 方法
-       【总作业时间】
-         总时间 = 兑水兑药 + 飞行作业 + 来回升降 + 电池等待
+       兑药轮数 = ⌈总水量 ÷ 单批兑水量⌉（每轮耗时 = 基础兑药时间，与水量无关）
+       飞行阶段时长 = 飞行作业 + 来回升降 + 加药装载 + 电池等待
+       总作业时间 = max(兑药总时长, 首批兑药 + 飞行阶段时长)
+       单循环地面时间 T = 来回升降 + 加药装载 + 飞行作业/循环数
+         （加药装载是真实串行耗时，不能被飞行抵消；充电可以——
+          这就是"加药时间高优先级于充电时间"的含义）
      ============================================================ */
   computeTiming(state, r) {
     const t = state.timing || window.DEFAULT_TIMING || {};
@@ -211,8 +206,9 @@ const Calculator = {
     const lineSpacing = Math.max(0.1, Number(t.lineSpacing) || 2);
     const manualFlightTime = Math.max(0, Number(t.manualFlightTime) || 0);
     const roundTripTime = Math.max(0, Number(t.roundTripTime) || 0);
+    const loadTime = Math.max(0, Number(t.loadTime) || 0);
     const baseMixTime = Math.max(0, Number(t.baseMixTime) || 0);
-    const waterMixRate = Math.max(0, Number(t.waterMixRate) || 0);
+    const batchCapacity = Math.max(1, Number(t.batchCapacity) || 1000);
     const batteryCount = Math.max(1, Math.floor(Number(t.batteryCount) || 1));
     const generatorChargeTime = Math.max(0.1, Number(t.generatorChargeTime) || 8);
     const threePhaseChargeTime = Math.max(0.1, Number(t.threePhaseChargeTime) || 5);
@@ -223,19 +219,14 @@ const Calculator = {
     const totalWater = r.water || 0;
     const cycles = r.cycles || 0;
 
-    /* 1. 兑水兑药时间 */
-    let mixTotalTime = 0;
+    /* 1. 兑水兑药批次（首批串行在前，其余批次与飞行并行） */
     let mixRounds = 0;
-    let perRoundWater = 0;
-    let perRoundWaterTime = 0;
-    let perRoundActual = 0;
+    let mixTotalTime = 0;
+    let firstMixTime = 0;
     if (totalWater > 0) {
-      mixRounds = Math.ceil(totalWater / 1000);
-      if (mixRounds < 1) mixRounds = 1;
-      perRoundWater = totalWater / mixRounds;
-      perRoundWaterTime = (perRoundWater / 100) * waterMixRate;
-      perRoundActual = Math.max(perRoundWaterTime, baseMixTime);
-      mixTotalTime = perRoundActual * mixRounds;
+      mixRounds = Math.max(1, Math.ceil(totalWater / batchCapacity));
+      mixTotalTime = mixRounds * baseMixTime;
+      firstMixTime = baseMixTime;   // 飞行开始前必须完成首批
     }
 
     /* 2. 飞行作业时间（高优先级：manualFlightTime > 0 时用此值，否则估算） */
@@ -253,14 +244,14 @@ const Calculator = {
       flightTimeSource = 'estimate';
     }
 
-    /* 3. 来回升降时间 */
-    const roundTripTotal = cycles * roundTripTime;
+    /* 3. 来回升降 + 加药装载（都是每循环真实串行耗时） */
+    const roundTripTotal = cycles * (roundTripTime + loadTime);
 
-    /* 3.5 单次循环时间 T = 来回升降 + 飞行作业/循环数 */
+    /* 3.5 单次循环时间 T = 来回升降 + 加药装载 + 飞行作业/循环数 */
     const perCycleFlight = cycles > 0 ? flightTimeMin / cycles : 0;
-    const T = roundTripTime + perCycleFlight;
+    const T = roundTripTime + loadTime + perCycleFlight;
 
-    /* 4. 电池等待时间（事件驱动模拟） */
+    /* 4. 电池等待时间（事件驱动模拟，时刻相对首批兑药完成点） */
     const batteryResult = this.computeBatteryWait(
       cycles,
       T,
@@ -270,27 +261,45 @@ const Calculator = {
       threePhaseChargeTime
     );
     const batteryWait = batteryResult.total;
+    // 飞行阶段时长（相对值）：飞行 + 升降 + 装载 + 电池等待
+    const flightSpan = batteryResult.cycleEnd > 0
+      ? batteryResult.cycleEnd
+      : (cycles > 0 ? cycles * T : 0);
 
-    /* 5. 结束后充电（如果勾选） */
+    /* 5. 结束后充电（如果勾选）——先按相对时刻计算，再统一平移 */
     const afterWorkCharge = chargeAfterWork ? this.computeAfterWorkCharge(
       batteryResult.batteries_final, batteryResult.cycleEnd, batteryCount, chargeMode,
       generatorChargeTime, threePhaseChargeTime
     ) : { total: 0, blocks: [] };
 
-    /* 6. 总作业时间（不含结束后充电） */
-    const totalTime = mixTotalTime + flightTimeMin + roundTripTotal + batteryWait;
+    /* 6. 时刻平移：所有飞行/充电事件发生在首批兑药完成之后 */
+    batteryResult.cycles.forEach(c => {
+      c.tStart += firstMixTime;
+      c.tEnd += firstMixTime;
+      c.chargeStart += firstMixTime;
+      c.chargeEnd += firstMixTime;
+    });
+    afterWorkCharge.blocks.forEach(b => {
+      b.startAt += firstMixTime;
+      b.endAt += firstMixTime;
+    });
+
+    /* 7. 总作业时间（不含结束后充电）：
+          首批兑药 + 飞行阶段 与 兑药总时长 取大者（后续批次并行兑药） */
+    const totalTime = Math.max(mixTotalTime, firstMixTime + flightSpan);
     const totalTimeWithCharge = totalTime + afterWorkCharge.total;
 
     return {
       mixTotalTime: mixTotalTime,
       mixRounds: mixRounds,
-      perRoundWater: perRoundWater,
-      perRoundWaterTime: perRoundWaterTime,
-      perRoundActual: perRoundActual,
+      batchCapacity: batchCapacity,
+      firstMixTime: firstMixTime,
+      flightSpan: flightSpan,
       flightLength: flightLength,
       flightTimeMin: flightTimeMin,
       flightTimeSource: flightTimeSource,    // 'manual' or 'estimate'
       roundTripTotal: roundTripTotal,
+      loadTime: loadTime,
       T: T,
       perCycleFlight: perCycleFlight,
       batteryWait: batteryWait,

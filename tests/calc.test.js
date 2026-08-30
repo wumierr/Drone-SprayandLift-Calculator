@@ -129,7 +129,7 @@ test('慢充场景等待逐步累积（T=5 充8 N=2）', () => {
 });
 
 /* ============================================================
-   作业时间估算
+   作业时间估算（兑药调度模型：首批串行，其余批次与飞行并行）
    ============================================================ */
 test('computeTiming 手动飞行时间优先于估算', () => {
   const s = freshState();
@@ -137,6 +137,44 @@ test('computeTiming 手动飞行时间优先于估算', () => {
   const r = C.compute(s);
   eq(r.timing.flightTimeMin, 45, '直接采用手动值');
   eq(r.timing.flightTimeSource, 'manual', '来源标记 manual');
+});
+
+test('单批兑药：首批串行 + 飞行阶段（默认参数 10 亩 200L）', () => {
+  const r = C.compute(freshState());
+  const t = r.timing;
+  eq(t.mixRounds, 1, '200L ≤ 1000L 单批');
+  eq(t.firstMixTime, 10, '首批兑药 = baseMixTime');
+  // T = 升降3 + 装载1 + 飞行22.222/5 = 8.444；T>充电8 → 无电池等待
+  ok(Math.abs(t.T - 8.4444) < 0.001, `T=${t.T} 应为 8.4444`);
+  eq(t.batteryWait, 0, '无电池等待');
+  ok(Math.abs(t.flightSpan - 42.2222) < 0.01, `flightSpan=${t.flightSpan} 应为 5×8.4444`);
+  ok(Math.abs(t.totalTime - (10 + 42.2222)) < 0.01, `总时间=${t.totalTime} = 首批10 + 飞行阶段42.22`);
+});
+
+test('兑药瓶颈：多批串行流水超过飞行阶段时取 max', () => {
+  const s = freshState();
+  s.timing.batchCapacity = 60;   // 200L → ⌈200/60⌉=4 批
+  s.timing.baseMixTime = 20;     // 4×20=80min > 首批20+飞行42.2=62.2
+  const t = C.compute(s).timing;
+  eq(t.mixRounds, 4, '分 4 批');
+  ok(Math.abs(t.mixTotalTime - 80) < 0.001, `兑药总时长=${t.mixTotalTime}`);
+  ok(Math.abs(t.totalTime - 80) < 0.01, `总时间=${t.totalTime} 由兑药瓶颈决定`);
+});
+
+test('电池模拟时刻平移：首批兑药完成后才开始飞行', () => {
+  const s = freshState();
+  const t = C.compute(s).timing;
+  ok(t.batteryCycles.length > 0, '有循环明细');
+  ok(Math.abs(t.batteryCycles[0].tStart - 10) < 0.001, `首循环 tStart=${t.batteryCycles[0].tStart} 应=首批兑药10min`);
+});
+
+test('加药装载计入单循环地面时间（真实串行耗时）', () => {
+  const s = freshState();
+  s.timing.loadTime = 2;
+  s.timing.roundTripTime = 3;
+  const t = C.compute(s).timing;
+  ok(Math.abs(t.T - (3 + 2 + 22.2222 / 5)) < 0.001, `T=${t.T} 含装载2min`);
+  ok(Math.abs(t.roundTripTotal - 5 * 5) < 0.001, `升降+装载合计=${t.roundTripTotal}`);
 });
 
 /* ============================================================
@@ -175,25 +213,31 @@ test('打药文本往返保留时间参数（manualFlightTime/chargeAfterWork �
   s.timing.manualFlightTime = 42.5;
   s.timing.chargeAfterWork = false;
   s.timing.chargeMode = 'dual';
+  s.timing.batchCapacity = 800;
+  s.timing.loadTime = 1.5;
   const text = S.exportText(s, 'spray');
+  ok(!text.includes('兑水速度'), '已废弃的兑水速度不再导出');
   const back = S.importText(text);
   eq(back.mode, 'spray');
   eq(back.timing.manualFlightTime, 42.5, '手动飞行时间');
   eq(back.timing.chargeAfterWork, false, '结束后充电开关');
   eq(back.timing.chargeMode, 'dual', '充电模式');
+  eq(back.timing.batchCapacity, 800, '单批兑水量');
+  eq(back.timing.loadTime, 1.5, '加药装载时间');
   eq(back.field.area, 10, '亩数');
   eq(back.costs.cycleCost, 14, '循环成本');
 });
 
-test('旧版文本（无新字段）仍可导入（向后兼容）', () => {
+test('旧版文本（含已废弃的兑水速度行）仍可导入', () => {
   const oldText = [
     '===== 无人机作业配置 =====', '版本: 2.0', '模式: 打药', '',
     '【作业参数】', '  亩数: 25 亩', '  现有药剂套数: 2 套', '',
-    '【循环成本】', '  单次循环成本: 14 元', '  三相电循环成本: 7 元', '  单循环亩数: 2 亩', '  使用三相电: 否', ''
+    '【时间参数】', '  兑水速度: 1.5 min/100L', '  基础兑药时间: 12 min/轮', ''
   ].join('\n');
   const back = S.importText(oldText);
   eq(back.field.area, 25, '亩数 25');
-  eq(back.field.existingPesticideSets, 2, '库存 2');
+  eq(back.timing.baseMixTime, 12, '基础兑药时间 12');
+  ok(!('waterMixRate' in back.timing), '废弃字段不进入 state');
 });
 
 /* ============================================================

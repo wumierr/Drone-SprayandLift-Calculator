@@ -201,9 +201,10 @@ const DEFAULT_TIMING = {
   flightSpeed: 2.5,           // 飞行速度（m/s）
   lineSpacing: 2,             // 航线间距（米）
   manualFlightTime: 0,        // 手动输入飞行作业时间（min，高优先级，0表示用估算）
-  roundTripTime: 3,           // 飞行来回升降时间（min/循环）
-  baseMixTime: 10,            // 基础兑药时间（min/轮）
-  waterMixRate: 1.5,          // 兑水速度（min/100L）：每加100升水需多少分钟
+  roundTripTime: 3,           // 来回升降时间（min/循环）
+  loadTime: 1,                // 加药装载时间（min/循环）：给无人机药箱加药液的真实串行耗时
+  baseMixTime: 10,            // 基础兑药时间（min/轮，与水量无关）
+  batchCapacity: 1000,        // 单批兑水量（升/轮）：配药桶一批能兑的量，总水量超过则分多批
   batteryCount: 2,            // 拥有电池数量（块）
   generatorChargeTime: 8,     // 发电机充电时间（min/块）
   threePhaseChargeTime: 5,    // 三相电充电时间（min/块）
@@ -277,8 +278,9 @@ const FIELD_DEFS = {
   lineSpacing: { label: '航线间距', unit: '米', tip: '相邻航线间距，影响喷幅覆盖。一般 1.5-3 米（建议 1-5）。填了飞行作业时间后此字段禁用', group: 'timing', default: 2, step: 0.1, minHard: 0.5, warnBelow: 0.5, warnAbove: 10 },
   manualFlightTime: { label: '飞行作业时间（手动）', unit: 'min', tip: '高优先级：手动输入飞行作业时间。填了则用此值计算（显示"准确时间"），不填或0则用飞行速度×航线间距估算（显示"参考时间"）', group: 'timing', default: 0, step: 0.5, min: 0, priority: 'high' },
   roundTripTime: { label: '来回升降时间', unit: 'min/循环', tip: '每次循环的起飞、降落、转场时间。一般 2-5 分钟', group: 'timing', default: 3, step: 0.5, min: 0, warnAbove: 30 },
-  baseMixTime: { label: '基础兑药时间', unit: 'min/轮', tip: '每轮兑药桶加药剂搅拌的基础时间，与水量无关', group: 'timing', default: 10, step: 1, min: 0, warnAbove: 60 },
-  waterMixRate: { label: '兑水速度', unit: 'min/100L', tip: '每加100升水需要的时间（普通农户水管约1-2 min/100L）', group: 'timing', default: 1.5, step: 0.1, minHard: 0.01, warnBelow: 0.1, warnAbove: 30 },
+  loadTime: { label: '加药装载时间', unit: 'min/循环', tip: '每趟飞行前给无人机药箱加药液的时间。真实串行耗时，不能被飞行抵消（充电可以）。一般 0.5-2 分钟', group: 'timing', default: 1, step: 0.5, min: 0, warnAbove: 15 },
+  baseMixTime: { label: '基础兑药时间', unit: 'min/轮', tip: '每批兑水兑药搅拌的时间，与水量无关', group: 'timing', default: 10, step: 1, min: 0, warnAbove: 60 },
+  batchCapacity: { label: '单批兑水量', unit: '升', tip: '配药桶一批能兑的药液量。总水量超过此值分多批：首批必须在飞行前兑完（串行），第2批起可与飞行并行', group: 'timing', default: 1000, step: 50, min: 1, minHard: 1, warnBelow: 10 },
   batteryCount: { label: '拥有电池数量', unit: '块', tip: '作业用电池数量（至少 1 块）。2块轮流、3块以上更宽松', group: 'timing', default: 2, step: 1, integer: true, minHard: 1, warnBelow: 1, warnAbove: 20 },
   generatorChargeTime: { label: '发电机充电时间', unit: 'min/块', tip: '发电机给单块电池充满的时间，一般 6-10 min', group: 'timing', default: 8, step: 0.5, minHard: 0.1, warnBelow: 1, warnAbove: 60 },
   threePhaseChargeTime: { label: '三相电充电时间', unit: 'min/块', tip: '三相电给单块电池充满的时间，一般 4-6 min', group: 'timing', default: 5, step: 0.5, minHard: 0.1, warnBelow: 1, warnAbove: 60 },
@@ -298,7 +300,7 @@ const FIELD_ORDER = {
   labor: ['workers', 'days', 'dailyWage', 'mealCost', 'accommodation', 'accommodationDays'],
   other: ['pesticidePrice', 'pesticideIncluded', 'droneDepreciation', 'maintenanceReserve', 'protectiveGear', 'cleaningCost', 'insurance', 'miscCost'],
   income: ['pricePerMu', 'subsidy'],
-  timing: ['manualFlightTime', 'flightSpeed', 'lineSpacing', 'roundTripTime', 'baseMixTime', 'waterMixRate', 'batteryCount', 'generatorChargeTime', 'threePhaseChargeTime', 'chargeMode', 'chargeAfterWork']
+  timing: ['manualFlightTime', 'flightSpeed', 'lineSpacing', 'roundTripTime', 'loadTime', 'baseMixTime', 'batchCapacity', 'batteryCount', 'generatorChargeTime', 'threePhaseChargeTime', 'chargeMode', 'chargeAfterWork']
 };
 
 // 暴露到全局

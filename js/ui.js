@@ -598,11 +598,11 @@ const UI = {
     const fmt1 = (n) => Calculator.fmt(n, 1);
     const fdur = (min) => Calculator.formatDuration(min);
 
-    // 兑水兑药
+    // 兑水兑药：首批串行在前，其余批次与飞行并行
     setText('tMixTime', fdur(t.mixTotalTime));
     document.getElementById('tMixDetail').textContent =
       t.mixRounds > 0
-        ? `${t.mixRounds}轮 × max(兑水${fmt1(t.perRoundWaterTime)}min, 兑药${fmt1(this.state.timing.baseMixTime)}min)`
+        ? `${t.mixRounds}批 × ${fmt1(this.state.timing.baseMixTime)}min（首批串行，其余与飞行并行）`
         : '—';
 
     // 飞行作业
@@ -615,10 +615,10 @@ const UI = {
             ? `${fmt1(t.flightLength, 0)}米 ÷ ${fmt1(this.state.timing.flightSpeed, 1)}m/s（${flightLabel}）`
             : '—');
 
-    // 来回升降
+    // 来回升降 + 加药装载
     setText('tRoundTrip', fdur(t.roundTripTotal));
     document.getElementById('tRoundTripDetail').textContent =
-      `${this.state.timing.roundTripTime}min × 循环数`;
+      `(${this.state.timing.roundTripTime}+装载${t.loadTime != null ? t.loadTime : 0}min) × 循环数`;
 
     // 电池等待
     setText('tBatteryWait', fdur(t.batteryWait));
@@ -643,8 +643,8 @@ const UI = {
     }
     document.getElementById('tTotalDetail').textContent = totalDetailText;
 
-    // 公式注释
-    let formulaText = `估算总时间 = 兑水兑药 ${fdur(t.mixTotalTime)} + 飞行作业 ${fdur(t.flightTimeMin)}(${t.flightTimeSource === 'manual' ? '手动' : '估算'}) + 来回升降 ${fdur(t.roundTripTotal)} + 电池等待 ${fdur(t.batteryWait)} = ${fdur(t.totalTime)}`;
+    // 公式注释：首批兑药串行，其余批次与飞行并行，两者取大者
+    let formulaText = `总时间 = max(兑药 ${fdur(t.mixTotalTime)}（${t.mixRounds}批串行流水）, 首批兑药 ${fdur(t.firstMixTime)} + 飞行阶段 ${fdur(t.flightSpan)}（飞行${fdur(t.flightTimeMin)}+升降装载${fdur(t.roundTripTotal)}+电池等待${fdur(t.batteryWait)}）) = ${fdur(t.totalTime)}`;
     if (t.chargeAfterWork && t.afterWorkCharge > 0) {
       formulaText += ` + 结束后充电 ${fdur(t.afterWorkCharge)} = ${fdur(t.totalTimeWithCharge)}`;
     }
@@ -777,7 +777,7 @@ const UI = {
         : `<div class="bv-formula-line">• 结束后不充电，作业完成即走</div>`;
       formulaEl.innerHTML = `
         <div class="bv-formula-title">📋 电池充电/等待算法</div>
-        <div class="bv-formula-line">• 单次循环时间 T = ${T.toFixed(1)}min（来回升降 + 飞行作业÷循环数）</div>
+        <div class="bv-formula-line">• 单次循环时间 T = ${T.toFixed(1)}min（升降+加药装载 + 飞行作业÷循环数）</div>
         <div class="bv-formula-line">• 瓶颈 = 充电时间 − T（飞行期间电池在充电，可抵消部分）</div>
         <div class="bv-formula-line">• 等待比例 = 该轮等待 ÷ 瓶颈 → 颜色：0=绿(无等待), 1=红(满瓶颈)</div>
         <div class="bv-formula-line">• ${modeLabel}模式：${t.chargeMode === 'dual' ? '两个充电器并行，每轮记录实际充电器' : '单充电器，电池需排队'}</div>

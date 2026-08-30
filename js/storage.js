@@ -184,8 +184,9 @@ const Storage = {
         lines.push(`  航线间距: ${state.timing.lineSpacing} 米`);
         lines.push(`  手动飞行时间: ${state.timing.manualFlightTime} min`);
         lines.push(`  来回升降时间: ${state.timing.roundTripTime} min/循环`);
+        lines.push(`  加药装载时间: ${state.timing.loadTime != null ? state.timing.loadTime : 1} min/循环`);
         lines.push(`  基础兑药时间: ${state.timing.baseMixTime} min/轮`);
-        lines.push(`  兑水速度: ${state.timing.waterMixRate} min/100L`);
+        lines.push(`  单批兑水量: ${state.timing.batchCapacity != null ? state.timing.batchCapacity : 1000} 升`);
         lines.push(`  拥有电池数量: ${state.timing.batteryCount} 块`);
         lines.push(`  发电机充电时间: ${state.timing.generatorChargeTime} min/块`);
         lines.push(`  三相电充电时间: ${state.timing.threePhaseChargeTime} min/块`);
@@ -311,11 +312,13 @@ const Storage = {
       '航线间距': ['timing', 'lineSpacing', parseFloat],
       '手动飞行时间': ['timing', 'manualFlightTime', parseFloat],
       '来回升降时间': ['timing', 'roundTripTime', parseFloat],
+      '加药装载时间': ['timing', 'loadTime', parseFloat],
       '基础兑药时间': ['timing', 'baseMixTime', parseFloat],
-      '兑水速度': ['timing', 'waterMixRate', parseFloat],
+      '单批兑水量': ['timing', 'batchCapacity', parseFloat],
       '拥有电池数量': ['timing', 'batteryCount', parseFloat],
       '发电机充电时间': ['timing', 'generatorChargeTime', parseFloat],
       '三相电充电时间': ['timing', 'threePhaseChargeTime', parseFloat],
+      // 注：旧版导出的"兑水速度"行已废弃，无映射时自动忽略
       '充电模式': ['timing', 'chargeMode', (v) => ({
         '仅发电机': 'generator',
         '仅三相电': 'threePhase',
