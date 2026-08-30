@@ -48,6 +48,7 @@ const Storage = {
       field: { ...state.field },
       costs: { ...state.costs },
       income: { ...state.income },
+      timing: state.timing ? { ...state.timing } : null,
       haulField: { ...state.haulField },
       haulCosts: { ...state.haulCosts },
       haulIncome: { ...state.haulIncome },
@@ -181,13 +182,16 @@ const Storage = {
         lines.push('【时间参数】');
         lines.push(`  飞行速度: ${state.timing.flightSpeed} m/s`);
         lines.push(`  航线间距: ${state.timing.lineSpacing} 米`);
+        lines.push(`  手动飞行时间: ${state.timing.manualFlightTime} min`);
         lines.push(`  来回升降时间: ${state.timing.roundTripTime} min/循环`);
         lines.push(`  基础兑药时间: ${state.timing.baseMixTime} min/轮`);
         lines.push(`  兑水速度: ${state.timing.waterMixRate} min/100L`);
         lines.push(`  拥有电池数量: ${state.timing.batteryCount} 块`);
         lines.push(`  发电机充电时间: ${state.timing.generatorChargeTime} min/块`);
         lines.push(`  三相电充电时间: ${state.timing.threePhaseChargeTime} min/块`);
-        lines.push(`  充电模式: ${state.timing.chargeMode}`);
+        const modeLabels = { generator: '仅发电机', threePhase: '仅三相电', dual: '三相电+发电机' };
+        lines.push(`  充电模式: ${state.timing.chargeMode} （${modeLabels[state.timing.chargeMode] || ''}）`);
+        lines.push(`  作业结束充满电: ${state.timing.chargeAfterWork ? '是' : '否'}`);
       }
     }
 
@@ -305,13 +309,18 @@ const Storage = {
       // 时间参数
       '飞行速度': ['timing', 'flightSpeed', parseFloat],
       '航线间距': ['timing', 'lineSpacing', parseFloat],
+      '手动飞行时间': ['timing', 'manualFlightTime', parseFloat],
       '来回升降时间': ['timing', 'roundTripTime', parseFloat],
       '基础兑药时间': ['timing', 'baseMixTime', parseFloat],
       '兑水速度': ['timing', 'waterMixRate', parseFloat],
       '拥有电池数量': ['timing', 'batteryCount', parseFloat],
       '发电机充电时间': ['timing', 'generatorChargeTime', parseFloat],
       '三相电充电时间': ['timing', 'threePhaseChargeTime', parseFloat],
-      '充电模式': ['timing', 'chargeMode', (v) => v],
+      '充电模式': ['timing', 'chargeMode', (v) => ({
+        '仅发电机': 'generator',
+        '仅三相电': 'threePhase',
+        '三相电+发电机': 'dual'
+      }[v] || v)],
       // 吊运-作业
       '总斤数': ['haulField', 'totalWeight', parseFloat],
       // 吊运-电池循环
@@ -331,8 +340,28 @@ const Storage = {
     const boolMap = {
       '使用三相电': ['costs', 'useThreePhase'],
       '包药': ['costs', 'pesticideIncluded'],
-      '包采摘': ['haulCosts', 'pickupIncluded']
+      '包采摘': ['haulCosts', 'pickupIncluded'],
+      '作业结束充满电': ['timing', 'chargeAfterWork']
     };
+
+    // 吊运模式：同名标签实际属于 haulCosts。
+    // 必须在逐行解析前覆盖 fieldMap，否则会被打药映射抢先命中，
+    // 把吊运数值误写入 costs 并丢失 haulCosts 的真实值（历史 bug）。
+    if (result.mode === 'haul') {
+      Object.assign(fieldMap, {
+        '三相电循环成本': ['haulCosts', 'batteryCycleCostThreePhase', parseFloat],
+        '每人日薪': ['haulCosts', 'droneDailyWage', parseFloat],
+        '每人每天餐费': ['haulCosts', 'droneMealCost', parseFloat],
+        '住宿费': ['haulCosts', 'droneAccommodation', parseFloat],
+        '住宿天数': ['haulCosts', 'droneAccommodationDays', parseFloat],
+        '防护装备': ['haulCosts', 'protectiveGear', parseFloat],
+        '清洗费用': ['haulCosts', 'cleaningCost', parseFloat],
+        '维修保养储备': ['haulCosts', 'maintenanceReserve', parseFloat],
+        '保险分摊': ['haulCosts', 'insurance', parseFloat],
+        '无人机折旧': ['haulCosts', 'droneDepreciation', parseFloat],
+        '其他杂费': ['haulCosts', 'miscCost', parseFloat]
+      });
+    }
 
     // 通用字段（两种模式都有，需根据模式分配）
     const commonFields = ['distance', 'fuelConsumption', 'fuelPrice', 'tolls', 'vehicleDepreciation', 'miscCost'];
@@ -375,22 +404,6 @@ const Storage = {
           result.costs[fieldName] = parseFloat(valStr) || 0;
         }
         return;
-      }
-
-      // 通用其他字段（杂费、防护、清洗等需要根据上下文判断）
-      // 如果在吊运模式且字段名匹配打药的字段名，赋给 haulCosts
-      if (result.mode === 'haul') {
-        // 住宿费/住宿天数 在吊运模式属于无人机人工
-        if (key === '住宿费') result.haulCosts.droneAccommodation = parseFloat(valStr) || 0;
-        if (key === '住宿天数') result.haulCosts.droneAccommodationDays = parseFloat(valStr) || 0;
-        if (key === '每人日薪') result.haulCosts.droneDailyWage = parseFloat(valStr) || 0;
-        if (key === '每人每天餐费') result.haulCosts.droneMealCost = parseFloat(valStr) || 0;
-        if (key === '防护装备') result.haulCosts.protectiveGear = parseFloat(valStr) || 0;
-        if (key === '清洗费用') result.haulCosts.cleaningCost = parseFloat(valStr) || 0;
-        if (key === '其他杂费') result.haulCosts.miscCost = parseFloat(valStr) || 0;
-        if (key === '维修保养储备') result.haulCosts.maintenanceReserve = parseFloat(valStr) || 0;
-        if (key === '保险分摊') result.haulCosts.insurance = parseFloat(valStr) || 0;
-        if (key === '无人机折旧') result.haulCosts.droneDepreciation = parseFloat(valStr) || 0;
       }
     });
 

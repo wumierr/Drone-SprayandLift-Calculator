@@ -710,7 +710,7 @@ const UI = {
 
       block.style.background = color;
       const waitText = c.wait > 0 ? '+' + Calculator.formatDuration(c.wait) : '';
-      const bottleneckText = `瓶颈${bottleneck.toFixed(1)}m`;
+      const bottleneckText = `瓶颈${bottleneck.toFixed(1)}min`;
       const chargerLabel = c.charger === 'generator' ? '发电机' : '三相电';
       block.innerHTML = `
         <div class="viz-block-num">#${c.idx}</div>
@@ -1142,6 +1142,10 @@ const UI = {
     if (imported.field) this.state.field = imported.field;
     if (imported.costs) this.state.costs = imported.costs;
     if (imported.income) this.state.income = imported.income;
+    // 时间参数：合并而非整体替换，兼容不含 timing 的旧配置
+    if (imported.timing) {
+      this.state.timing = { ...this.state.timing, ...imported.timing };
+    }
     if (imported.haulField) this.state.haulField = imported.haulField;
     if (imported.haulCosts) this.state.haulCosts = imported.haulCosts;
     if (imported.haulIncome) this.state.haulIncome = imported.haulIncome;
@@ -1176,9 +1180,10 @@ const UI = {
     }
     list.innerHTML = presets.map((p, i) => {
       const modeLabel = p.mode === 'haul' ? '📦 吊运' : `🚁 ${p.plant ? p.plant.name : ''}`;
+      // 预设为扁平结构（name/mode/field/haulField...），旧版本曾误用 p.state.* 会直接抛错
       const sizeInfo = p.mode === 'haul'
-        ? `${p.state.haulField.totalWeight} 斤`
-        : `${p.state.field.area} 亩`;
+        ? `${p.haulField ? p.haulField.totalWeight : '—'} 斤`
+        : `${p.field ? p.field.area : '—'} 亩`;
       return `
         <li data-idx="${i}">
           <div>
@@ -1210,12 +1215,14 @@ const UI = {
     if (!p) return;
     this.state.mode = p.mode || 'spray';
     if (p.plant) this.state.plant = { ...p.plant };
-    if (p.field) this.state.field = { ...p.field };
-    if (p.costs) this.state.costs = { ...p.costs };
-    if (p.income) this.state.income = { ...p.income };
-    if (p.haulField) this.state.haulField = { ...p.haulField };
-    if (p.haulCosts) this.state.haulCosts = { ...p.haulCosts };
-    if (p.haulIncome) this.state.haulIncome = { ...p.haulIncome };
+    if (p.field) this.state.field = { ...this.state.field, ...p.field };
+    if (p.costs) this.state.costs = { ...this.state.costs, ...p.costs };
+    if (p.income) this.state.income = { ...this.state.income, ...p.income };
+    // 旧版预设未保存 timing，缺失时保留当前值
+    if (p.timing) this.state.timing = { ...this.state.timing, ...p.timing };
+    if (p.haulField) this.state.haulField = { ...this.state.haulField, ...p.haulField };
+    if (p.haulCosts) this.state.haulCosts = { ...this.state.haulCosts, ...p.haulCosts };
+    if (p.haulIncome) this.state.haulIncome = { ...this.state.haulIncome, ...p.haulIncome };
     this.applyMode(this.state.mode);
     this.compute();
     this.save();

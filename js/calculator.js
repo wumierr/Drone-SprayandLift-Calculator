@@ -76,7 +76,7 @@ const Calculator = {
       costPerMu: 0,                  // 每亩成本
       profitPerMu: 0,                // 每亩利润
       flightHeight: plant.flightHeight,
-      pesticideIncluded: costs.pesticideIncluded !== false
+      pesticideIncluded: costs.pesticideIncluded === true
     };
 
     if (area <= 0) return result;
@@ -206,7 +206,7 @@ const Calculator = {
          总时间 = 兑水兑药 + 飞行作业 + 来回升降 + 电池等待
      ============================================================ */
   computeTiming(state, r) {
-    const t = state.timing || DEFAULT_TIMING;
+    const t = state.timing || window.DEFAULT_TIMING || {};
     const flightSpeed = Math.max(0.01, Number(t.flightSpeed) || 2.5);
     const lineSpacing = Math.max(0.1, Number(t.lineSpacing) || 2);
     const manualFlightTime = Math.max(0, Number(t.manualFlightTime) || 0);
@@ -513,129 +513,46 @@ const Calculator = {
   },
 
   /* ============================================================
-     ★★★ 吊运模式计算 ★★★
+     ★★★ 吊运模式计算（HAUL）—— 与打药模式完全独立 ★★★
+     ※ 历史上本文件曾有两个 computeHaul 定义（后定义覆盖前定义），
+       现仅保留唯一实现。UI 传参形式：{ field, costs, income }
+       （haulField/haulCosts/haulIncome 已展开），亦兼容
+       { haul: { field, costs, income } } 完整 state 形式。
      公式：
-       单价换算：元/斤 = 毛数 × 0.1
-       总躺数 = ⌈总斤数 ÷ 一躺多少斤⌉
-         （一躺 = 一个来回：装货→飞→卸货→飞回）
-       电池循环数 = ⌈总躺数 ÷ 多少躺一组电池⌉
-         （一组电池从满电用到换电算一个循环）
-       电池循环成本 = 电池循环数 × (三相电 ? 三相电成本 : 电池循环成本)
-       无人机人工 = 人数 × 天数 × (日薪 + 餐费) + 住宿费 × 住宿天数
-       采摘人工 = 包采摘 ? 总斤数 × (采摘毛数 × 0.1) : 0
-       交通 = (单程×2) × 油耗/100 × 油价 + 路桥费 + 车折旧×(单程×2)
-       设备折旧 = (总斤数 ÷ 100) × (无人机折旧 + 维修储备 + 保险)
-       其他 = 防护装备 + 清洗费 + 杂费
-       总成本 = 电池循环 + 无人机人工 + 采摘人工 + 交通 + 设备 + 其他
-       总收入 = 总斤数 × (吊运毛数 × 0.1)
-       粗利润 = 总收入 - 总成本
-       每斤成本 = 总成本 ÷ 总斤数
-       每斤利润 = 粗利润 ÷ 总斤数
+       【收入】
+         总收入(元) = 总斤数 × 吊运单价(毛) × 0.1
+         例：1000斤 × 8毛 × 0.1 = 800元
+       【电池循环】
+         总躺数 = ⌈总斤数 ÷ 每躺斤数⌉         （一躺=一个来回）
+         电池循环数 = ⌈总躺数 ÷ 每组电池躺数⌉  （多少躺换一次电池）
+         电池循环成本 = 电池循环数 × (三相电 ? 三相电成本 : 普通成本)
+       【无人机人工（按天）】
+         无人机人工 = 人数 × 天数 × (日薪 + 餐费) + 住宿费 × 住宿天数
+       【采摘人工（按斤，可选）】
+         采摘人工 = 包采摘 ? 总斤数 × 采摘单价(毛) × 0.1 : 0
+       【交通】
+         油费 = 单程×2 × 油耗/100 × 油价
+         车折旧 = 单程×2 × 元/公里
+         交通 = 油费 + 车折旧 + 路桥费
+       【设备折旧（按100斤）】
+         设备折旧 = (总斤数 ÷ 100) × (无人机折旧 + 维修储备 + 保险)
+       【其他】
+         其他 = 防护装备 + 清洗费 + 杂费
+       【汇总】
+         总成本 = 电池循环 + 无人机人工 + 采摘人工 + 交通 + 设备折旧 + 其他
+         利润 = 总收入 - 总成本
+         每斤利润 = 利润 ÷ 总斤数
+         每躺利润 = 利润 ÷ 总躺数
      ============================================================ */
-  computeHaul(state) {
-    const { field, costs, income } = state;
-    const totalWeight = Number(field.totalWeight) || 0;
-    const result = {
-      totalTrips: 0,              // 总躺数
-      batteryCycles: 0,           // 电池循环数
-      costBreakdown: {},
-      totalCost: 0,
-      income: 0,
-      profit: 0,
-      costPerJin: 0,
-      profitPerJin: 0,
-      flightHeight: field.flightHeight,
-      pickupIncluded: costs.pickupIncluded !== false,
-      pricePerJinYuan: 0,         // 换算后的吊运单价（元/斤）
-      pickupPricePerJinYuan: 0    // 换算后的采摘单价（元/斤）
-    };
-
-    if (totalWeight <= 0) return result;
-
-    /* 1. 单价换算：毛 → 元（1元=10毛） */
-    result.pricePerJinYuan = (Number(income.pricePerJin) || 0) * 0.1;
-    result.pickupPricePerJinYuan = (Number(costs.pickupPricePerJin) || 0) * 0.1;
-
-    /* 2. 总躺数 = ⌈总斤数 ÷ 一躺多少斤⌉
-          一躺 = 一个来回（装货→飞行→卸货→飞回） */
-    const weightPerTrip = Math.max(0.01, Number(costs.weightPerTrip) || 1);
-    result.totalTrips = Math.ceil(totalWeight / weightPerTrip);
-
-    /* 3. 电池循环数 = ⌈总躺数 ÷ 多少躺一组电池⌉
-          一组电池从满电用到换电算一个循环 */
-    const tripsPerBatteryCycle = Math.max(1, Number(costs.tripsPerBatteryCycle) || 1);
-    result.batteryCycles = Math.ceil(result.totalTrips / tripsPerBatteryCycle);
-
-    /* 4. 电池循环成本 = 电池循环数 × 单次成本 */
-    const batteryCycleUnitCost = costs.useThreePhase
-      ? Number(costs.batteryCycleCostThreePhase) || 0
-      : Number(costs.batteryCycleCost) || 0;
-    result.costBreakdown.battery = result.batteryCycles * batteryCycleUnitCost;
-
-    /* 5. 无人机人工（按天计算，独立于采摘）
-          = 人数 × 天数 × (日薪 + 餐费) + 住宿费 × 住宿天数 */
-    const droneWorkers = Number(costs.droneWorkers) || 0;
-    const droneDays = Number(costs.droneDays) || 0;
-    const droneDailyWage = Number(costs.droneDailyWage) || 0;
-    const droneMealCost = Number(costs.droneMealCost) || 0;
-    const droneAccommodation = Number(costs.droneAccommodation) || 0;
-    const droneAccommodationDays = Number(costs.droneAccommodationDays) || 0;
-    result.costBreakdown.droneLabor = droneWorkers * droneDays * (droneDailyWage + droneMealCost)
-                                    + droneAccommodation * droneAccommodationDays;
-
-    /* 6. 采摘人工（按斤计算，可选）
-          = 包采摘 ? 总斤数 × (采摘毛数 × 0.1) : 0 */
-    if (result.pickupIncluded) {
-      result.costBreakdown.pickupLabor = totalWeight * result.pickupPricePerJinYuan;
-    } else {
-      result.costBreakdown.pickupLabor = 0;
-    }
-
-    /* 7. 交通成本（与打药模式逻辑相同）
-          = (单程×2) × 油耗/100 × 油价 + 路桥费 + 车折旧×(单程×2) */
-    const distance = Number(costs.distance) || 0;
-    const fuelConsumption = Number(costs.fuelConsumption) || 0;
-    const fuelPrice = Number(costs.fuelPrice) || 0;
-    const roundTripKm = distance * 2;
-    const fuelCost = roundTripKm * (fuelConsumption / 100) * fuelPrice;
-    const vehicleDep = roundTripKm * (Number(costs.vehicleDepreciation) || 0);
-    result.costBreakdown.transport = fuelCost + vehicleDep + (Number(costs.tolls) || 0);
-
-    /* 8. 设备折旧（按100斤分摊，吊运按重量计损）
-          = (总斤数 ÷ 100) × (无人机折旧 + 维修储备 + 保险) */
-    const per100JinCost = (Number(costs.droneDepreciation) || 0)
-                        + (Number(costs.maintenanceReserve) || 0)
-                        + (Number(costs.insurance) || 0);
-    result.costBreakdown.equipment = (totalWeight / 100) * per100JinCost;
-
-    /* 9. 其他成本（每次作业固定）
-          = 防护装备 + 清洗费 + 杂费 */
-    result.costBreakdown.other = (Number(costs.protectiveGear) || 0)
-                               + (Number(costs.cleaningCost) || 0)
-                               + (Number(costs.miscCost) || 0);
-
-    /* 10. 总成本 = 电池循环 + 无人机人工 + 采摘人工 + 交通 + 设备 + 其他 */
-    result.totalCost = Object.values(result.costBreakdown).reduce((a, b) => a + b, 0);
-
-    /* 11. 总收入 = 总斤数 × (吊运毛数 × 0.1) */
-    result.income = totalWeight * result.pricePerJinYuan;
-
-    /* 12. 粗利润 = 总收入 - 总成本 */
-    result.profit = result.income - result.totalCost;
-
-    /* 13. 每斤指标 */
-    result.costPerJin = totalWeight > 0 ? result.totalCost / totalWeight : 0;
-    result.profitPerJin = totalWeight > 0 ? result.profit / totalWeight : 0;
-
-    return result;
-  },
 
   /**
-   * 格式化数字显示
+   * 格式化数字显示（去掉小数尾零："2.50"→"2.5"，"2.00"→"2"，"100"→"100"）
    */
   fmt(num, decimals = 2) {
     if (typeof num !== 'number' || isNaN(num)) return '0';
-    return num.toFixed(decimals).replace(/\.?0+$/, (m) => m.includes('.') ? '' : m);
+    return num.toFixed(decimals)
+      .replace(/(\.\d*?)0+$/, '$1')
+      .replace(/\.$/, '');
   },
 
   /**
