@@ -141,6 +141,16 @@ const Storage = {
       lines.push('【作业参数】');
       lines.push(`  亩数: ${state.field.area}`);
       lines.push(`  现有药剂套数: ${state.field.existingPesticideSets}`);
+      if (state.field.plotMode && Array.isArray(state.field.plots) && state.field.plots.length) {
+        lines.push(`  机载装药上限: ${state.field.droneTank != null ? state.field.droneTank : 85} 升`);
+        lines.push('');
+        lines.push('【地块列表】');
+        state.field.plots.forEach(p => {
+          const parts = [`名称=${p.name || ''}`, `亩数=${p.area != null ? p.area : 0}`, `棵数=${p.treeCount != null ? p.treeCount : 0}`,
+            `转场=${p.transferMin != null ? p.transferMin : 5}`, `趟数覆盖=${p.tripsOverride || 0}`];
+          lines.push(`  [地块] ${parts.join(' | ')}`);
+        });
+      }
       lines.push('');
       lines.push('【循环成本】');
       lines.push(`  单次循环成本: ${state.costs.cycleCost} 元`);
@@ -284,6 +294,7 @@ const Storage = {
       '无人机省药系数': ['plant', 'droneSavingCoeff', parseFloat],
       // 打药-作业
       '亩数': ['field', 'area', parseFloat],
+      '机载装药上限': ['field', 'droneTank', parseFloat],
       '现有药剂套数': ['field', 'existingPesticideSets', parseFloat],
       // 打药-循环
       '单次循环成本': ['costs', 'cycleCost', parseFloat],
@@ -378,6 +389,25 @@ const Storage = {
 
     const lines = text.split('\n');
     lines.forEach(line => {
+      // 地块行（多地块模式）：  [地块] 名称=xx | 亩数=12 | 棵数=0 | 转场=5 | 趟数覆盖=0
+      if (line.includes('[地块]')) {
+        const kv = {};
+        line.replace(/^\s*\[地块\]\s*/, '').split('|').forEach(seg => {
+          const idx = seg.indexOf('=');
+          if (idx > -1) kv[seg.slice(0, idx).trim()] = seg.slice(idx + 1).trim();
+        });
+        result.field.plotMode = true;
+        if (!Array.isArray(result.field.plots)) result.field.plots = [];
+        result.field.plots.push({
+          id: 'imp' + result.field.plots.length,
+          name: kv['名称'] || '',
+          area: parseFloat(kv['亩数']) || 0,
+          treeCount: parseFloat(kv['棵数']) || 0,
+          transferMin: parseFloat(kv['转场']) != null && !isNaN(parseFloat(kv['转场'])) ? parseFloat(kv['转场']) : 5,
+          tripsOverride: parseFloat(kv['趟数覆盖']) || 0
+        });
+        return;
+      }
       // 匹配 "  字段名: 值 单位" 形式
       const m = line.match(/^\s*([^:：【】]+)[:：]\s*([^\s\n]+)/);
       if (!m) return;

@@ -247,6 +247,86 @@ test('旧存档无 calcBasis 时按植物类型预置（模拟 loadState 合并�
 });
 
 /* ============================================================
+   多地块模式（一期 C）
+   ============================================================ */
+test('多地块：趟数=⌈水量÷机载上限⌉，趟数覆盖重算每趟量', () => {
+  const s = freshState();
+  s.field.plotMode = true;
+  s.field.droneTank = 85;
+  s.field.plots = [
+    { id: 'a', name: '东边', area: 10, transferMin: 5, tripsOverride: 0 },
+    { id: 'b', name: '西边', area: 20, transferMin: 3, tripsOverride: 8 },
+    { id: 'c', name: '北边', area: 5, transferMin: 0, tripsOverride: 0 }
+  ];
+  const r = C.computePlots(s);
+  eq(r.plots.length, 3, '3 个地块');
+  ok(Math.abs(r.water - 700) < 0.01, `总水量=${r.water} 应为 200+400+100`);
+  ok(Math.abs(r.area - 35) < 0.01, `总面积=${r.area}`);
+  eq(r.plots[0].minTrips, 3, '⌈200÷85⌉=3');
+  eq(r.plots[1].trips, 8, '西边覆盖 8 趟');
+  ok(Math.abs(r.plots[1].perTripWater - 50) < 0.01, `西边每趟=${r.plots[1].perTripWater} 应为 50`);
+  eq(r.plots[2].trips, 2, '⌈100÷85⌉=2');
+  eq(r.totalTrips, 13, '总趟数 3+8+2');
+  ok(Math.abs(r.totalTransfer - 78) < 0.01, `转场合计=${r.totalTransfer} 应为 3×2×5+8×2×3`);
+  ok(Math.abs(r.income - 875) < 0.01, `收入=${r.income} 应为 35×25`);
+  eq(r.cycles, 18, '电池循环=⌈35÷2⌉');
+});
+
+test('多地块：参考药量逐块 7舍8入后求和（保守）', () => {
+  const s = freshState();
+  s.field.plotMode = true;
+  s.field.plots = [
+    { id: 'a', name: 'A', area: 10, transferMin: 5, tripsOverride: 0 },
+    { id: 'b', name: 'B', area: 20, transferMin: 3, tripsOverride: 0 },
+    { id: 'c', name: 'C', area: 5, transferMin: 0, tripsOverride: 0 }
+  ];
+  s.plant.pesticideWaterPerSet = 100;  // 放大药量便于断言：1.4→1, 2.8→3(7舍8入), 0.7→0
+  const r = C.computePlots(s);
+  eq(r.pesticideRounded, 4, '逐块取整 1+3+0=4');
+  eq(r.needToBuy, 4, '无库存需补 4 套');
+  s.field.existingPesticideSets = 2;
+  const r2 = C.computePlots(s);
+  eq(r2.needToBuy, 2, '库存 2 补 2');
+});
+
+test('多地块：总时长用同一调度模型（首批兑药 + 飞行阶段 与 兑药总时长取大）', () => {
+  const s = freshState();
+  s.field.plotMode = true;
+  s.field.plots = [
+    { id: 'a', name: 'A', area: 10, transferMin: 5, tripsOverride: 0 },
+    { id: 'b', name: 'B', area: 20, transferMin: 3, tripsOverride: 8 },
+    { id: 'c', name: 'C', area: 5, transferMin: 0, tripsOverride: 0 }
+  ];
+  const r = C.computePlots(s);
+  const t = r.timing;
+  eq(t.mixRounds, 1, '700L ≤ 1000L 单批');
+  ok(Math.abs(t.totalTransfer - 78) < 0.01, '转场合计');
+  ok(Math.abs(t.flightSpan - 168.7778) < 0.01, `飞行阶段=${t.flightSpan} 应为 Σ趟时间168.78`);
+  ok(Math.abs(t.totalTime - 178.7778) < 0.01, `总时间=${t.totalTime} = 首批10+168.78`);
+  // 电池模拟按总趟数、且首循环在首批兑药之后
+  eq(t.batteryCycles.length, 13, '13 趟参与电池竞争');
+  ok(Math.abs(t.batteryCycles[0].tStart - 10) < 0.01, '首趟平移到首批兑药后');
+});
+
+test('多地块文本往返：地块列表与机载上限保留', () => {
+  const s = freshState();
+  s.field.plotMode = true;
+  s.field.droneTank = 60;
+  s.field.plots = [
+    { id: 'a', name: '东边', area: 12, treeCount: 0, transferMin: 5, tripsOverride: 0 },
+    { id: 'b', name: '西边', area: 8, treeCount: 0, transferMin: 3, tripsOverride: 4 }
+  ];
+  const text = S.exportText(s, 'spray');
+  const back = S.importText(text);
+  eq(back.field.plotMode, true, '多地块标记');
+  eq(back.field.droneTank, 60, '机载上限');
+  eq(back.field.plots.length, 2, '2 个地块');
+  eq(back.field.plots[0].name, '东边', '名称');
+  eq(back.field.plots[1].tripsOverride, 4, '趟数覆盖');
+  ok(Math.abs(back.field.plots[0].area - 12) < 1e-9, '亩数');
+});
+
+/* ============================================================
    Storage：文本导出 → 导入 往返（打药）
    ============================================================ */
 test('打药文本往返保留时间参数（manualFlightTime/chargeAfterWork 曾丢失）', () => {

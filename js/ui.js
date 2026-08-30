@@ -148,12 +148,116 @@ const UI = {
     document.querySelectorAll('input[name="radio-calcBasis"]').forEach(r => {
       r.checked = r.value === basis;
     });
+    // 多地块模式下尺寸在各地块行填写，交由 updatePlotModeVisibility 处理
+    if (this.state.field.plotMode) {
+      this.updatePlotModeVisibility();
+      return;
+    }
     const areaWrap = document.getElementById('inp-area');
     const treeWrap = document.getElementById('inp-treeCount');
     const treesPerMu = document.getElementById('inp-treesPerMu');
     if (areaWrap) areaWrap.closest('.field').style.display = basis === 'tree' ? 'none' : '';
     if (treeWrap) treeWrap.closest('.field').style.display = basis === 'area' ? 'none' : '';
     if (treesPerMu) treesPerMu.readOnly = basis === 'tree';
+  },
+
+  /* ---------- 多地块模式 ---------- */
+  updatePlotModeVisibility() {
+    const plotsMode = !!this.state.field.plotMode;
+    document.querySelectorAll('input[name="radio-plotMode"]').forEach(r => {
+      r.checked = (r.value === 'plots') === plotsMode;
+    });
+    const editor = document.getElementById('plotsEditor');
+    if (editor) editor.style.display = plotsMode ? '' : 'none';
+    // 多地块时隐藏单地块的亩数/棵数输入（尺寸在各地块行填写）
+    const areaEl = document.getElementById('inp-area');
+    const treeEl = document.getElementById('inp-treeCount');
+    if (areaEl) areaEl.closest('.field').style.display = plotsMode ? 'none' : (this.state.field.calcBasis === 'tree' ? 'none' : '');
+    if (treeEl) treeEl.closest('.field').style.display = plotsMode ? 'none' : (this.state.field.calcBasis === 'area' ? 'none' : '');
+    const wrap = document.getElementById('plotsTableWrap');
+    if (wrap) wrap.style.display = plotsMode ? '' : 'none';
+  },
+
+  renderPlotsEditor() {
+    const wrap = document.getElementById('plotsEditor');
+    if (!wrap) return;
+    const plots = this.state.field.plots || [];
+    const basis = this.state.field.calcBasis === 'tree' ? 'tree' : 'area';
+    const sizeLabel = basis === 'tree' ? '棵数' : '亩数';
+    const sizeUnit = basis === 'tree' ? '棵' : '亩';
+    let html = `
+      <div class="plot-toolbar">
+        <span class="hint">按<b>${basis === 'tree' ? '棵数' : '亩数'}</b>填写各地块；趟数留空=按机载上限自动算最少趟数</span>
+        <span class="plot-presets">
+          转场档位
+          <button type="button" class="btn btn-sm btn-secondary plot-preset" data-min="3">保守3m</button>
+          <button type="button" class="btn btn-sm btn-secondary plot-preset" data-min="5">标准5m</button>
+          <button type="button" class="btn btn-sm btn-secondary plot-preset" data-min="8">激进8m</button>
+        </span>
+      </div>`;
+    plots.forEach((p, i) => {
+      const sizeVal = basis === 'tree' ? (p.treeCount || '') : (p.area || '');
+      html += `
+      <div class="plot-row" data-id="${p.id}">
+        <input type="text" class="plot-name" value="${this.escapeHtml(p.name || `地块${i + 1}`)}" placeholder="名称">
+        <div class="unit-suffix" data-unit="${sizeUnit}"><input type="number" class="plot-size" step="0.1" min="0" value="${sizeVal}" placeholder="${sizeLabel}"></div>
+        <div class="unit-suffix" data-unit="min"><input type="number" class="plot-transfer" step="0.5" min="0" value="${p.transferMin != null ? p.transferMin : 5}" placeholder="转场"></div>
+        <div class="unit-suffix" data-unit="趟"><input type="number" class="plot-trips" step="1" min="0" value="${p.tripsOverride || ''}" placeholder="自动"></div>
+        <button type="button" class="icon-btn plot-del" title="删除地块">🗑</button>
+      </div>`;
+    });
+    html += '<button type="button" class="btn btn-secondary btn-sm plot-add">＋ 添加地块</button>';
+    wrap.innerHTML = html;
+  },
+
+  addPlot() {
+    if (!Array.isArray(this.state.field.plots)) this.state.field.plots = [];
+    const n = this.state.field.plots.length;
+    const isTree = this.state.field.calcBasis === 'tree';
+    this.state.field.plots.push({
+      id: 'p' + Date.now().toString(36) + '_' + n,
+      name: `地块${n + 1}`,
+      area: isTree ? 0 : 10,
+      treeCount: isTree ? 100 : 0,
+      transferMin: 5,
+      tripsOverride: 0
+    });
+    this.renderPlotsEditor();
+    this.compute();
+    this.save();
+  },
+
+  /* 地块明细表（结果区） */
+  renderPlotsTable(r) {
+    const wrap = document.getElementById('plotsTableWrap');
+    if (!wrap) return;
+    if (!r || !r.plotMode || !r.plots || r.plots.length === 0) {
+      wrap.innerHTML = '';
+      return;
+    }
+    const fmt = Calculator.fmt.bind(Calculator);
+    const basis = r.calcBasis === 'tree' ? 'tree' : 'area';
+    const sizeHeader = basis === 'tree' ? '棵数' : '亩数';
+    const rows = r.plots.map(p => `
+      <tr>
+        <td>${this.escapeHtml(p.name)}</td>
+        <td>${basis === 'tree' ? fmt(p.treeCount, 0) : fmt(p.area, 1)}</td>
+        <td>${fmt(p.water, 1)}</td>
+        <td>${p.minTrips}</td>
+        <td><b>${p.trips}</b></td>
+        <td>${fmt(p.perTripWater, 1)}</td>
+        <td>${fmt(p.transferMin, 1)}</td>
+        <td>${p.pesticideRounded}</td>
+      </tr>`).join('');
+    wrap.innerHTML = `
+      <div class="panel-title" style="margin-top:12px;"><span>🗺️</span> 地块明细
+        <span class="hint">机载上限 ${r.droneTank} 升/趟 · 共 ${r.totalTrips} 趟 · 转场合计 ${fmt(r.totalTransfer, 1)}min</span>
+      </div>
+      <table class="summary-table plots-table">
+        <thead><tr><th>地块</th><th>${sizeHeader}</th><th>水量(升)</th><th>最少趟</th><th>趟数</th><th>每趟(升)</th><th>转场(min)</th><th>药量(套)</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><td>合计</td><td>${basis === 'tree' ? fmt(r.plots.reduce((s, p) => s + p.treeCount, 0), 0) : fmt(r.area, 1)}</td><td>${fmt(r.water, 1)}</td><td>—</td><td>${r.totalTrips}</td><td>—</td><td>${fmt(r.totalTransfer, 1)}</td><td>${r.pesticideRounded}</td></tr></tfoot>
+      </table>`;
   },
 
   updatePlantInfo() {
@@ -170,6 +274,8 @@ const UI = {
     FIELD_ORDER.param.forEach(key => this.appendField(form, key, 'spray'));
     this.syncParamFormFromPlant();
     this.updateCalcBasisVisibility();
+    this.renderPlotsEditor();
+    this.updatePlotModeVisibility();
   },
 
   syncParamFormFromPlant() {
@@ -448,7 +554,7 @@ const UI = {
     } else if (mode === 'timing') {
       this.state.timing[key] = val;
     } else {
-      if (key === 'area' || key === 'calcBasis' || key === 'treeCount') {
+      if (key === 'area' || key === 'calcBasis' || key === 'treeCount' || key === 'droneTank') {
         this.state.field[key] = val;
       } else if (key === 'existingPesticideSets') {
         this.state.field.existingPesticideSets = val;
@@ -471,7 +577,7 @@ const UI = {
       return this.state.timing[key];
     } else {
       // field 类参数（不在 plant 内）
-      if (key === 'area' || key === 'calcBasis' || key === 'treeCount') return this.state.field[key];
+      if (key === 'area' || key === 'calcBasis' || key === 'treeCount' || key === 'droneTank') return this.state.field[key];
       if (key === 'existingPesticideSets') return this.state.field.existingPesticideSets;
       // plant 类参数
       if (FIELD_ORDER.param.includes(key)) return this.state.plant[key];
@@ -529,8 +635,11 @@ const UI = {
   /* ---------- 计算 & 渲染结果 ---------- */
   compute() {
     if (this.state.mode === 'spray') {
-      const r = Calculator.compute(this.state);
+      const r = this.state.field.plotMode
+        ? Calculator.computePlots(this.state)
+        : Calculator.compute(this.state);
       this.renderSprayResults(r);
+      this.renderPlotsTable(r);
       this.renderSummary(r, 'spray');
       this._lastResult = r;
     } else {
@@ -564,14 +673,21 @@ const UI = {
     }
     document.getElementById('rPesticideDetail').textContent = stockText;
     document.getElementById('rPesticideFormula').textContent =
-      r.calcBasis === 'tree'
-        ? `主显示=现有 ${r.existingSets} 套 | 参考=棵数${r.treeCount}×每棵水量÷一套药水量×省药系数=${fmt(r.pesticide, 2)} → ${r.pesticideRounded} 套（7舍8入）`
-        : `主显示=现有 ${r.existingSets} 套 | 参考=亩数×每棵水量×每亩棵数÷一套药水量×省药系数=${fmt(r.pesticide, 2)} → ${r.pesticideRounded} 套（7舍8入）`;
+      r.plotMode
+        ? `主显示=现有 ${r.existingSets} 套 | 参考=各地块7舍8入之和=${r.pesticideRounded} 套（逐块保守取整）`
+        : (r.calcBasis === 'tree'
+          ? `主显示=现有 ${r.existingSets} 套 | 参考=棵数${r.treeCount}×每棵水量÷一套药水量×省药系数=${fmt(r.pesticide, 2)} → ${r.pesticideRounded} 套（7舍8入）`
+          : `主显示=现有 ${r.existingSets} 套 | 参考=亩数×每棵水量×每亩棵数÷一套药水量×省药系数=${fmt(r.pesticide, 2)} → ${r.pesticideRounded} 套（7舍8入）`);
 
     setText('rWater', fmt(r.water, 1));
     const effArea = (r.area != null ? r.area : this.state.field.area);
-    document.getElementById('rWaterDetail').textContent =
-      `${this.state.plant.waterPerMu} 升/亩 × ${fmt(effArea, 1)} 亩${r.calcBasis === 'tree' ? `（按棵数 ${r.treeCount} 棵反推）` : ''}`;
+    if (r.plotMode) {
+      document.getElementById('rWaterDetail').textContent =
+        `Σ ${r.plots.length} 个地块 · 机载上限 ${r.droneTank} 升/趟 · 共 ${r.totalTrips} 趟`;
+    } else {
+      document.getElementById('rWaterDetail').textContent =
+        `${this.state.plant.waterPerMu} 升/亩 × ${fmt(effArea, 1)} 亩${r.calcBasis === 'tree' ? `（按棵数 ${r.treeCount} 棵反推）` : ''}`;
+    }
     document.getElementById('rWaterFormula').textContent =
       `公式: 亩数 × 每亩水量（无人机喷洒量，独立于药量计算）`;
 
@@ -639,17 +755,23 @@ const UI = {
     // 飞行作业
     setText('tFlightTime', fdur(t.flightTimeMin));
     const flightLabel = t.flightTimeSource === 'manual' ? '准确时间' : '参考时间';
-    document.getElementById('tFlightDetail').textContent =
-      t.flightTimeSource === 'manual'
-        ? `✓ ${flightLabel}（手动输入）`
-        : (t.flightLength > 0
-            ? `${fmt1(t.flightLength, 0)}米 ÷ ${fmt1(this.state.timing.flightSpeed, 1)}m/s（${flightLabel}）`
-            : '—');
+    if (t.plotUnits) {
+      document.getElementById('tFlightDetail').textContent =
+        `Σ 各地块喷洒时间（多地块）`;
+    } else {
+      document.getElementById('tFlightDetail').textContent =
+        t.flightTimeSource === 'manual'
+          ? `✓ ${flightLabel}（手动输入）`
+          : (t.flightLength > 0
+              ? `${fmt1(t.flightLength, 0)}米 ÷ ${fmt1(this.state.timing.flightSpeed, 1)}m/s（${flightLabel}）`
+              : '—');
+    }
 
     // 来回升降 + 加药装载
     setText('tRoundTrip', fdur(t.roundTripTotal));
-    document.getElementById('tRoundTripDetail').textContent =
-      `(${this.state.timing.roundTripTime}+装载${t.loadTime != null ? t.loadTime : 0}min) × 循环数`;
+    document.getElementById('tRoundTripDetail').textContent = t.plotUnits
+      ? `装载${fmt1(t.totalLoad)}min + 转场${fmt1(t.totalTransfer)}min`
+      : `(${this.state.timing.roundTripTime}+装载${t.loadTime != null ? t.loadTime : 0}min) × 循环数`;
 
     // 电池等待
     setText('tBatteryWait', fdur(t.batteryWait));
@@ -1043,6 +1165,67 @@ const UI = {
       batteryVizClose.addEventListener('click', () => {
         document.getElementById('batteryVizDetail').style.display = 'none';
         document.querySelectorAll('.viz-block').forEach(b => b.classList.remove('active'));
+      });
+    }
+
+    // 地块模式切换（单地块/多地块）
+    document.querySelectorAll('input[name="radio-plotMode"]').forEach(r => {
+      r.addEventListener('change', () => {
+        this.state.field.plotMode = r.value === 'plots';
+        this.updatePlotModeVisibility();
+        this.compute();
+        this.save();
+        this.toast(r.value === 'plots' ? '已切换为多地块模式' : '已切换为单地块模式', 'success');
+      });
+    });
+
+    // 地块编辑器事件委托（行内编辑/增删/档位，重渲染后依然有效）
+    const plotsEditor = document.getElementById('plotsEditor');
+    if (plotsEditor) {
+      plotsEditor.addEventListener('input', e => {
+        const row = e.target.closest('.plot-row');
+        if (!row) return;
+        const plot = (this.state.field.plots || []).find(p => String(p.id) === row.dataset.id);
+        if (!plot) return;
+        if (e.target.classList.contains('plot-name')) {
+          plot.name = e.target.value;
+        } else if (e.target.classList.contains('plot-size')) {
+          const v = parseFloat(e.target.value);
+          if (this.state.field.calcBasis === 'tree') plot.treeCount = isNaN(v) ? 0 : Math.max(0, Math.round(v));
+          else plot.area = isNaN(v) ? 0 : Math.max(0, v);
+        } else if (e.target.classList.contains('plot-transfer')) {
+          const v = parseFloat(e.target.value);
+          plot.transferMin = isNaN(v) ? 0 : Math.max(0, v);
+        } else if (e.target.classList.contains('plot-trips')) {
+          const v = parseFloat(e.target.value);
+          plot.tripsOverride = (!v || v <= 0) ? 0 : Math.max(0, Math.round(v));
+        }
+        this.compute();
+      });
+      plotsEditor.addEventListener('change', () => this.save());
+      plotsEditor.addEventListener('click', e => {
+        if (e.target.closest('.plot-add')) {
+          this.addPlot();
+          return;
+        }
+        const preset = e.target.closest('.plot-preset');
+        if (preset) {
+          const min = parseFloat(preset.dataset.min) || 5;
+          (this.state.field.plots || []).forEach(p => { p.transferMin = min; });
+          this.renderPlotsEditor();
+          this.compute();
+          this.save();
+          this.toast(`全体地块转场已设为 ${min} 分钟`, 'success');
+          return;
+        }
+        const del = e.target.closest('.plot-del');
+        if (del) {
+          const row = del.closest('.plot-row');
+          this.state.field.plots = (this.state.field.plots || []).filter(p => String(p.id) !== row.dataset.id);
+          this.renderPlotsEditor();
+          this.compute();
+          this.save();
+        }
       });
     }
 
