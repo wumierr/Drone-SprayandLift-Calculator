@@ -401,13 +401,22 @@ A：本机 GitHub 访问受限。依次检查：代理软件是否启动 → 凭
 A：加 `-Mirror` 参数走阿里云镜像。已经卡住的话先 `Ctrl+C`，
 删掉 `%USERPROFILE%\.gradle\caches` 再重来。
 
-**Q：腾讯 CloudBase 部署成功，PC 打开网址却变成"下载 index.html"**
-A：这是 CloudBase **默认域名（*.tcloudbaseapp.com）的限制**——未绑定自定义域名时，
-腾讯会对 HTML 响应强制下载（防未备案域名被当网页访问）。解决办法三选一：
-1. CloudBase 控制台 → 静态网站托管 → 绑定**已备案的自定义域名**（官方指定路径）；
-2. 改用 GitHub Pages / Cloudflare Pages（无此限制，项目有现成脚本）；
-3. 本地自用不受影响（双击 index.html 即可）。
-验证部署是否成功：直接访问 `.../js/storage.js` 这类非 HTML 资源能看到源码，即部署正常。
+**Q：腾讯 CloudBase 部署成功，浏览器打开网址却变成"下载文件"（手机/PC 都一样）**
+A：这是 CloudBase **默认域名（*.tcloudbaseapp.com）的平台策略**——未绑定已备案
+自定义域名时，**所有文件类型**（HTML/JS/CSS 全部）的响应都带
+`content-disposition: attachment` 强制下载（实测 2026-08，curl 验证响应头），
+且响应头带 no-cache 不可缓存。这是服务端策略，项目代码无法干预。
+解决办法：
+1. **绑定已备案的自定义域名**（CloudBase 控制台 → 静态网站托管 → 自定义域名），
+   绑定后强制下载即消失——官方指定路径，需要域名 + ICP 备案；
+2. 改用其他静态托管：Cloudflare Pages（`6-部署Cloudflare.bat` 现成；pages.dev
+   国内可达性一般需实测）或 GitHub Pages（github.io 国内不稳定）；
+3. 新建 CloudBase **香港地域**环境再部署（境外/港澳默认域名可能不受此策略限制，
+   建议先部署一次实测）；
+4. 不依赖网页托管：手机装 APK（完全离线可用），或把 standalone 单文件 HTML
+   发到手机用浏览器打开（数据存本地浏览器）。
+确认部署本身是否成功：`curl -I 网址` 看 HTTP 200 与 last-modified 时间即可
+（浏览器验证会被强制下载干扰）。
 
 **Q：CloudBase 更新部署后，手机上还是旧版本**
 A：三步排查：
