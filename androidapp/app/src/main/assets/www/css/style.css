@@ -1515,6 +1515,7 @@ html, body {
 
 .plots-table { margin-top: 8px; font-size: 13px; }
 .plots-table th, .plots-table td { padding: 6px 8px; }
+.plots-table th:first-child, .plots-table td:first-child { min-width: 4.5em; }
 
 /* 工单文本块：等宽、可选中复制 */
 .workorder-text {

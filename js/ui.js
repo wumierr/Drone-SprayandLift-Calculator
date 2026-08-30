@@ -114,6 +114,8 @@ const UI = {
       }
     } else {
       this.state.plant = { ...PLANT_DATABASE[this.state.field.plantKey || 'fruit_tree'] };
+      // 全新访问：按植物类型预置基准（果树→按棵数，大田→按亩数）
+      this.state.field.calcBasis = this.state.plant.calcMode === 'tree' ? 'tree' : 'area';
     }
   },
 
@@ -806,6 +808,10 @@ const UI = {
     } else { // short
       stockText = `库存不足，需补购 ${r.needToBuy} 套 | 参考需 ${fmt(r.pesticide, 2)} → ${r.pesticideRounded} 套`;
     }
+    // 按棵数但棵数未填（含旧存档回落）：提示补填
+    if (!r.plotMode && r.calcBasis === 'tree' && !(r.treeCount > 0)) {
+      stockText += ' ⚠️ 请在上方填写果树棵数';
+    }
     document.getElementById('rPesticideDetail').textContent = stockText;
     document.getElementById('rPesticideFormula').textContent =
       r.plotMode
@@ -820,8 +826,9 @@ const UI = {
       document.getElementById('rWaterDetail').textContent =
         `Σ ${r.plots.length} 个地块 · 机载上限 ${r.droneTank} 升/趟 · 共 ${r.totalTrips} 趟`;
     } else {
+      const treeNote = (r.calcBasis === 'tree' && r.treeCount > 0) ? `（按棵数 ${r.treeCount} 棵反推）` : '';
       document.getElementById('rWaterDetail').textContent =
-        `${this.state.plant.waterPerMu} 升/亩 × ${fmt(effArea, 1)} 亩${r.calcBasis === 'tree' ? `（按棵数 ${r.treeCount} 棵反推）` : ''}`;
+        `${this.state.plant.waterPerMu} 升/亩 × ${fmt(effArea, 1)} 亩${treeNote}`;
     }
     document.getElementById('rWaterFormula').textContent =
       `公式: 亩数 × 每亩水量（无人机喷洒量，独立于药量计算）`;
