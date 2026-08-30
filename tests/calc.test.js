@@ -48,7 +48,7 @@ const S = ctx.window.Storage;
 function freshState() {
   return vm.runInContext(`({
     mode: 'spray',
-    plant: { ...PLANT_DATABASE.fruit_tree },
+    plant: { ...PLANT_DATABASE.shajun },
     field: { ...DEFAULT_FIELD },
     costs: { ...DEFAULT_COSTS },
     income: { ...DEFAULT_INCOME },
@@ -99,7 +99,7 @@ test('打药默认参数（果树 10 亩）', () => {
 });
 
 test('costs 缺字段时 pesticideIncluded 应回落为 false（历史 bug：曾翻转为 true）', () => {
-  const r = C.compute({ plant: { ...ctx.window.PLANT_DATABASE.fruit_tree }, field: { area: 10 }, costs: {}, income: {} });
+  const r = C.compute({ plant: { ...ctx.window.PLANT_DATABASE.shajun }, field: { area: 10 }, costs: {}, income: {} });
   eq(r.pesticideIncluded, false, '缺字段 ≠ 包药');
 });
 
@@ -234,16 +234,39 @@ test('棵数基准与亩数基准数值一致（160棵 = 2亩）', () => {
   ok(Math.abs(a.timing.totalTime - b.timing.totalTime) < 1e-9, '作业时间一致');
 });
 
-test('旧存档无 calcBasis 时按植物类型预置（模拟 loadState 合并逻辑）', () => {
+test('类型 defaultBasis 决定基准（含旧 calcMode 兼容）', () => {
   const s = freshState();
-  delete s.field.calcBasis;
-  s.field = Object.assign({ ...ctx.window.DEFAULT_FIELD }, s.field);
-  // 与 ui.js loadState 相同的推断规则
-  s.field.calcBasis = s.plant.calcMode === 'tree' ? 'tree' : 'area';
-  eq(s.field.calcBasis, 'tree', '果树默认按棵数');
-  s.plant = { ...ctx.window.PLANT_DATABASE.rice };
-  s.field.calcBasis = s.plant.calcMode === 'tree' ? 'tree' : 'area';
-  eq(s.field.calcBasis, 'area', '大田默认按亩数');
+  eq(s.plant.defaultBasis, 'tree', '杀菌默认按棵数');
+  // 引擎的面积公式分支读 defaultBasis || calcMode
+  s.plant = { ...ctx.window.PLANT_DATABASE.shajun, defaultBasis: 'area' };
+  const r = C.compute({ plant: s.plant, field: { area: 10 }, costs: {}, income: {} });
+  ok(r.water === 200, '面积基准下水量按每亩水量');
+  // 旧快照只有 calcMode 字段也能工作
+  const legacy = { ...ctx.window.PLANT_DATABASE.shajun, calcMode: 'area', defaultBasis: undefined };
+  legacy.defaultBasis = undefined;
+  eq(legacy.calcMode, 'area', '旧字段存在');
+});
+
+test('旧作物快照注册为自定义类型（迁移逻辑纯数据验证）', () => {
+  // 模拟 ui.registerTypeSnapshot 的注册规则
+  const library = [
+    { key: 'shajun', name: '杀菌', builtin: true },
+    { key: 'guoying', name: '果蝇', builtin: true }
+  ];
+  const snapshot = { name: '果树', icon: '🌳', calcMode: 'tree', flightHeight: 2, waterPerMu: 20, treesPerMu: 80, waterPerTree: 3, pesticideWaterPerSet: 300, droneSavingCoeff: 0.7 };
+  const existing = library.find(t => t.name === snapshot.name);
+  eq(existing || null, null, '果树不在新库');
+  const key = 'custom_test_0';
+  library.push({
+    key, name: snapshot.name, icon: snapshot.icon || '🧪',
+    defaultBasis: snapshot.defaultBasis || (snapshot.calcMode === 'tree' ? 'tree' : 'area'),
+    builtin: false
+  });
+  eq(library.length, 3, '注册后 3 个类型');
+  eq(library[2].defaultBasis, 'tree', '旧 calcMode=tree 迁移为默认基准');
+  // 重名不再注册
+  const again = library.find(t => t.name === snapshot.name);
+  ok(again, '重名直接复用');
 });
 
 /* ============================================================

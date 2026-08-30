@@ -21,11 +21,109 @@ const UI = {
 
   /* ---------- 初始化 ---------- */
   init() {
+    this.loadTypes();
     this.loadState();
     this.bindModeSwitcher();
     this.bindEvents();
     this.applyMode(this.state.mode);
     this.applyTheme(Storage.getTheme());
+  },
+
+  /* ============================================================
+     ★★★ 用药类型库（自定义增减）★★★
+     - 内置定义在 data.js PLANT_DATABASE（杀菌/果蝇），
+       用户增改后的完整库存 localStorage（Storage.getTypes/saveTypes）
+     - state.plant 仍存选中类型快照（内部字段名沿用，兼容旧存档/预设）
+     - 旧存档/旧预设中的作物快照加载时自动注册为自定义类型
+     ============================================================ */
+  loadTypes() {
+    const saved = Storage.getTypes();
+    if (Array.isArray(saved) && saved.length > 0) {
+      // 补齐 builtin 标记（内置 key 恒为 builtin）
+      this.typeLibrary = saved.map(t => ({ ...t, builtin: !!window.PLANT_DATABASE[t.key]?.builtin && !t._modified }));
+    } else {
+      this.typeLibrary = Object.entries(window.PLANT_DATABASE).map(([key, t]) => ({ key, ...t }));
+    }
+    Storage.saveTypes(this.typeLibrary);
+  },
+
+  saveTypes() {
+    Storage.saveTypes(this.typeLibrary);
+  },
+
+  getType(key) {
+    return this.typeLibrary.find(t => t.key === key) || null;
+  },
+
+  /* 旧存档/导入的类型快照若不在库中 → 注册为自定义类型，返回可用 key */
+  registerTypeSnapshot(snapshot) {
+    if (!snapshot || !snapshot.name) return null;
+    const existing = this.typeLibrary.find(t => t.name === snapshot.name);
+    if (existing) return existing.key;
+    const key = 'custom_' + Date.now().toString(36) + '_' + this.typeLibrary.length;
+    this.typeLibrary.push({
+      key,
+      name: snapshot.name,
+      icon: snapshot.icon || '🧪',
+      defaultBasis: snapshot.defaultBasis || (snapshot.calcMode === 'tree' ? 'tree' : 'area'),
+      flightHeight: snapshot.flightHeight != null ? snapshot.flightHeight : 2,
+      waterPerMu: snapshot.waterPerMu != null ? snapshot.waterPerMu : 20,
+      treesPerMu: snapshot.treesPerMu != null ? snapshot.treesPerMu : 0,
+      waterPerTree: snapshot.waterPerTree != null ? snapshot.waterPerTree : 0,
+      pesticideWaterPerSet: snapshot.pesticideWaterPerSet != null ? snapshot.pesticideWaterPerSet : 300,
+      droneSavingCoeff: snapshot.droneSavingCoeff != null ? snapshot.droneSavingCoeff : 0.7,
+      description: snapshot.description || '（从旧数据自动导入的类型）',
+      notes: snapshot.notes || '',
+      builtin: false
+    });
+    this.saveTypes();
+    return key;
+  },
+
+  /* ---------- 加载已保存状态 ---------- */
+  loadState() {
+    const saved = Storage.getState();
+    if (saved) {
+      this.state.mode = saved.mode || 'spray';
+      if (saved.plant) this.state.plant = { ...saved.plant };
+      else this.state.plant = { ...PLANT_DATABASE[this.state.field.plantKey || 'shajun'] };
+      // 旧存档快照不在类型库中 → 自动注册为自定义类型
+      let key = this.state.field.plantKey;
+      if (!key || !this.getType(key)) {
+        key = this.registerTypeSnapshot(this.state.plant) || key;
+      }
+      this.state.field.plantKey = key;
+      const libType = this.getType(key);
+      if (libType) this.state.plant = { ...libType };
+      if (saved.field) this.state.field = { ...this.state.field, ...saved.field };
+      this.state.field.plantKey = key;
+      // 旧版存档无 calcBasis：按类型 defaultBasis 预置
+      if (saved.field && saved.field.calcBasis === undefined) {
+        this.state.field.calcBasis = this.getBasisOf(this.state.plant);
+      }
+      if (saved.costs) this.state.costs = { ...this.state.costs, ...saved.costs };
+      if (saved.income) this.state.income = { ...this.state.income, ...saved.income };
+      if (saved.timing) this.state.timing = { ...this.state.timing, ...saved.timing };
+      if (saved.haulField) this.state.haulField = { ...this.state.haulField, ...saved.haulField };
+      if (saved.haulCosts) this.state.haulCosts = { ...this.state.haulCosts, ...saved.haulCosts };
+      if (saved.haulIncome) this.state.haulIncome = { ...this.state.haulIncome, ...saved.haulIncome };
+      if (saved.workOrder) {
+        this.state.workOrder = {
+          ...{ completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' },
+          ...saved.workOrder
+        };
+      }
+    } else {
+      this.state.plant = { ...PLANT_DATABASE[this.state.field.plantKey || 'shajun'] };
+      // 全新访问：按类型 defaultBasis 预置基准
+      this.state.field.calcBasis = this.getBasisOf(this.state.plant);
+    }
+  },
+
+  /* 类型的默认计算基准（兼容旧 calcMode 字段） */
+  getBasisOf(plant) {
+    const b = plant.defaultBasis || plant.calcMode;
+    return b === 'tree' ? 'tree' : 'area';
   },
 
   /* ---------- 模式切换 ---------- */
@@ -59,7 +157,7 @@ const UI = {
     // 工单按钮仅打药模式可用
     const woBtn = document.getElementById('workOrderBtn');
     if (woBtn) woBtn.style.display = mode === 'spray' ? '' : 'none';
-    // 植物面板和预设栏：仅打药模式显示
+    // 类型面板和预设栏：仅打药模式显示
     const plantPanel = document.querySelector('.plant-panel');
     if (plantPanel) plantPanel.style.display = mode === 'spray' ? '' : 'none';
     // 作业时间面板和时间参数面板：仅打药模式显示
@@ -75,7 +173,7 @@ const UI = {
 
   renderAll() {
     if (this.state.mode === 'spray') {
-      this.renderPlantGrid();
+      this.renderTypeGrid();
       this.updatePlantInfo();
       this.renderParamForm();
       this.renderCostTabs();
@@ -88,62 +186,31 @@ const UI = {
     }
   },
 
-  /* ---------- 加载已保存状态 ---------- */
-  loadState() {
-    const saved = Storage.getState();
-    if (saved) {
-      this.state.mode = saved.mode || 'spray';
-      if (saved.plant) this.state.plant = { ...saved.plant };
-      else this.state.plant = { ...PLANT_DATABASE[this.state.field.plantKey || 'fruit_tree'] };
-      if (saved.field) this.state.field = { ...this.state.field, ...saved.field };
-      // 旧版存档无 calcBasis：按植物类型预置基准（果树→按棵数）
-      if (saved.field && saved.field.calcBasis === undefined) {
-        this.state.field.calcBasis = this.state.plant.calcMode === 'tree' ? 'tree' : 'area';
-      }
-      if (saved.costs) this.state.costs = { ...this.state.costs, ...saved.costs };
-      if (saved.income) this.state.income = { ...this.state.income, ...saved.income };
-      if (saved.timing) this.state.timing = { ...this.state.timing, ...saved.timing };
-      if (saved.haulField) this.state.haulField = { ...this.state.haulField, ...saved.haulField };
-      if (saved.haulCosts) this.state.haulCosts = { ...this.state.haulCosts, ...saved.haulCosts };
-      if (saved.haulIncome) this.state.haulIncome = { ...this.state.haulIncome, ...saved.haulIncome };
-      if (saved.workOrder) {
-        this.state.workOrder = {
-          ...{ completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' },
-          ...saved.workOrder
-        };
-      }
-    } else {
-      this.state.plant = { ...PLANT_DATABASE[this.state.field.plantKey || 'fruit_tree'] };
-      // 全新访问：按植物类型预置基准（果树→按棵数，大田→按亩数）
-      this.state.field.calcBasis = this.state.plant.calcMode === 'tree' ? 'tree' : 'area';
-    }
-  },
-
   /* ============================================================
-     ★★ 打药模式（沿用原逻辑）★★
+     ★★ 打药模式（用药类型 + 计算）★★
      ============================================================ */
 
-  renderPlantGrid() {
+  renderTypeGrid() {
     const grid = document.getElementById('plantGrid');
     grid.innerHTML = '';
-    Object.entries(PLANT_DATABASE).forEach(([key, plant]) => {
+    this.typeLibrary.forEach(t => {
       const card = document.createElement('div');
       card.className = 'plant-card';
-      card.dataset.key = key;
-      if (this.state.plant && this.state.plant.name === plant.name) card.classList.add('active');
-      card.innerHTML = `<span class="p-icon">${plant.icon}</span><span class="p-name">${plant.name}</span>`;
-      card.addEventListener('click', () => this.selectPlant(key));
+      card.dataset.key = t.key;
+      if (this.state.plant && this.state.plant.name === t.name) card.classList.add('active');
+      card.innerHTML = `<span class="p-icon">${t.icon}</span><span class="p-name">${this.escapeHtml(t.name)}</span>`;
+      card.addEventListener('click', () => this.selectType(t.key));
       grid.appendChild(card);
     });
   },
 
-  selectPlant(key) {
-    const plant = PLANT_DATABASE[key];
-    if (!plant) return;
-    this.state.plant = { ...plant };
+  selectType(key) {
+    const t = this.getType(key);
+    if (!t) return;
+    this.state.plant = { ...t };
     this.state.field.plantKey = key;
-    // 切换植物时按其自然基准预置（果树→按棵数，大田→按亩数）
-    this.state.field.calcBasis = plant.calcMode === 'tree' ? 'tree' : 'area';
+    // 切换类型时按其 defaultBasis 预置计算基准
+    this.state.field.calcBasis = this.getBasisOf(t);
     document.querySelectorAll('.plant-card').forEach(c => {
       c.classList.toggle('active', c.dataset.key === key);
     });
@@ -154,10 +221,119 @@ const UI = {
     this.save();
   },
 
+  /* ---------- 用药类型 CRUD ---------- */
+  openTypeModal(key) {
+    this._editingTypeKey = key || null;
+    this.renderTypeForm();
+    this.openModal('typeModal');
+  },
+
+  renderTypeForm() {
+    const form = document.getElementById('typeForm');
+    if (!form) return;
+    const t = this._editingTypeKey ? this.getType(this._editingTypeKey) : null;
+    const v = (k, dflt) => (t && t[k] != null ? t[k] : dflt);
+    const F = (label, id, type, val, tip) => `
+      <div class="field">
+        <label>${label}${tip ? ` <i class="tip" data-tip="${this.escapeHtml(tip)}">i</i>` : ''}</label>
+        <input type="${type}" id="${id}" value="${this.escapeHtml(String(val))}">
+      </div>`;
+    form.innerHTML = `
+      ${F('类型名称 *', 'tf-name', 'text', v('name', ''), '如：杀菌、果蝇、晚熟桃膨大期')}
+      ${F('图标', 'tf-icon', 'text', v('icon', '🧪'), '一个 emoji，显示在类型卡片上')}
+      ${F('每亩水量 (升)', 'tf-waterPerMu', 'number', v('waterPerMu', 20), '该作业每亩喷洒的药液量')}
+      ${F('一套药需水量 (升)', 'tf-perSet', 'number', v('pesticideWaterPerSet', 300), '一整套药剂对应需要的水量')}
+      ${F('省药系数', 'tf-coeff', 'number', v('droneSavingCoeff', 0.7), '0.7 表示比人工省 30%')}
+      ${F('飞行高度 (米)', 'tf-height', 'number', v('flightHeight', 2), '距作物冠层的高度')}
+      ${F('每亩棵数 (按棵数计算用)', 'tf-treesPerMu', 'number', v('treesPerMu', 80), '按棵数计算时用于亩数反推，可留 0')}
+      ${F('每棵水量 (升，按棵数计算用)', 'tf-waterPerTree', 'number', v('waterPerTree', 3), '单棵树喷洒量，可留 0')}
+      <div class="field" style="grid-column: 1 / -1;">
+        <label>说明</label>
+        <input type="text" id="tf-desc" value="${this.escapeHtml(v('description', ''))}" placeholder="如：雨后补喷注意加减量">
+      </div>`;
+  },
+
+  saveTypeForm() {
+    const get = id => document.getElementById(id)?.value;
+    const num = (id, dflt) => { const v = parseFloat(get(id)); return isNaN(v) ? dflt : v; };
+    const name = (get('tf-name') || '').trim();
+    if (!name) {
+      this.toast('请填写类型名称', 'warn');
+      return;
+    }
+    const entry = {
+      key: this._editingTypeKey || ('custom_' + Date.now().toString(36)),
+      name,
+      icon: (get('tf-icon') || '🧪').slice(0, 4),
+      defaultBasis: this._editingTypeKey ? (this.getBasisOf(this.getType(this._editingTypeKey) || {})) : 'tree',
+      flightHeight: num('tf-height', 2),
+      waterPerMu: num('tf-waterPerMu', 20),
+      treesPerMu: num('tf-treesPerMu', 0),
+      waterPerTree: num('tf-waterPerTree', 0),
+      pesticideWaterPerSet: num('tf-perSet', 300),
+      droneSavingCoeff: num('tf-coeff', 0.7),
+      description: get('tf-desc') || '',
+      notes: this._editingTypeKey ? (this.getType(this._editingTypeKey)?.notes || '') : '',
+      builtin: false   // 用户改过/新建的一律视为自定义（可删除）
+    };
+    const idx = this.typeLibrary.findIndex(t => t.key === entry.key);
+    if (idx >= 0) this.typeLibrary[idx] = entry;
+    else this.typeLibrary.push(entry);
+    this.saveTypes();
+    // 选中它
+    this.state.plant = { ...entry };
+    this.state.field.plantKey = entry.key;
+    this.state.field.calcBasis = this.getBasisOf(entry);
+    this.renderTypeGrid();
+    this.updatePlantInfo();
+    this.syncParamFormFromPlant();
+    this.updateCalcBasisVisibility();
+    this.compute();
+    this.save();
+    this.closeModal('typeModal');
+    this.toast(`类型「${name}」已保存`, 'success');
+  },
+
+  deleteCurrentType() {
+    const key = this.state.field.plantKey;
+    const t = this.getType(key);
+    if (!t) return;
+    if (this.typeLibrary.length <= 1) {
+      this.toast('至少保留一个类型', 'warn');
+      return;
+    }
+    if (!confirm(`删除类型「${t.name}」？`)) return;
+    this.typeLibrary = this.typeLibrary.filter(x => x.key !== key);
+    const first = this.typeLibrary[0];
+    this.state.plant = { ...first };
+    this.state.field.plantKey = first.key;
+    this.state.field.calcBasis = this.getBasisOf(first);
+    this.saveTypes();
+    this.renderTypeGrid();
+    this.updatePlantInfo();
+    this.syncParamFormFromPlant();
+    this.updateCalcBasisVisibility();
+    this.compute();
+    this.save();
+    this.closeModal('typeModal');
+    this.toast(`类型「${t.name}」已删除`, 'warn');
+  },
+
+  restoreDefaultTypes() {
+    Object.entries(PLANT_DATABASE).forEach(([key, t]) => {
+      if (!this.typeLibrary.find(x => x.key === key)) {
+        this.typeLibrary.push({ key, ...t });
+      }
+    });
+    this.saveTypes();
+    this.renderTypeGrid();
+    this.toast('已找回默认类型（杀菌/果蝇）', 'success');
+  },
+
   /* 计算基准切换后的输入项显隐：按棵数隐藏亩数、显示棵数并锁定每亩棵数 */
   updateCalcBasisVisibility() {
     const basis = this.state.field.calcBasis === 'tree' ? 'tree' : 'area';
-    // 同步单选按钮选中态（切换植物时 state 变了但 DOM 不会自动跟随）
+    // 同步单选按钮选中态（切换类型时 state 变了但 DOM 不会自动跟随）
     document.querySelectorAll('input[name="radio-calcBasis"]').forEach(r => {
       r.checked = r.value === basis;
     });
@@ -306,7 +482,11 @@ const UI = {
     if (!wrap) return;
     const r = this._lastResult;
     const wo = this.getWorkOrder();
-    let html = '';
+    let html = `
+      <div class="field" style="grid-column: 1 / -1;">
+        <label>农户名称 <i class="tip" data-tip="工单抬头显示；未来农户档案将在此选择">i</i></label>
+        <input type="text" class="wo-farmer" value="${this.escapeHtml(this.state.field.farmerName || '')}" placeholder="选填，如：老王家果园">
+      </div>`;
     if (r && r.plotMode) {
       (r.plots || []).forEach(p => {
         const done = Number(wo.completedByPlot[p.id]) || 0;
@@ -357,7 +537,8 @@ const UI = {
     const basisText = r.plotMode ? '多地块' : (r.calcBasis === 'tree' ? '按棵数' : '按亩数');
     L.push('🚁 无人机作业工单');
     L.push(`日期: ${new Date().toLocaleString('zh-CN')}`);
-    L.push(`作物: ${plant.icon || ''}${plant.name} · ${basisText}${r.plotMode ? ` · 机载上限 ${r.droneTank}升/趟` : ''}`);
+    if (this.state.field.farmerName) L.push(`农户: ${this.state.field.farmerName}`);
+    L.push(`类型: ${plant.icon || ''}${plant.name} · ${basisText}${r.plotMode ? ` · 机载上限 ${r.droneTank}升/趟` : ''}`);
     L.push(LINE);
 
     if (r.plotMode) {
@@ -1271,14 +1452,14 @@ const UI = {
   resetDefaults() {
     if (this.state.mode === 'spray') {
       if (!confirm('确定恢复打药模式所有参数为默认值？当前打药模式的所有参数将被重置。')) return;
-      // 保留植物选择，重置其他打药参数
+      // 保留用药类型，重置其他打药参数
       const keepPlant = this.state.plant;
       this.state.field = { ...DEFAULT_FIELD };
       this.state.costs = { ...DEFAULT_COSTS };
       this.state.income = { ...DEFAULT_INCOME };
       this.state.timing = { ...DEFAULT_TIMING };
-      this.state.plant = keepPlant || { ...PLANT_DATABASE.fruit_tree };
-      // 基准随植物类型预置
+      this.state.plant = keepPlant || { ...PLANT_DATABASE.shajun };
+      // 基准随类型预置
       this.state.field.calcBasis = this.state.plant.calcMode === 'tree' ? 'tree' : 'area';
       this.toast('打药模式已恢复默认', 'success');
     } else {
@@ -1427,6 +1608,8 @@ const UI = {
           wo.actualSets = isNaN(v) ? 0 : Math.max(0, v);
         } else if (e.target.classList.contains('wo-note')) {
           wo.note = e.target.value;
+        } else if (e.target.classList.contains('wo-farmer')) {
+          this.state.field.farmerName = e.target.value;
         } else {
           return;
         }
@@ -1439,6 +1622,13 @@ const UI = {
     document.getElementById('savePresetBtn').addEventListener('click', () => this.savePresetPrompt());
     document.getElementById('loadPresetBtn').addEventListener('click', () => this.openPresetModal());
     document.getElementById('deletePresetBtn').addEventListener('click', () => this.openPresetModal());
+
+    // 用药类型管理
+    document.getElementById('addTypeBtn').addEventListener('click', () => this.openTypeModal(null));
+    document.getElementById('editTypeBtn').addEventListener('click', () => this.openTypeModal(this.state.field.plantKey));
+    document.getElementById('restoreTypesBtn').addEventListener('click', () => this.restoreDefaultTypes());
+    document.getElementById('saveTypeBtn').addEventListener('click', () => this.saveTypeForm());
+    document.getElementById('deleteTypeBtn').addEventListener('click', () => this.deleteCurrentType());
 
     document.getElementById('importBtn').addEventListener('click', () => this.openModal('importModal'));
     document.getElementById('exportBtn').addEventListener('click', () => this.openExportModal());
@@ -1558,6 +1748,21 @@ const UI = {
     // 工单覆盖值（实际用药套数/备注/已完成量）
     if (imported.workOrder) {
       this.state.workOrder = { ...this.getWorkOrder(), ...imported.workOrder };
+    }
+    // 导入的自定义用药类型并入类型库（重名跳过）
+    (imported.types || []).forEach(t => {
+      if (!this.typeLibrary.find(x => x.name === t.name)) {
+        this.typeLibrary.push({ ...t, builtin: false });
+      }
+    });
+    if ((imported.types || []).length) this.saveTypes();
+    // 选中类型不在库中（如旧配置的作物）→ 注册为自定义类型
+    if (!this.getType(this.state.field.plantKey) || this.state.plant.name !== (this.getType(this.state.field.plantKey) || {}).name) {
+      const key = this.registerTypeSnapshot(this.state.plant);
+      if (key) {
+        this.state.field.plantKey = key;
+        this.state.plant = { ...this.getType(key) };
+      }
     }
 
     this.applyMode(this.state.mode);

@@ -1537,3 +1537,7 @@ html, body {
   .plot-row { grid-template-columns: 1fr 1fr; }
   .plot-row .plot-name { grid-column: 1 / -1; }
 }
+
+/* 用药类型管理按钮行 */
+.type-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 2px; }
+.type-actions .btn { flex: 1; min-width: 0; }

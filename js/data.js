@@ -1,158 +1,46 @@
 /* ============================================================
-   data.js — 默认植物数据库 & 默认参数
-   每种植物包含：
-     - calcMode: 'tree' 按棵计算 | 'area' 按面积计算
+   data.js — 默认用药类型库 & 默认参数
+   每种用药类型包含：
+     - defaultBasis: 默认计算基准 'tree' 按棵 | 'area' 按亩
      - flightHeight: 建议飞行高度（米）
      - waterPerMu: 每亩水量（升）
-     - treesPerMu: 每亩棵数（果树类）
-     - waterPerTree: 每棵用水量（升，果树类）
+     - treesPerMu: 每亩棵数（按棵数计算时用）
+     - waterPerTree: 每棵用水量（升，按棵数计算时用）
      - pesticideWaterPerSet: 一套药对应的水量（升）
      - droneSavingCoeff: 无人机省药系数（0-1）
+   内置类型仅两种（杀菌/果蝇）；用户可自定义增减，
+   完整类型库存 localStorage（drone_spray_types_v1，见 storage.js）。
+   内部全局名沿用 PLANT_DATABASE / state.plant，兼容旧存档与预设。
    ============================================================ */
 
 const PLANT_DATABASE = {
-  fruit_tree: {
-    name: '果树',
-    icon: '🌳',
-    calcMode: 'tree',
+  shajun: {
+    name: '杀菌',
+    icon: '🧪',
+    defaultBasis: 'tree',
     flightHeight: 2.0,
     waterPerMu: 20,
     treesPerMu: 80,
     waterPerTree: 3,
     pesticideWaterPerSet: 300,
     droneSavingCoeff: 0.7,
-    description: '苹果/梨/桃等常见果树，建议高于树冠1-1.5米作业',
+    builtin: true,
+    description: '果园/大田杀菌剂喷施，建议高于树冠1-1.5米作业（参数可按实际药剂修改）',
     notes: '⚠️ 花期、幼果期慎用敏感药剂；避免大风天作业。'
   },
-  orchard_dense: {
-    name: '密植果园',
-    icon: '🍎',
-    calcMode: 'tree',
-    flightHeight: 1.8,
-    waterPerMu: 25,
-    treesPerMu: 110,
-    waterPerTree: 2.5,
-    pesticideWaterPerSet: 300,
-    droneSavingCoeff: 0.7,
-    description: '矮化密植苹果/樱桃等，行距小、棵数多',
-    notes: '⚠️ 注意树冠穿透性，可适当降低飞行高度。'
-  },
-  citrus: {
-    name: '柑橘园',
-    icon: '🍊',
-    calcMode: 'tree',
+  guoying: {
+    name: '果蝇',
+    icon: '🪰',
+    defaultBasis: 'tree',
     flightHeight: 2.0,
-    waterPerMu: 22,
-    treesPerMu: 60,
-    waterPerTree: 3.5,
+    waterPerMu: 20,
+    treesPerMu: 80,
+    waterPerTree: 3,
     pesticideWaterPerSet: 300,
     droneSavingCoeff: 0.7,
-    description: '柑橘/橙/柚，树冠较大需稍高水量',
-    notes: '⚠️ 红蜘蛛、潜叶蛾高发期注意轮换用药。'
-  },
-  rice: {
-    name: '水稻',
-    icon: '🌾',
-    calcMode: 'area',
-    flightHeight: 2.0,
-    waterPerMu: 1.5,
-    treesPerMu: 0,
-    waterPerTree: 0,
-    pesticideWaterPerSet: 300,
-    droneSavingCoeff: 0.7,
-    description: '水稻飞防最佳期为分蘖期至抽穗期',
-    notes: '⚠️ 避开开花期(9-11点)喷洒；注意防治稻飞虱、二化螟。'
-  },
-  wheat: {
-    name: '小麦',
-    icon: '🌾',
-    calcMode: 'area',
-    flightHeight: 1.8,
-    waterPerMu: 1.5,
-    treesPerMu: 0,
-    waterPerTree: 0,
-    pesticideWaterPerSet: 300,
-    droneSavingCoeff: 0.7,
-    description: '小麦飞防最佳期为拔节期至灌浆期',
-    notes: '⚠️ 重点防治赤霉病、蚜虫、白粉病。'
-  },
-  corn: {
-    name: '玉米',
-    icon: '🌽',
-    calcMode: 'area',
-    flightHeight: 2.5,
-    waterPerMu: 2.0,
-    treesPerMu: 0,
-    waterPerTree: 0,
-    pesticideWaterPerSet: 300,
-    droneSavingCoeff: 0.7,
-    description: '玉米飞防最佳期为大喇叭口期',
-    notes: '⚠️ 玉米植株高，飞行高度需相应提高，避免倒伏。'
-  },
-  cotton: {
-    name: '棉花',
-    icon: '🌱',
-    calcMode: 'area',
-    flightHeight: 2.0,
-    waterPerMu: 1.8,
-    treesPerMu: 0,
-    waterPerTree: 0,
-    pesticideWaterPerSet: 300,
-    droneSavingCoeff: 0.7,
-    description: '棉花飞防注意防治蚜虫、红蜘蛛、棉铃虫',
-    notes: '⚠️ 避免在花期喷洒影响授粉。'
-  },
-  vegetables: {
-    name: '蔬菜',
-    icon: '🥬',
-    calcMode: 'area',
-    flightHeight: 1.5,
-    waterPerMu: 1.2,
-    treesPerMu: 0,
-    waterPerTree: 0,
-    pesticideWaterPerSet: 300,
-    droneSavingCoeff: 0.7,
-    description: '叶菜/根菜类，飞行高度低，需选低毒农药',
-    notes: '⚠️ 严格遵守安全间隔期，避免农残超标。'
-  },
-  tea: {
-    name: '茶园',
-    icon: '🍵',
-    calcMode: 'area',
-    flightHeight: 1.8,
-    waterPerMu: 2.5,
-    treesPerMu: 0,
-    waterPerTree: 0,
-    pesticideWaterPerSet: 300,
-    droneSavingCoeff: 0.7,
-    description: '茶园飞防注意防治茶小绿叶蝉、茶尺蠖',
-    notes: '⚠️ 采摘前15天停止喷药；优选生物农药。'
-  },
-  banana: {
-    name: '香蕉园',
-    icon: '🍌',
-    calcMode: 'area',
-    flightHeight: 2.2,
-    waterPerMu: 3.0,
-    treesPerMu: 0,
-    waterPerTree: 0,
-    pesticideWaterPerSet: 300,
-    droneSavingCoeff: 0.7,
-    description: '香蕉叶片大需水量较高',
-    notes: '⚠️ 注意防治叶斑病、黑星病。'
-  },
-  forest: {
-    name: '林地/防护林',
-    icon: '🌲',
-    calcMode: 'area',
-    flightHeight: 3.0,
-    waterPerMu: 3.0,
-    treesPerMu: 0,
-    waterPerTree: 0,
-    pesticideWaterPerSet: 300,
-    droneSavingCoeff: 0.75,
-    description: '杨树/松树等林地，飞行高度较高',
-    notes: '⚠️ 注意防治美国白蛾、松毛虫。'
+    builtin: true,
+    description: '果园果蝇防治/诱杀作业（参数可按实际药剂修改）',
+    notes: '⚠️ 注意药剂安全间隔期与采收期。'
   }
 };
 
@@ -216,12 +104,13 @@ const DEFAULT_TIMING = {
 const DEFAULT_FIELD = {
   area: 10,               // 作业亩数
   treeCount: 0,           // 果树棵数（calcBasis='tree' 时作为主输入，亩数反推）
-  calcBasis: 'area',      // 计算基准：'area' 按亩数 | 'tree' 按棵数（选果树类时自动预置'tree'）
-  plantKey: 'fruit_tree', // 默认植物
+  calcBasis: 'area',      // 计算基准：'area' 按亩数 | 'tree' 按棵数（选类型时按其 defaultBasis 预置）
+  plantKey: 'shajun',     // 当前用药类型 key（内部字段名沿用，兼容旧存档）
   existingPesticideSets: 0, // 现有药剂套数（用户填，0表示无库存，作为主显示）
+  farmerName: '',         // 农户名称（工单抬头显示；三期接入农户档案）
   droneTank: 85,          // 机载装药上限（升/趟）：无人机药箱最大装载量
   plotMode: false,        // 多地块模式：true 时按地块列表计算
-  plots: []               // 地块列表 [{id, name, area, treeCount, transferMin, tripsOverride}]
+  plots: []               // 地块列表 [{id, name, area, transferMin, tripsOverride}]
 };
 
 /* 表单字段定义（用于动态渲染 + tooltip 说明 + 输入验证）
@@ -244,8 +133,8 @@ const FIELD_DEFS = {
   existingPesticideSets: { label: '现有药剂套数', unit: '套', tip: '已库存的药剂套数（主显示，作为主要参考）。0表示无库存，将完全按公式参考量采购', group: 'param', default: 0, step: 1, integer: true, min: 0, priority: 'high' },
   flightHeight: { label: '飞行高度', unit: '米', tip: '无人机距离作物冠层的建议高度，影响覆盖均匀度（建议 1-5 米）', group: 'param', default: 2.0, step: 0.1, min: 0.5, warnBelow: 0.5, warnAbove: 10 },
   waterPerMu: { label: '每亩水量', unit: '升', tip: '每亩地需要喷洒的药液总量（升/亩，建议 1-50）', group: 'param', default: 20, step: 0.1, min: 0.1, warnBelow: 0.5 },
-  treesPerMu: { label: '每亩棵数', unit: '棵', tip: '每亩种植的棵数，仅果树类使用', group: 'param', default: 80, step: 1, integer: true, min: 0 },
-  waterPerTree: { label: '每棵用水量', unit: '升', tip: '单棵树需要喷洒的药液量（升/棵），仅果树类使用', group: 'param', default: 3, step: 0.1, min: 0 },
+  treesPerMu: { label: '每亩棵数', unit: '棵', tip: '每亩种植的棵数，按棵数计算时用于亩数反推', group: 'param', default: 80, step: 1, integer: true, min: 0 },
+  waterPerTree: { label: '每棵用水量', unit: '升', tip: '单棵树需要喷洒的药液量（升/棵），按棵数计算时使用', group: 'param', default: 3, step: 0.1, min: 0 },
   pesticideWaterPerSet: { label: '一套药需水量', unit: '升', tip: '一整套药剂对应需要的水量（升），决定一套药能配多少药液', group: 'param', default: 300, step: 1, min: 1, warnBelow: 10 },
   droneSavingCoeff: { label: '无人机省药系数', unit: '', tip: '无人机相比人工打药节省的药量比例，0.7 表示省 30%（可超过1，表示更费药；建议 0.5-1.5）', group: 'param', default: 0.7, step: 0.05, min: 0, warnBelow: 0.1, warnAbove: 3 },
 

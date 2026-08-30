@@ -72,14 +72,19 @@
   </div>
 
   <main class="app-main">
-    <!-- 左侧：植物选择 -->
-    <section class="panel plant-panel" aria-label="植物选择">
-      <div class="panel-title"><span>🌱</span> 植物选择</div>
+    <!-- 左侧：用药类型 -->
+    <section class="panel plant-panel" aria-label="用药类型">
+      <div class="panel-title"><span>🧪</span> 用药类型 <span class="hint">点击选择，可自定义增减</span></div>
       <div class="plant-grid" id="plantGrid"><!-- JS 注入 --></div>
       <div class="plant-info" id="plantInfo">
         <div class="plant-info-name" id="plantInfoName">—</div>
-        <div class="plant-info-desc" id="plantInfoDesc">请选择一种植物</div>
+        <div class="plant-info-desc" id="plantInfoDesc">请选择用药类型</div>
         <div class="plant-info-notes" id="plantInfoNotes"></div>
+      </div>
+      <div class="type-actions">
+        <button id="addTypeBtn" class="btn btn-secondary btn-sm">＋ 新建类型</button>
+        <button id="editTypeBtn" class="btn btn-secondary btn-sm">✏️ 编辑当前</button>
+        <button id="restoreTypesBtn" class="btn btn-secondary btn-sm">↺ 找回默认</button>
       </div>
       <div class="preset-bar">
         <button id="savePresetBtn" class="btn btn-secondary btn-sm">💾 存为预设</button>
@@ -342,6 +347,20 @@
       <div class="modal-actions">
         <button class="btn btn-secondary danger" id="clearHistoryBtn">🗑 清空历史</button>
         <button class="btn btn-secondary" data-close>关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框：用药类型编辑 -->
+  <div class="modal" id="typeModal" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-title">🧪 用药类型 <button class="modal-close" data-close>✕</button></div>
+      <p class="modal-hint" id="typeModalHint">填写该类型的作业参数，保存后立即生效。所有数值后续可随时修改。</p>
+      <div class="form-grid" id="typeForm"><!-- JS 注入 --></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary danger" id="deleteTypeBtn">🗑 删除此类型</button>
+        <button class="btn btn-secondary" data-close>取消</button>
+        <button class="btn btn-primary" id="saveTypeBtn">保存类型</button>
       </div>
     </div>
   </div>

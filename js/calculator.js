@@ -99,7 +99,7 @@ const Calculator = {
     const pesticideWaterPerSet = Math.max(0.01, Number(plant.pesticideWaterPerSet) || 1);
     if (calcBasis === 'tree' && treeCount > 0) {
       pesticideRaw = (treeCount * (Number(plant.waterPerTree) || 0)) / pesticideWaterPerSet;
-    } else if (plant.calcMode === 'tree') {
+    } else if ((plant.defaultBasis || plant.calcMode) === 'tree') {
       const treesPerMu = Number(plant.treesPerMu) || 0;
       const waterPerTree = Number(plant.waterPerTree) || 0;
       pesticideRaw = (area * waterPerTree * treesPerMu) / pesticideWaterPerSet;
