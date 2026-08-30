@@ -401,6 +401,28 @@ A：本机 GitHub 访问受限。依次检查：代理软件是否启动 → 凭
 A：加 `-Mirror` 参数走阿里云镜像。已经卡住的话先 `Ctrl+C`，
 删掉 `%USERPROFILE%\.gradle\caches` 再重来。
 
+**Q：腾讯 CloudBase 部署成功，PC 打开网址却变成"下载 index.html"**
+A：这是 CloudBase **默认域名（*.tcloudbaseapp.com）的限制**——未绑定自定义域名时，
+腾讯会对 HTML 响应强制下载（防未备案域名被当网页访问）。解决办法三选一：
+1. CloudBase 控制台 → 静态网站托管 → 绑定**已备案的自定义域名**（官方指定路径）；
+2. 改用 GitHub Pages / Cloudflare Pages（无此限制，项目有现成脚本）；
+3. 本地自用不受影响（双击 index.html 即可）。
+验证部署是否成功：直接访问 `.../js/storage.js` 这类非 HTML 资源能看到源码，即部署正常。
+
+**Q：CloudBase 更新部署后，手机上还是旧版本**
+A：三步排查：
+1. 手机访问 `.../sw.js`，看注释里的版本号（如 drone-spray-v4.2.0）——已是新版说明
+   服务器正常，是手机本地缓存：完全关闭页面重开 1-2 次（Service Worker 自动换新），
+   或清除该站点数据；微信内置浏览器缓存最顽固，建议用系统浏览器；
+2. 服务器版本也旧：CloudBase 走 CDN，边缘节点有缓存延迟，等一会儿或重新触发部署；
+3. 确认手机访问的域名/路径与本次部署一致。
+
+**Q：CloudBase 部署把整个仓库（含 androidapp/tests/文档）都传上去了**
+A：`tcb hosting deploy ./` 会传仓库全部文件。建议部署构建产物：
+本地先 `bash scripts/build-web.sh`（Windows `powershell -File scripts/build-web.ps1`）
+生成 `dist/`，再 `tcb hosting deploy ./dist /sprayandliftcalculator`，
+线上只保留运行必需的文件（构建脚本会自动重生成 standalone 单文件版）。
+
 **Q：手机装 APK 提示"安装被阻止"**
 A：设置 → 应用 → 特殊权限 → 安装未知应用 → 允许你用的那个文件管理器 / 浏览器。
 
