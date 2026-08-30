@@ -17,15 +17,6 @@ yarn-error.log*
 package-lock.json
 
 # Android Studio / Gradle 构建产物
-android-webview/.gradle/
-android-webview/build/
-android-webview/app/build/
-android-webview/local.properties
-android-webview/*.iml
-android-webview/app/*.iml
-android-webview/captures/
-android-webview/.externalNativeBuild/
-
 # APK 输出
 *.aab
 *.ap_
