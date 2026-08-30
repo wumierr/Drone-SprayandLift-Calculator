@@ -4646,7 +4646,9 @@ const UI = {
     }
     L.push(`  成本 ¥${Calculator.fmtMoney(r.totalCost)} | 收入 ¥${Calculator.fmtMoney(r.income)} | 利润 ¥${Calculator.fmtMoney(r.profit)}`);
     if (wo.note) L.push(`【备注】${wo.note}`);
-    L.push(LINE);
+    L.push('【作业前检查】');
+    L.push('  □ 天气适宜（无大风/降雨）  □ 避开正午高温与烈日直晒');
+    L.push('  □ 电池已逐块充满（含备用）  □ 加药点往返距离已确认');
     return L.join('\n');
   },
 
