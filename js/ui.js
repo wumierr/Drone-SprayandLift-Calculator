@@ -720,7 +720,7 @@ const UI = {
      ============================================================ */
   getWorkOrder() {
     if (!this.state.workOrder || typeof this.state.workOrder !== 'object') {
-      this.state.workOrder = { completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' };
+      this.state.workOrder = { completedByPlot: {}, selfByFarmer: {}, completedSingle: 0, actualSets: 0, note: '' };
     }
     const wo = this.state.workOrder;
     if (!wo.completedByPlot) wo.completedByPlot = {};
@@ -775,13 +775,18 @@ const UI = {
     if (settleWrap) {
       const st = r.settlement || [];
       if (st.length) {
-        const rowsHtml = st.map(row => `
+        const rowsHtml = st.map(row => {
+          const med = row.included
+            ? `<td>${fmt(row.usedSets, 2)} 套${row.selfSets > 0 ? `<small>（自备${fmt(row.selfSets, 1)}）</small>` : ''}</td><td>¥${Calculator.fmtMoney(row.pesticideFee)}</td>`
+            : '';
+          return `
           <tr>
             <td>${this.escapeHtml(row.farmerName)}</td>
             <td>${fmt(row.area, 1)} 亩</td>
             <td>¥${Calculator.fmtMoney(row.sprayFee)}</td>
-            ${row.included ? `<td>${fmt(row.usedSets, 2)} 套</td><td>¥${Calculator.fmtMoney(row.pesticideFee)}</td>` : ''}
-          </tr>`).join('');
+            ${med}
+          </tr>`;
+        }).join('');
         const totalAreaS = st.reduce((x, row) => x + row.area, 0);
         const totalFee = st.reduce((x, row) => x + row.sprayFee, 0);
         const totalUsed = st.reduce((x, row) => x + row.usedSets, 0);
@@ -810,11 +815,17 @@ const UI = {
       (r.plots || []).forEach(p => {
         const done = Number(wo.completedByPlot[p.id]) || 0;
         const rest = Math.max(0, p.water - done);
+        const fid = p.farmerId || 'farmer_default';
+        const selfSets = Number((wo.selfByFarmer || {})[fid]) || 0;
+        const fname = (this.getFarmer(fid) || {}).name || '默认农户';
         html += `
         <div class="wo-plot">
           <div class="wo-plot-info">
-            <div class="wo-plot-name">${this.escapeHtml(p.name)}</div>
+            <div class="wo-plot-name">${this.escapeHtml(p.name)} <span class="hint">· ${this.escapeHtml(fname)}</span></div>
             <div class="wo-plot-meta">组${p.groupId} · ${fmt(p.water, 1)}升 · 组趟数${p.groupTrips} · 每趟${fmt(p.groupPerTripWater, 1)}升</div>
+            <div class="wo-self-row"><label>${this.escapeHtml(fname)} 自备(套)</label>
+              <input type="number" class="wo-self" data-fid="${fid}" min="0" step="0.5" value="${selfSets || ''}" placeholder="0">
+            </div>
           </div>
           <div class="wo-plot-done">
             <label>已完成(升)</label>
@@ -911,7 +922,9 @@ const UI = {
       L.push('【农户结算】');
       st.forEach(row => {
         const medPart = row.included
-          ? ` | 用药量 ${fmt(row.usedSets, 2)}套 | 药钱 ¥${Calculator.fmtMoney(row.pesticideFee)}`
+          ? (row.selfSets > 0
+            ? ` | 用药量 ${fmt(row.usedSets, 2)}套（自备${fmt(row.selfSets, 1)}+我们补充${fmt(row.supplementSets, 1)}） | 药钱 ¥${Calculator.fmtMoney(row.pesticideFee)}（按补充量计）`
+            : ` | 用药量 ${fmt(row.usedSets, 2)}套 | 药钱 ¥${Calculator.fmtMoney(row.pesticideFee)}`)
           : '';
         L.push(`  ${row.farmerName}: 地块 ${fmt(row.area, 1)}亩 | 打药 ¥${Calculator.fmtMoney(row.sprayFee)}${medPart}`);
       });
@@ -2087,6 +2100,12 @@ const UI = {
           const v = parseFloat(e.target.value);
           wo.actualSets = isNaN(v) ? 0 : Math.max(0, v);
           // 汇总卡/续药条随实际套数联动刷新（重渲染后输入框失焦可接受，该字段改动频率低）
+          this.renderWorkOrderQuick();
+          return;
+        } else if (e.target.classList.contains('wo-self')) {
+          const v = parseFloat(e.target.value);
+          wo.selfByFarmer = wo.selfByFarmer || {};
+          wo.selfByFarmer[e.target.dataset.fid] = isNaN(v) ? 0 : Math.max(0, v);
           this.renderWorkOrderQuick();
           return;
         } else if (e.target.classList.contains('wo-note')) {

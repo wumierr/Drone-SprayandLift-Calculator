@@ -45,6 +45,29 @@ function ok(cond, msg = '') { if (!cond) throw new Error(msg || 'expected truthy
 const C = ctx.window.Calculator;
 const S = ctx.window.Storage;
 
+/* ---------- 凑药结算：农户自备不足我们补充（v4.4） ---------- */
+test('凑药口径：药钱只按我们补充的量，自备不收钱', () => {
+  const s = freshState();
+  s.field.plots = [
+    { id: 'a', name: 'A', area: 10, groupId: 1, farmerId: 'fA' },
+    { id: 'b', name: 'B', area: 10, groupId: 1, farmerId: 'fA' }
+  ];
+  s.farmers = [{ id: 'fA', name: '农户甲', pricePerMu: 25, enabled: true }];
+  s.costs.pesticideIncluded = true;
+  s.costs.pesticidePrice = 80;
+  s.workOrder = { completedByPlot: {}, selfByFarmer: { fA: 3 }, completedSingle: 0, actualSets: 0, note: '' };
+  const r = C.computePlots(s);
+  // 稀释口径用量：20亩×80棵×3升÷300×0.7 = 11.2 套；自备 3 → 补充 8.2
+  const st = r.settlement[0];
+  ok(Math.abs(st.usedSets - 11.2) < 1e-9, `用量 ${st.usedSets} 应为 11.2`);
+  eq(st.selfSets, 3, '自备 3');
+  ok(Math.abs(st.supplementSets - 8.2) < 1e-9, `补充 ${st.supplementSets} 应为 8.2`);
+  ok(Math.abs(st.pesticideFee - 8.2 * 80) < 1e-9, '药钱只按补充量 8.2×80=656');
+  // 作业方成本仍按采购口径（采购 round78(11.2)=11 ×80）
+  eq(r.pesticideRounded, 11, '采购 11 套');
+  eq(r.costBreakdown.pesticide, 11 * 80, '作业方成本=采购×单价（与结算解耦）');
+});
+
 /* ---------- 内置类型推荐参数（v4.3 用户指定） ---------- */
 test('内置类型默认参数：杀菌 6/4/2、果蝇 7/6/4', () => {
   const shajun = ctx.window.PLANT_DATABASE.shajun;

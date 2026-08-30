@@ -426,6 +426,8 @@ const Calculator = {
        打药钱 = 农户档案默认单价 × 其地块面积；档案无价（0）回退全局每亩收费 */
     const pesticidePrice = Number(costs.pesticidePrice) || 0;
     const farmerMeta = Array.isArray(state.farmers) ? state.farmers : [];
+    const wo = state.workOrder || {};
+    const selfByFarmer = (wo.selfByFarmer && typeof wo.selfByFarmer === 'object') ? wo.selfByFarmer : {};
     const farmerMap = new Map();
     rows.forEach(r => {
       const fid = r.farmerId || 'farmer_default';
@@ -435,7 +437,7 @@ const Calculator = {
         f = {
           farmerId: fid,
           farmerName: meta ? meta.name : '未知农户',
-          area: 0, sprayFee: 0, usedSets: 0, pesticideFee: 0,
+          area: 0, sprayFee: 0, usedSets: 0, selfSets: 0, supplementSets: 0, pesticideFee: 0,
           included: result.pesticideIncluded === true
         };
         farmerMap.set(fid, f);
@@ -447,7 +449,10 @@ const Calculator = {
       const meta = farmerMeta.find(x => x.id === f.farmerId);
       const price = (meta && meta.pricePerMu > 0) ? meta.pricePerMu : (Number(income.pricePerMu) || 0);
       f.sprayFee = f.area * price;
-      f.pesticideFee = f.included ? f.usedSets * pesticidePrice : 0;
+      // 凑药口径：农户自备部分不收钱，只收我们补充卖出的量
+      f.selfSets = Math.max(0, Number(selfByFarmer[f.farmerId]) || 0);
+      f.supplementSets = Math.max(0, f.usedSets - f.selfSets);
+      f.pesticideFee = f.included ? f.supplementSets * pesticidePrice : 0;
     });
     result.settlement = [...farmerMap.values()].sort((a, b) => a.farmerName.localeCompare(b.farmerName, 'zh'));
 
