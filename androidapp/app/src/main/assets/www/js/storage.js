@@ -155,7 +155,7 @@ const Storage = {
         lines.push(`  机载装药上限: ${state.field.droneTank != null ? state.field.droneTank : 85} 升`);
         lines.push('【地块列表】');
         state.field.plots.forEach(p => {
-          const parts = [`名称=${p.name || ''}`, `亩数=${p.area != null ? p.area : 0}`, `棵数=${p.treeCount != null ? p.treeCount : 0}`,
+          const parts = [`名称=${p.name || ''}`, `亩数=${p.area != null ? p.area : 0}`,
             `农户=${p.farmerId || 'farmer_default'}`,
             `组=${Math.max(1, Math.round(Number(p.groupId) || 1))}`];
           lines.push(`  [地块] ${parts.join(' | ')}`);
@@ -494,7 +494,6 @@ const Storage = {
           id: 'imp' + result.field.plots.length,
           name: kv['名称'] || '',
           area: parseFloat(kv['亩数']) || 0,
-          treeCount: parseFloat(kv['棵数']) || 0,
           farmerId: kv['农户'] || 'farmer_default',
           groupId: parseInt(kv['组'], 10) || 1,
           tripsOverride: parseFloat(kv['趟数覆盖']) || 0

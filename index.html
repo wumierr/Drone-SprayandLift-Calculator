@@ -81,6 +81,15 @@
         <div class="plant-info-desc" id="plantInfoDesc">请选择用药类型</div>
         <div class="plant-info-notes" id="plantInfoNotes"></div>
       </div>
+      <div class="tree-quick">
+        <div class="tree-quick-title">🌳 棵数速算药量 <span class="hint">农户只知道棵数时的药量参考，不进入下方作业计算</span></div>
+        <div class="stepper" data-step="10">
+          <button type="button" class="st-btn st-minus" aria-label="减少">−</button>
+          <div class="unit-suffix" data-unit="棵"><input type="number" id="treeQuickInput" step="10" min="0" placeholder="0"></div>
+          <button type="button" class="st-btn st-plus" aria-label="增加">＋</button>
+        </div>
+        <div id="treeQuickOut" class="tree-quick-out">填入棵数后显示建议药量</div>
+      </div>
       <div class="type-actions">
         <button id="addTypeBtn" class="btn btn-secondary btn-sm">＋ 新建类型</button>
         <button id="editTypeBtn" class="btn btn-secondary btn-sm">✏️ 编辑当前</button>

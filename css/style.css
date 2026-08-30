@@ -1683,3 +1683,15 @@ html, body {
 .fc-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
 .fc-tpl { font-size: 11px; color: var(--accent); margin-top: 3px; }
 .fc-notes { font-size: 11px; color: var(--text-muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+
+/* 棵数速算药量（独立参考工具） */
+.tree-quick {
+  margin-top: 10px;
+  background: var(--accent-soft);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.tree-quick-title { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+.tree-quick-out { margin-top: 6px; font-size: 13px; color: var(--text-primary); }
+.tree-quick-out b { color: var(--accent); }

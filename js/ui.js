@@ -235,6 +235,7 @@ const UI = {
     });
     this.updatePlantInfo();
     this.syncParamFormFromPlant();
+    if (this._treeQuickRender) this._treeQuickRender();   // 速算卡按新类型参数重算
     this.compute();
     this.save();
   },
@@ -2097,6 +2098,23 @@ const UI = {
 
     // 高级设置折叠状态记忆
     this.bindAdvState();
+
+    // 棵数速算药量（独立参考，不写作业状态）
+    const tq = document.getElementById('treeQuickInput');
+    if (tq) {
+      const render = () => {
+        const out = document.getElementById('treeQuickOut');
+        const raw = Calculator.calcTreesPesticide(tq.value, this.state.plant);
+        const tpm = (this.state.plant && this.state.plant.treesPerMu) || 0;
+        const cnt = Number(tq.value) || 0;
+        if (!out) return;
+        out.innerHTML = raw > 0
+          ? `建议药量 <b>${Calculator.fmt(raw, 2)}</b> 套（采购 ${Calculator.round78(raw)} 套）${tpm > 0 ? ` · 折合 ≈ ${Calculator.fmt(cnt / tpm, 1)} 亩` : ''}`
+          : '填入棵数后显示建议药量';
+      };
+      tq.addEventListener('input', render);
+      this._treeQuickRender = render;   // 切换类型后按新类型参数重算
+    }
 
     // 农户档案
     document.getElementById('farmersBtn').addEventListener('click', () => this.openFarmersModal());

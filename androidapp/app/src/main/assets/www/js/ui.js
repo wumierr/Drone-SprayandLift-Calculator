@@ -102,10 +102,6 @@ const UI = {
       this.state.field.plantKey = key;
       // 迁移发生时立即持久化新 plantKey，避免每次刷新重复注册
       if (key !== (saved.field || {}).plantKey) this.save();
-      // 旧版存档无 calcBasis：按类型 defaultBasis 预置
-      if (saved.field && saved.field.calcBasis === undefined) {
-        this.state.field.calcBasis = this.getBasisOf(this.state.plant);
-      }
       if (saved.costs) this.state.costs = { ...this.state.costs, ...saved.costs };
       if (saved.income) this.state.income = { ...this.state.income, ...saved.income };
       if (saved.timing) this.state.timing = { ...this.state.timing, ...saved.timing };
@@ -121,8 +117,6 @@ const UI = {
       this.ensurePlots();
     } else {
       this.state.plant = { ...PLANT_DATABASE[this.state.field.plantKey || 'shajun'] };
-      // 全新访问：按类型 defaultBasis 预置基准
-      this.state.field.calcBasis = this.getBasisOf(this.state.plant);
       this.ensurePlots();
     }
   },
@@ -133,16 +127,14 @@ const UI = {
     if (!Array.isArray(f.plots)) f.plots = [];
     if (f.plots.length === 0) {
       let area = Number(f.area) || 0;
-      let treeCount = Number(f.treeCount) || 0;
-      // 按当前基准补齐另一侧数值（数据等价换算，旧存档零丢失）
+      // 旧存档按棵数填的地块换算成亩数（棵数÷每亩棵数），零丢失
+      const treeCount = Number(f.treeCount) || 0;
       const tpm = (this.state.plant && this.state.plant.treesPerMu) || 0;
-      if (f.calcBasis === 'tree' && !treeCount && area > 0 && tpm > 0) treeCount = Math.round(area * tpm);
-      if (f.calcBasis !== 'tree' && !area && treeCount > 0 && tpm > 0) area = treeCount / tpm;
+      if (!area && treeCount > 0 && tpm > 0) area = treeCount / tpm;
       f.plots = [{
         id: 'p_default',
         name: '地块1',
         area: area,
-        treeCount: treeCount,
         groupId: 1,
         farmerId: 'farmer_default'
       }];
@@ -238,14 +230,12 @@ const UI = {
     if (!t) return;
     this.state.plant = { ...t };
     this.state.field.plantKey = key;
-    // 切换类型时按其 defaultBasis 预置计算基准
-    this.state.field.calcBasis = this.getBasisOf(t);
     document.querySelectorAll('.plant-card').forEach(c => {
       c.classList.toggle('active', c.dataset.key === key);
     });
     this.updatePlantInfo();
     this.syncParamFormFromPlant();
-    this.updateCalcBasisVisibility();
+    if (this._treeQuickRender) this._treeQuickRender();   // 速算卡按新类型参数重算
     this.compute();
     this.save();
   },
@@ -312,7 +302,6 @@ const UI = {
     // 选中它
     this.state.plant = { ...entry };
     this.state.field.plantKey = entry.key;
-    this.state.field.calcBasis = this.getBasisOf(entry);
     this.renderTypeGrid();
     this.updatePlantInfo();
     this.syncParamFormFromPlant();
@@ -336,12 +325,10 @@ const UI = {
       const first = this.typeLibrary[0];
       this.state.plant = { ...first };
       this.state.field.plantKey = first.key;
-      this.state.field.calcBasis = this.getBasisOf(first);
       this.saveTypes();
       this.renderTypeGrid();
       this.updatePlantInfo();
       this.syncParamFormFromPlant();
-      this.updateCalcBasisVisibility();
       this.compute();
       this.save();
       this.closeModal('typeModal');
@@ -540,23 +527,13 @@ const UI = {
     this.toast('已找回默认类型（杀菌/果蝇）', 'success');
   },
 
-  /* 计算基准切换后的输入项显隐：按棵数隐藏亩数、显示棵数并锁定每亩棵数 */
-  updateCalcBasisVisibility() {
-    const basis = this.state.field.calcBasis === 'tree' ? 'tree' : 'area';
-    // 同步单选按钮选中态（切换类型时 state 变了但 DOM 不会自动跟随）
-    document.querySelectorAll('input[name="radio-calcBasis"]').forEach(r => {
-      r.checked = r.value === basis;
-    });
-    // 地块卡尺寸字段跟随基准（亩数/棵数），重绘编辑器
-    this.renderPlotsEditor();
-  },  renderPlotsEditor() {
+  renderPlotsEditor() {
     const wrap = document.getElementById('plotsEditor');
     if (!wrap) return;
     const plots = this.state.field.plots || [];
-    const basis = this.state.field.calcBasis === 'tree' ? 'tree' : 'area';
     let html = `
       <div class="plot-toolbar">
-        <span class="hint">每个地块一张卡片，按<b>${basis === 'tree' ? '棵数' : '亩数'}</b>填写大小；相邻地块填<b>相同组号</b>连片连续作业（趟数在下方"组汇总"里调整）</span>
+        <span class="hint">每个地块一张卡片，按<b>亩数</b>填写大小；相邻地块填<b>相同组号</b>连片连续作业（趟数在下方"组汇总"里调整）</span>
       </div>`;
     plots.forEach((p, i) => {
       html += `
@@ -568,10 +545,10 @@ const UI = {
         </div>
         <div class="plot-card-fields">
           <div class="field">
-            <label>${basis === 'tree' ? '棵数' : '亩数'} <i class="tip" data-tip="${basis === 'tree' ? '该地块的果树棵数（亩数自动反推）' : '该地块需要打药的面积'}">i</i></label>
-            <div class="stepper" data-step="${basis === 'tree' ? 10 : 0.5}">
+            <label>亩数 <i class="tip" data-tip="该地块需要打药的面积">i</i></label>
+            <div class="stepper" data-step="0.5">
               <button type="button" class="st-btn st-minus" aria-label="减少">−</button>
-              <div class="unit-suffix" data-unit="${basis === 'tree' ? '棵' : '亩'}"><input type="number" class="plot-size" step="${basis === 'tree' ? 10 : 0.5}" min="0" value="${basis === 'tree' ? (p.treeCount || '') : (p.area || '')}" placeholder="0"></div>
+              <div class="unit-suffix" data-unit="亩"><input type="number" class="plot-size" step="0.5" min="0" value="${p.area || ''}" placeholder="0"></div>
               <button type="button" class="st-btn st-plus" aria-label="增加">＋</button>
             </div>
           </div>
@@ -611,7 +588,7 @@ const UI = {
   plotTplButtons(p) {
     const f = this.getFarmer(p.farmerId);
     const tpl = f && f.plotTemplate;
-    const hasTpl = tpl && ((Number(tpl.area) || 0) > 0 || (Number(tpl.treeCount) || 0) > 0);
+    const hasTpl = tpl && (Number(tpl.area) || 0) > 0;
     return `
       <button type="button" class="icon-btn plot-load-tpl" title="${hasTpl ? `读入 ${f.name} 的默认地块尺寸` : `${f ? f.name : ''} 还没存过默认地块尺寸`}" ${hasTpl ? '' : 'style="opacity:0.35;"'}>📄</button>
       <button type="button" class="icon-btn plot-save-tpl" title="把当前尺寸存为 ${f ? f.name : ''} 的默认地块">⭐</button>`;
@@ -621,10 +598,7 @@ const UI = {
   savePlotTemplate(plot) {
     const f = this.getFarmer(plot.farmerId);
     if (!f) return;
-    const basis = this.state.field.calcBasis === 'tree' ? 'tree' : 'area';
-    f.plotTemplate = basis === 'tree'
-      ? { treeCount: Number(plot.treeCount) || 0, area: 0 }
-      : { area: Number(plot.area) || 0, treeCount: 0 };
+    f.plotTemplate = { area: Number(plot.area) || 0 };
     this.saveFarmers();
     this.renderPlotsEditor();
     this.toast(`已存为 ${f.name} 的默认地块尺寸`, 'success');
@@ -638,7 +612,6 @@ const UI = {
       return;
     }
     if ((Number(tpl.area) || 0) > 0) plot.area = Number(tpl.area);
-    if ((Number(tpl.treeCount) || 0) > 0) plot.treeCount = Number(tpl.treeCount);
     this.renderPlotsEditor();
     this.compute();
     this.save();
@@ -648,21 +621,10 @@ const UI = {
   /* 单地块即时统计（编辑器卡片底部实时刷新；趟数在组级） */
   plotStatText(p) {
     const plant = this.state.plant || {};
-    const basis = this.state.field.calcBasis === 'tree' ? 'tree' : 'area';
-    let sizeText, water;
-    if (basis === 'tree') {
-      const t = Number(p.treeCount) || 0;
-      const tpm = plant.treesPerMu || 0;
-      sizeText = `${t}棵`;
-      // 水量与引擎同口径：亩数（棵数反推）× 每亩水量（无人机喷洒）
-      water = tpm > 0 ? (t / tpm) * (plant.waterPerMu || 0) : 0;
-    } else {
-      const a = Number(p.area) || 0;
-      sizeText = `${a}亩`;
-      water = a * (plant.waterPerMu || 0);
-    }
+    const a = Number(p.area) || 0;
+    const water = a * (plant.waterPerMu || 0);
     const g = Math.max(1, Math.round(Number(p.groupId) || 1));
-    return `${sizeText} · 水量 <b>${Calculator.fmt(water, 1)}</b>升 · 组<b>${g}</b>（组内合并算趟数）`;
+    return `${a}亩 · 水量 <b>${Calculator.fmt(water, 1)}</b>升 · 组<b>${g}</b>（组内合并算趟数）`;
   },
 
   addPlot() {
@@ -672,7 +634,6 @@ const UI = {
       id: 'p' + Date.now().toString(36) + '_' + n,
       name: `地块${n + 1}`,
       area: 10,
-      treeCount: 0,
       groupId: 1
     });
     this.renderPlotsEditor();
@@ -702,12 +663,11 @@ const UI = {
         <span class="hint">组汇总（同组连片连续作业；± 调整组趟数凑每趟加药量）</span>
         <div class="group-chips">${chips}</div>
       </div>` : '';
-    const basis = r.calcBasis === 'tree' ? 'tree' : 'area';
     const rows = r.plots.map(p => `
       <tr>
         <td>${this.escapeHtml(p.name)}</td>
         <td>组${p.groupId}</td>
-        <td>${basis === 'tree' ? fmt(p.treeCount, 0) : fmt(p.area, 1)}</td>
+        <td>${fmt(p.area, 1)}</td>
         <td>${fmt(p.water, 1)}</td>
         <td><b>${p.groupTrips}</b></td>
         <td>${fmt(p.groupPerTripWater, 1)}</td>
@@ -719,7 +679,7 @@ const UI = {
         <span class="hint">机载上限 ${r.droneTank} 升/趟 · 共 ${r.totalTrips} 趟</span>
       </div>
       <table class="summary-table plots-table">
-        <thead><tr><th>地块</th><th>组</th><th>${basis === 'tree' ? '棵数' : '亩数'}</th><th>水量(升)</th><th>趟数</th><th>每趟(升)</th><th>用量(套)</th></tr></thead>
+        <thead><tr><th>地块</th><th>组</th><th>亩数</th><th>水量(升)</th><th>趟数</th><th>每趟(升)</th><th>用量(套)</th></tr></thead>
         <tbody>${rows}</tbody>
         <tfoot><tr><td>合计</td><td>${(r.groups || []).length} 组</td><td>${fmt(r.area, 1)}</td><td>${fmt(r.water, 1)}</td><td>—</td><td><b>${r.totalTrips}</b></td><td>${fmt(r.totalLoad, 1)}min</td><td>${fmt(r.usedSets != null ? r.usedSets : r.pesticide, 2)}</td></tr></tfoot>
       </table>`;
@@ -893,7 +853,7 @@ const UI = {
     const plant = this.state.plant;
     const LINE = '──────────────────────';
     const L = [];
-    const basisText = r.plotMode ? '多地块' : (r.calcBasis === 'tree' ? '按棵数' : '按亩数');
+    const basisText = '按亩数';
     L.push('🚁 无人机作业工单');
     L.push(`日期: ${new Date().toLocaleString('zh-CN')}`);
     if (this.state.field.farmerName) L.push(`农户: ${this.state.field.farmerName}`);
@@ -905,7 +865,7 @@ const UI = {
         const done = Number(wo.completedByPlot[p.id]) || 0;
         const rest = Math.max(0, p.water - done);
         L.push(`【${p.name}】`);
-        L.push(`  组${p.groupId} | ${r.calcBasis === 'tree' ? fmt(p.treeCount, 0) + '棵' : fmt(p.area, 1) + '亩'} | 水量 ${fmt(p.water, 1)}升 | 组趟数 ${p.groupTrips} | 每趟 ${fmt(p.groupPerTripWater, 1)}升`);
+        L.push(`  组${p.groupId} | ${fmt(p.area, 1)}亩 | 水量 ${fmt(p.water, 1)}升 | 组趟数 ${p.groupTrips} | 每趟 ${fmt(p.groupPerTripWater, 1)}升`);
         L.push(`  已完成 ${fmt(done, 1)}升 (${p.water > 0 ? fmt(done / p.water * 100, 0) : 0}%) | 剩余 ${fmt(rest, 1)}升 ≈ ${p.groupPerTripWater > 0 ? Math.ceil(rest / p.groupPerTripWater) : 0}趟 | 用量 ${fmt(p.pesticideRaw, 2)}套`);
       });
     } else {
@@ -969,7 +929,6 @@ const UI = {
       this.appendField(target, key, 'spray');
     });
     this.syncParamFormFromPlant();
-    this.updateCalcBasisVisibility();
     this.renderPlotsEditor();
     this.restoreAdvState();
   },
@@ -1326,7 +1285,7 @@ const UI = {
     } else if (mode === 'timing') {
       this.state.timing[key] = val;
     } else {
-      if (key === 'calcBasis' || key === 'droneTank') {
+      if (key === 'droneTank') {
         this.state.field[key] = val;
       } else if (key === 'existingPesticideSets') {
         this.state.field.existingPesticideSets = val;
@@ -1349,7 +1308,7 @@ const UI = {
       return this.state.timing[key];
     } else {
       // field 类参数（不在 plant 内）
-      if (key === 'calcBasis' || key === 'droneTank') return this.state.field[key];
+      if (key === 'droneTank') return this.state.field[key];
       if (key === 'existingPesticideSets') return this.state.field.existingPesticideSets;
       // plant 类参数
       if (FIELD_ORDER.param.includes(key)) return this.state.plant[key];
@@ -1396,10 +1355,6 @@ const UI = {
     if (key === 'manualFlightTime') {
       this.updateFlightFieldsDisabled();
     }
-    // 特殊处理：计算基准切换时更新输入项显隐
-    if (key === 'calcBasis') {
-      this.updateCalcBasisVisibility();
-    }
     this.compute();
     this.save();
   },
@@ -1445,17 +1400,9 @@ const UI = {
     } else { // short
       stockText = `库存不足，需补购 ${r.needToBuy} 套 | 需 ${fmt(r.pesticide, 2)} 套 → 采购 ${r.pesticideRounded} 套`;
     }
-    // 按棵数但棵数未填（含旧存档回落）：提示补填
-    if (!r.plotMode && r.calcBasis === 'tree' && !(r.treeCount > 0)) {
-      stockText += ' ⚠️ 请在上方填写果树棵数';
-    }
     document.getElementById('rPesticideDetail').textContent = stockText;
     document.getElementById('rPesticideFormula').textContent =
-      r.plotMode
-        ? `现有 ${r.existingSets} 套 | 需求合计 ${fmt(r.pesticide, 2)} 套 → 采购 ${r.pesticideRounded} 套（合计后7舍8入）`
-        : (r.calcBasis === 'tree'
-          ? `现有 ${r.existingSets} 套 | 需求=棵数${r.treeCount}×每棵水量÷一套药水量×省药系数=${fmt(r.pesticide, 2)} → 采购 ${r.pesticideRounded} 套（7舍8入）`
-          : `现有 ${r.existingSets} 套 | 需求=亩数×每亩水量÷一套药水量×省药系数=${fmt(r.pesticide, 2)} → 采购 ${r.pesticideRounded} 套（7舍8入）`);
+      `现有 ${r.existingSets} 套 | 需求合计 ${fmt(r.pesticide, 2)} 套 → 采购 ${r.pesticideRounded} 套（合计后7舍8入）`;
 
     setText('rWater', fmt(r.water, 1));
     const effArea = (r.area != null ? r.area : this.state.field.area);
@@ -1463,9 +1410,8 @@ const UI = {
       document.getElementById('rWaterDetail').textContent =
         `Σ ${r.plots.length} 个地块 · 机载上限 ${r.droneTank} 升/趟 · 共 ${r.totalTrips} 趟`;
     } else {
-      const treeNote = (r.calcBasis === 'tree' && r.treeCount > 0) ? `（按棵数 ${r.treeCount} 棵反推）` : '';
       document.getElementById('rWaterDetail').textContent =
-        `${this.state.plant.waterPerMu} 升/亩 × ${fmt(effArea, 1)} 亩${treeNote}`;
+        `${this.state.plant.waterPerMu} 升/亩 × ${fmt(effArea, 1)} 亩`;
     }
     document.getElementById('rWaterFormula').textContent =
       `公式: 亩数 × 每亩水量（无人机喷洒量，独立于药量计算）`;
@@ -1927,8 +1873,6 @@ const UI = {
       this.state.income = { ...DEFAULT_INCOME };
       this.state.timing = { ...DEFAULT_TIMING };
       this.state.plant = keepPlant || { ...PLANT_DATABASE.shajun };
-      // 基准随类型预置；地块合成单卡
-      this.state.field.calcBasis = this.getBasisOf(this.state.plant);
       this.ensurePlots();
       this.toast('打药模式已恢复默认', 'success');
     } else {
@@ -1972,8 +1916,7 @@ const UI = {
           plot.name = e.target.value;
         } else if (e.target.classList.contains('plot-size')) {
           const v = parseFloat(e.target.value);
-          if (this.state.field.calcBasis === 'tree') plot.treeCount = isNaN(v) ? 0 : Math.max(0, Math.round(v));
-          else plot.area = isNaN(v) ? 0 : Math.max(0, v);
+          plot.area = isNaN(v) ? 0 : Math.max(0, v);
         } else if (e.target.classList.contains('plot-group')) {
           const v = parseInt(e.target.value, 10);
           plot.groupId = (!v || v < 1) ? 1 : Math.min(9, Math.round(v));
@@ -2155,6 +2098,23 @@ const UI = {
 
     // 高级设置折叠状态记忆
     this.bindAdvState();
+
+    // 棵数速算药量（独立参考，不写作业状态）
+    const tq = document.getElementById('treeQuickInput');
+    if (tq) {
+      const render = () => {
+        const out = document.getElementById('treeQuickOut');
+        const raw = Calculator.calcTreesPesticide(tq.value, this.state.plant);
+        const tpm = (this.state.plant && this.state.plant.treesPerMu) || 0;
+        const cnt = Number(tq.value) || 0;
+        if (!out) return;
+        out.innerHTML = raw > 0
+          ? `建议药量 <b>${Calculator.fmt(raw, 2)}</b> 套（采购 ${Calculator.round78(raw)} 套）${tpm > 0 ? ` · 折合 ≈ ${Calculator.fmt(cnt / tpm, 1)} 亩` : ''}`
+          : '填入棵数后显示建议药量';
+      };
+      tq.addEventListener('input', render);
+      this._treeQuickRender = render;   // 切换类型后按新类型参数重算
+    }
 
     // 农户档案
     document.getElementById('farmersBtn').addEventListener('click', () => this.openFarmersModal());

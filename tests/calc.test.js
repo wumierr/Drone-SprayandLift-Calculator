@@ -45,6 +45,15 @@ function ok(cond, msg = '') { if (!cond) throw new Error(msg || 'expected truthy
 const C = ctx.window.Calculator;
 const S = ctx.window.Storage;
 
+/* ---------- 棵数速算（独立参考工具，不接地块引擎） ---------- */
+test('calcTreesPesticide 棵数速算药量', () => {
+  const plant = { ...ctx.window.PLANT_DATABASE.shajun };
+  ok(Math.abs(C.calcTreesPesticide(160, plant) - 1.12) < 1e-9, '160棵 → 160×3÷300×0.7=1.12');
+  eq(C.calcTreesPesticide(0, plant), 0, '0 棵 → 0');
+  eq(C.calcTreesPesticide(-5, plant), 0, '负数 → 0');
+  ok(Math.abs(C.calcTreesPesticide(800, plant) - 5.6) < 1e-9, '800棵 → 5.6 套');
+});
+
 /* ---------- APK 兼容防护：禁止原生对话框（WebView 不实现 prompt/confirm） ---------- */
 test('js/ui.js 无原生 prompt()/confirm() 调用（注释除外）', () => {
   const src = fs.readFileSync(path.join(ROOT, 'js', 'ui.js'), 'utf8')

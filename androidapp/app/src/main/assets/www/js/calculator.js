@@ -283,29 +283,19 @@ const Calculator = {
     const pesticideWaterPerSet = Math.max(0.01, Number(plant.pesticideWaterPerSet) || 1);
     const savingCoeff = Number(plant.droneSavingCoeff) || 1;
 
-    /* 计算基准：'tree' 地块按棵数（亩数反推）| 'area' 按亩数。
-       药量永远按"人工打药稀释水量"口径：果树林型 = 面积×每亩棵数×每棵水量，
-       大田型 = 面积×每亩水量；两者都再 ÷一套药需水量 × 省药系数 */
-    const calcBasis = field.calcBasis === 'tree' ? 'tree' : 'area';
+    /* 地块固定按亩数。药量按"人工打药稀释水量"口径：
+       果树林型 = 面积×每亩棵数×每棵水量，大田型 = 面积×每亩水量；
+       两者都再 ÷一套药需水量 × 省药系数 */
     const typeTree = (plant.defaultBasis || plant.calcMode) === 'tree';
 
     /* 第 1 步：逐地块原始数据（水量/药量/所属组） */
     const rows = [];
     plots.forEach((p, i) => {
-      let area, water, pesticideRaw;
-      if (calcBasis === 'tree') {
-        const treeCount = Number(p.treeCount) || 0;
-        const treesPerMu = Number(plant.treesPerMu) || 0;
-        area = treesPerMu > 0 ? treeCount / treesPerMu : 0;
-        water = area * (Number(plant.waterPerMu) || 0);
-        pesticideRaw = (treeCount * (Number(plant.waterPerTree) || 0)) / pesticideWaterPerSet * savingCoeff;
-      } else {
-        area = Number(p.area) || 0;
-        water = area * (Number(plant.waterPerMu) || 0);
-        pesticideRaw = typeTree
-          ? (area * (Number(plant.treesPerMu) || 0) * (Number(plant.waterPerTree) || 0)) / pesticideWaterPerSet * savingCoeff
-          : water / pesticideWaterPerSet * savingCoeff;
-      }
+      const area = Number(p.area) || 0;
+      const water = area * (Number(plant.waterPerMu) || 0);
+      const pesticideRaw = typeTree
+        ? (area * (Number(plant.treesPerMu) || 0) * (Number(plant.waterPerTree) || 0)) / pesticideWaterPerSet * savingCoeff
+        : water / pesticideWaterPerSet * savingCoeff;
       rows.push({
         id: p.id != null ? p.id : i,
         name: p.name || `地块${i + 1}`,
@@ -315,7 +305,6 @@ const Calculator = {
         groupId: Math.max(1, Math.round(Number(p.groupId) || 1)),
         flightMin: area > 0 ? (area * 666.67) / lineSpacing / flightSpeed / 60 : 0,
         pesticideRaw: pesticideRaw,
-        treeCount: Number(p.treeCount) || 0,
         pesticideRounded: 0
       });
     });
@@ -369,8 +358,6 @@ const Calculator = {
       plotMode: true,
       droneTank: droneTank,
       area: totalArea,
-      calcBasis: calcBasis,
-      treeCount: rows.reduce((sum, r) => sum + r.treeCount, 0),
       water: totalWater,
       totalTrips: totalTrips,
       totalLoad: totalLoad,
@@ -504,6 +491,18 @@ const Calculator = {
       afterWorkCharge: 0, afterWorkBlocks: [], totalTimeWithCharge: 0,
       batteryCount: 1, chargeMode: 'generator', chargeAfterWork: true, plotUnits: '趟'
     };
+  },
+
+  /**
+   * 棵数速算药量（独立参考工具，不接地块/作业引擎）：
+   * 棵数 × 每棵水量 ÷ 一套药需水量 × 省药系数 → 小数套数
+   * 用途：农户不知道亩数、只说大致棵数时的药量参考
+   */
+  calcTreesPesticide(treeCount, plant) {
+    const t = Math.max(0, Number(treeCount) || 0);
+    if (!t || !plant) return 0;
+    const perSet = Math.max(0.01, Number(plant.pesticideWaterPerSet) || 1);
+    return (t * (Number(plant.waterPerTree) || 0)) / perSet * (Number(plant.droneSavingCoeff) || 1);
   },
 
   /**

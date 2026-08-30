@@ -494,6 +494,18 @@ const Calculator = {
   },
 
   /**
+   * 棵数速算药量（独立参考工具，不接地块/作业引擎）：
+   * 棵数 × 每棵水量 ÷ 一套药需水量 × 省药系数 → 小数套数
+   * 用途：农户不知道亩数、只说大致棵数时的药量参考
+   */
+  calcTreesPesticide(treeCount, plant) {
+    const t = Math.max(0, Number(treeCount) || 0);
+    if (!t || !plant) return 0;
+    const perSet = Math.max(0.01, Number(plant.pesticideWaterPerSet) || 1);
+    return (t * (Number(plant.waterPerTree) || 0)) / perSet * (Number(plant.droneSavingCoeff) || 1);
+  },
+
+  /**
    * 续药计算：剩余水量 ÷ 一套药需水量 × 省药系数 → 7舍8入
    */
   computeRefillSets(restWater, pesticideWaterPerSet, savingCoeff) {
