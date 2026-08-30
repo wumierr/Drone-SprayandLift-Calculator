@@ -369,11 +369,11 @@
   <div class="modal" id="workOrderModal" aria-hidden="true">
     <div class="modal-box">
       <div class="modal-title">🧾 作业工单 <button class="modal-close" data-close>✕</button></div>
-      <p class="modal-hint">上方可快捷修改实际变动的数值（即时重算并保存），下方纯文本工单可一键复制留存或发给现场人员。</p>
-      <div class="workorder-quick" id="workOrderQuick"><!-- JS 注入 --></div>
-      <div id="workOrderText" class="workorder-text" tabindex="0"><!-- JS 注入 --></div>
+      <div id="workOrderSummary" class="wo-summary"><!-- 汇总小卡 JS 注入 --></div>
+      <div id="woRefill" class="wo-refill" style="display:none;"></div>
+      <div id="workOrderQuick" class="wo-plot-list"><!-- 农户/逐地块/备注 JS 注入 --></div>
       <div class="modal-actions">
-        <button class="btn btn-secondary" id="copyWorkOrder">📋 复制全文</button>
+        <button class="btn btn-secondary" id="copyWorkOrder">📋 复制纯文本工单</button>
         <button class="btn btn-primary" data-close>完成</button>
       </div>
     </div>

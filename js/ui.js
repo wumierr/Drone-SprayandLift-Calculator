@@ -496,17 +496,43 @@ const UI = {
       return;
     }
     this.renderWorkOrderQuick();
-    this.renderWorkOrderText();
     this.openModal('workOrderModal');
   },
 
   renderWorkOrderQuick() {
     const wrap = document.getElementById('workOrderQuick');
-    if (!wrap) return;
+    const sumWrap = document.getElementById('workOrderSummary');
+    const refill = document.getElementById('woRefill');
+    if (!wrap || !sumWrap || !refill) return;
     const r = this._lastResult;
     const wo = this.getWorkOrder();
+    const fmt = Calculator.fmt.bind(Calculator);
+    const fdur = Calculator.formatDuration.bind(Calculator);
+    const pill = '\uD83D\uDC8A';
+
+    /* 汇总小卡 */
+    const timeText = fdur(r.timing.totalTime)
+      + (r.timing.chargeAfterWork && r.timing.afterWorkCharge > 0 ? '+' + fdur(r.timing.afterWorkCharge) : '');
+    sumWrap.innerHTML = `
+      <div class="wo-card"><div class="wo-card-label">总水量</div><div class="wo-card-value">${fmt(r.water, 1)}<small>升</small></div></div>
+      <div class="wo-card"><div class="wo-card-label">${r.plotMode ? '总趟数' : '循环数'}</div><div class="wo-card-value">${r.plotMode ? r.totalTrips : r.cycles}<small>${r.plotMode ? '趟' : '次'}</small></div></div>
+      <div class="wo-card"><div class="wo-card-label">预计总时长</div><div class="wo-card-value">${timeText}</div></div>
+      <div class="wo-card"><div class="wo-card-label">药量 参考 / 实际</div><div class="wo-card-value">${r.pesticideRounded}<small>套</small><input type="number" class="wo-sets" min="0" step="1" value="${wo.actualSets || ''}" placeholder="实际"></div></div>`;
+
+    /* 续药提醒条 */
+    const doneTotal = this.woDoneTotal(r, wo);
+    const restTotal = Math.max(0, r.water - doneTotal);
+    if (restTotal > 0) {
+      refill.style.display = '';
+      const refillSets = Calculator.computeRefillSets(restTotal, this.state.plant.pesticideWaterPerSet, this.state.plant.droneSavingCoeff);
+      refill.innerHTML = `${pill} 剩余 <b>${fmt(restTotal, 1)}</b> 升 ≈ 还需 <b>${refillSets}</b> 套药（7舍8入），记得安排续药`;
+    } else {
+      refill.style.display = 'none';
+    }
+
+    /* 农户 + 逐地块行 + 备注 */
     let html = `
-      <div class="field" style="grid-column: 1 / -1;">
+      <div class="field wo-farmer-field">
         <label>农户名称 <i class="tip" data-tip="工单抬头显示；未来农户档案将在此选择">i</i></label>
         <input type="text" class="wo-farmer" value="${this.escapeHtml(this.state.field.farmerName || '')}" placeholder="选填，如：老王家果园">
       </div>`;
@@ -515,37 +541,48 @@ const UI = {
         const done = Number(wo.completedByPlot[p.id]) || 0;
         const rest = Math.max(0, p.water - done);
         html += `
-          <div class="field">
-            <label>${this.escapeHtml(p.name)} 已完成(升)</label>
+        <div class="wo-plot">
+          <div class="wo-plot-info">
+            <div class="wo-plot-name">${this.escapeHtml(p.name)}</div>
+            <div class="wo-plot-meta">${fmt(p.water, 1)}升 · ${p.trips}趟 · 每趟${fmt(p.perTripWater, 1)}升 · 转场${fmt(p.transferMin, 1)}分</div>
+          </div>
+          <div class="wo-plot-done">
+            <label>已完成(升)</label>
             <input type="number" class="wo-completed" data-id="${p.id}" min="0" step="1" value="${done || ''}" placeholder="0">
-            <span class="wo-rest hint" data-id="${p.id}">剩余 ${Calculator.fmt(rest, 1)} 升 ≈ ${p.perTripWater > 0 ? Math.ceil(rest / p.perTripWater) : 0} 趟</span>
-          </div>`;
+          </div>
+          <div class="wo-plot-rest" data-id="${p.id}">剩余 ${fmt(rest, 1)}升 ≈ ${p.perTripWater > 0 ? Math.ceil(rest / p.perTripWater) : 0}趟</div>
+        </div>`;
       });
     } else {
       const done = Number(wo.completedSingle) || 0;
       const rest = Math.max(0, (r ? r.water : 0) - done);
       html += `
-        <div class="field">
-          <label>已完成水量(升)</label>
+      <div class="wo-plot">
+        <div class="wo-plot-info">
+          <div class="wo-plot-name">当前地块</div>
+          <div class="wo-plot-meta">${fmt(r ? r.water : 0, 1)}升 · 循环 ${r ? r.cycles : 0} 次</div>
+        </div>
+        <div class="wo-plot-done">
+          <label>已完成(升)</label>
           <input type="number" class="wo-single" min="0" step="1" value="${done || ''}" placeholder="0">
-          <span class="hint" id="woRestSingle">剩余 ${Calculator.fmt(rest, 1)} 升</span>
-        </div>`;
+        </div>
+        <div class="wo-plot-rest" id="woRestSingle">剩余 ${fmt(rest, 1)}升</div>
+      </div>`;
     }
     html += `
-      <div class="field">
-        <label>实际用药(套)</label>
-        <input type="number" class="wo-sets" min="0" step="1" value="${wo.actualSets || ''}" placeholder="参考 ${r ? r.pesticideRounded : 0}">
-      </div>
-      <div class="field" style="grid-column: 1 / -1;">
+      <div class="field wo-note-field">
         <label>备注</label>
         <input type="text" class="wo-note" value="${this.escapeHtml(wo.note)}" placeholder="如：农户自备2套 / 下午续药">
       </div>`;
     wrap.innerHTML = html;
   },
 
-  renderWorkOrderText() {
-    const el = document.getElementById('workOrderText');
-    if (el) el.textContent = this.buildWorkOrderText();
+  /* 已完成总量（多地块求和 / 单地块取值） */
+  woDoneTotal(r, wo) {
+    if (!r) return 0;
+    return r.plotMode
+      ? (r.plots || []).reduce((s, p) => s + (Number(wo.completedByPlot[p.id]) || 0), 0)
+      : (Number(wo.completedSingle) || 0);
   },
 
   buildWorkOrderText() {
@@ -1599,13 +1636,13 @@ const UI = {
     // 作业工单
     document.getElementById('workOrderBtn').addEventListener('click', () => this.openWorkOrder());
     document.getElementById('copyWorkOrder').addEventListener('click', () => {
-      const txt = document.getElementById('workOrderText').textContent || '';
+      const txt = this.buildWorkOrderText();
       if (!txt) {
-        this.toast('工单内容为空', 'warn');
+        this.toast('请先完成一次计算', 'warn');
         return;
       }
       this.copyToClipboard(txt).then(ok => {
-        this.toast(ok ? '工单已复制到剪贴板 📋' : '复制失败，请长按文本手动选择', ok ? 'success' : 'error');
+        this.toast(ok ? '纯文本工单已复制到剪贴板 📋' : '复制失败，请手动选择文本', ok ? 'success' : 'error');
       });
     });
 
@@ -1633,6 +1670,9 @@ const UI = {
         } else if (e.target.classList.contains('wo-sets')) {
           const v = parseFloat(e.target.value);
           wo.actualSets = isNaN(v) ? 0 : Math.max(0, v);
+          // 汇总卡/续药条随实际套数联动刷新（重渲染后输入框失焦可接受，该字段改动频率低）
+          this.renderWorkOrderQuick();
+          return;
         } else if (e.target.classList.contains('wo-note')) {
           wo.note = e.target.value;
         } else if (e.target.classList.contains('wo-farmer')) {
@@ -1640,7 +1680,6 @@ const UI = {
         } else {
           return;
         }
-        this.renderWorkOrderText();
         this.save();
       });
     }
