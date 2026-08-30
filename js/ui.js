@@ -85,18 +85,20 @@ const UI = {
     const saved = Storage.getState();
     if (saved) {
       this.state.mode = saved.mode || 'spray';
+      // 先合并 field（拿到存档里的 plantKey），再解析类型快照
+      if (saved.field) this.state.field = { ...this.state.field, ...saved.field };
       if (saved.plant) this.state.plant = { ...saved.plant };
       else this.state.plant = { ...PLANT_DATABASE[this.state.field.plantKey || 'shajun'] };
-      // 旧存档快照不在类型库中 → 自动注册为自定义类型
+      // 快照不在类型库中（旧作物存档）→ 自动注册为自定义类型
       let key = this.state.field.plantKey;
       if (!key || !this.getType(key)) {
         key = this.registerTypeSnapshot(this.state.plant) || key;
       }
-      this.state.field.plantKey = key;
       const libType = this.getType(key);
       if (libType) this.state.plant = { ...libType };
-      if (saved.field) this.state.field = { ...this.state.field, ...saved.field };
       this.state.field.plantKey = key;
+      // 迁移发生时立即持久化新 plantKey，避免每次刷新重复注册
+      if (key !== (saved.field || {}).plantKey) this.save();
       // 旧版存档无 calcBasis：按类型 defaultBasis 预置
       if (saved.field && saved.field.calcBasis === undefined) {
         this.state.field.calcBasis = this.getBasisOf(this.state.plant);
@@ -1567,7 +1569,7 @@ const UI = {
     const plotsEditor = document.getElementById('plotsEditor');
     if (plotsEditor) {
       plotsEditor.addEventListener('input', e => {
-        const row = e.target.closest('.plot-row');
+        const row = e.target.closest('.plot-card');
         if (!row) return;
         const plot = (this.state.field.plots || []).find(p => String(p.id) === row.dataset.id);
         if (!plot) return;
@@ -1608,7 +1610,7 @@ const UI = {
         }
         const del = e.target.closest('.plot-del');
         if (del) {
-          const row = del.closest('.plot-row');
+          const row = del.closest('.plot-card');
           this.state.field.plots = (this.state.field.plots || []).filter(p => String(p.id) !== row.dataset.id);
           this.renderPlotsEditor();
           this.compute();
@@ -1655,7 +1657,7 @@ const UI = {
         if (e.target.classList.contains('wo-completed')) {
           const v = parseFloat(e.target.value);
           wo.completedByPlot[e.target.dataset.id] = isNaN(v) ? 0 : Math.max(0, v);
-          const restEl = woQuick.querySelector(`.wo-rest[data-id="${e.target.dataset.id}"]`);
+          const restEl = woQuick.querySelector(`.wo-plot-rest[data-id="${e.target.dataset.id}"]`);
           const plot = r && r.plots ? r.plots.find(p => String(p.id) === String(e.target.dataset.id)) : null;
           if (restEl && plot) {
             const done = wo.completedByPlot[plot.id] || 0;
@@ -1897,6 +1899,14 @@ const UI = {
     this.state.mode = p.mode || 'spray';
     if (p.plant) this.state.plant = { ...p.plant };
     if (p.field) this.state.field = { ...this.state.field, ...p.field };
+    // 旧预设的作物快照不在类型库中 → 注册为自定义类型
+    if (!this.getType(this.state.field.plantKey)) {
+      const key = this.registerTypeSnapshot(this.state.plant);
+      if (key) {
+        this.state.field.plantKey = key;
+        this.state.plant = { ...this.getType(key) };
+      }
+    }
     if (p.costs) this.state.costs = { ...this.state.costs, ...p.costs };
     if (p.income) this.state.income = { ...this.state.income, ...p.income };
     // 旧版预设未保存 timing，缺失时保留当前值
