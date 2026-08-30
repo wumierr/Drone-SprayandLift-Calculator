@@ -1631,3 +1631,20 @@ html, body {
 }
 .adv-details summary:hover { color: var(--accent); }
 .adv-details[open] summary { margin-bottom: 10px; }
+
+
+/* 数值步进按钮（-/+） */
+.stepper { display: flex; align-items: stretch; gap: 6px; }
+.st-btn {
+  flex: 0 0 34px; min-height: 42px;
+  background: var(--input-bg); border: 1px solid var(--input-border);
+  border-radius: 8px; color: var(--text-secondary);
+  font-size: 16px; line-height: 1; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  user-select: none; -webkit-user-select: none;
+  touch-action: manipulation;
+}
+.st-btn:hover { border-color: var(--accent); color: var(--accent); }
+.st-btn:active { background: var(--accent-soft); }
+.stepper .unit-suffix { flex: 1; min-width: 0; }
+.stepper .unit-suffix input { width: 100%; }

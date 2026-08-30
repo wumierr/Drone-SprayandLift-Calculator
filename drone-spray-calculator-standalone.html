@@ -1650,6 +1650,23 @@ html, body {
 .adv-details summary:hover { color: var(--accent); }
 .adv-details[open] summary { margin-bottom: 10px; }
 
+
+/* 数值步进按钮（-/+） */
+.stepper { display: flex; align-items: stretch; gap: 6px; }
+.st-btn {
+  flex: 0 0 34px; min-height: 42px;
+  background: var(--input-bg); border: 1px solid var(--input-border);
+  border-radius: 8px; color: var(--text-secondary);
+  font-size: 16px; line-height: 1; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  user-select: none; -webkit-user-select: none;
+  touch-action: manipulation;
+}
+.st-btn:hover { border-color: var(--accent); color: var(--accent); }
+.st-btn:active { background: var(--accent-soft); }
+.stepper .unit-suffix { flex: 1; min-width: 0; }
+.stepper .unit-suffix input { width: 100%; }
+
   </style>
 </head>
 <body>
@@ -2208,7 +2225,7 @@ const FIELD_DEFS = {
   droneTank: { label: '机载装药上限', unit: '升/趟', tip: '无人机药箱一次最多装载的药液量（多地块模式按此算每组最少趟数）。T40约40-50升，T60/T100更大，可超配到85', group: 'param', advanced: true, default: 85, step: 1, integer: true, minHard: 1, warnBelow: 10 },
   existingPesticideSets: { label: '现有药剂套数', unit: '套', tip: '已库存的药剂套数（主显示，作为主要参考）。0表示无库存，将完全按公式参考量采购', group: 'param', default: 0, step: 1, integer: true, min: 0, priority: 'high' },
   flightHeight: { label: '飞行高度', unit: '米', tip: '无人机距离作物冠层的建议高度，影响覆盖均匀度（建议 1-5 米）', group: 'param', advanced: true, default: 2.0, step: 0.1, min: 0.5, warnBelow: 0.5, warnAbove: 10 },
-  waterPerMu: { label: '每亩水量', unit: '升', tip: '每亩地需要喷洒的药液总量（升/亩，建议 1-50）', group: 'param', default: 20, step: 0.1, min: 0.1, warnBelow: 0.5 },
+  waterPerMu: { label: '每亩水量', unit: '升', tip: '每亩地需要喷洒的药液总量（升/亩，建议 1-50）', group: 'param', default: 20, step: 1, min: 0.1, warnBelow: 0.5 },
   treesPerMu: { label: '每亩棵数', unit: '棵', tip: '每亩种植的棵数，按棵数计算时用于亩数反推', group: 'param', advanced: true, default: 80, step: 1, integer: true, min: 0 },
   waterPerTree: { label: '每棵用水量', unit: '升', tip: '单棵树需要喷洒的药液量（升/棵），按棵数计算时使用', group: 'param', advanced: true, default: 3, step: 0.1, min: 0 },
   pesticideWaterPerSet: { label: '一套药需水量', unit: '升', tip: '一整套药剂对应需要的水量（升），决定一套药能配多少药液', group: 'param', advanced: true, default: 300, step: 1, min: 1, warnBelow: 10 },
@@ -4217,7 +4234,11 @@ const UI = {
         <div class="plot-card-fields">
           <div class="field">
             <label>${basis === 'tree' ? '棵数' : '亩数'} <i class="tip" data-tip="${basis === 'tree' ? '该地块的果树棵数（亩数自动反推）' : '该地块需要打药的面积'}">i</i></label>
-            <div class="unit-suffix" data-unit="${basis === 'tree' ? '棵' : '亩'}"><input type="number" class="plot-size" step="${basis === 'tree' ? 1 : 0.1}" min="0" value="${basis === 'tree' ? (p.treeCount || '') : (p.area || '')}" placeholder="0"></div>
+            <div class="stepper" data-step="${basis === 'tree' ? 10 : 0.5}">
+              <button type="button" class="st-btn st-minus" aria-label="减少">−</button>
+              <div class="unit-suffix" data-unit="${basis === 'tree' ? '棵' : '亩'}"><input type="number" class="plot-size" step="${basis === 'tree' ? 10 : 0.5}" min="0" value="${basis === 'tree' ? (p.treeCount || '') : (p.area || '')}" placeholder="0"></div>
+              <button type="button" class="st-btn st-plus" aria-label="增加">＋</button>
+            </div>
           </div>
           <div class="field">
             <label>作业组 <i class="tip" data-tip="相邻地块填相同组号即可连片连续作业（合并算趟数，组内不返航）；不同组之间按远近来往升降时间在时间参数里体现">i</i></label>
@@ -4703,6 +4724,44 @@ const UI = {
     });
   },
 
+  /* 数值步进：-/+ 按钮，长按 300ms 后每 120ms 连发。
+     事件委托在 document 上，字段重渲染后依然有效。 */
+  bindSteppers() {
+    if (this._steppersBound) return;
+    this._steppersBound = true;
+    const cleanup = btn => {
+      if (btn._t0) { clearTimeout(btn._t0); btn._t0 = null; }
+      if (btn._iv) { clearInterval(btn._iv); btn._iv = null; }
+    };
+    document.addEventListener('pointerdown', e => {
+      const btn = e.target.closest('.st-btn');
+      if (!btn) return;
+      const wrap = btn.closest('.stepper');
+      const input = wrap && wrap.querySelector('input');
+      if (!input) return;
+      const dir = btn.classList.contains('st-plus') ? 1 : -1;
+      const step = Math.max(0.01, parseFloat(wrap.dataset.step) || 1);
+      const apply = () => {
+        let v = parseFloat(input.value);
+        if (isNaN(v)) v = 0;
+        v = Math.max(0, parseFloat((v + dir * step).toFixed(4)));
+        input.value = v;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+      apply();
+      btn._t0 = setTimeout(() => { btn._iv = setInterval(apply, 120); }, 300);
+      const stop = () => cleanup(btn);
+      btn.addEventListener('pointerup', stop, { once: true });
+      btn.addEventListener('pointerleave', stop, { once: true });
+      btn.addEventListener('pointercancel', stop, { once: true });
+    });
+    window.addEventListener('pointerup', e => {
+      const btn = e.target && e.target.closest && e.target.closest('.st-btn');
+      if (btn) cleanup(btn);
+    });
+  },
+
   syncTimingFormFromState() {
     if (!this.state.timing) return;
     Object.keys(this.state.timing).forEach(k => {
@@ -4836,11 +4895,16 @@ const UI = {
       const unitClass = def.unit ? ' unit-suffix' : '';
       const tipHTML = def.tip ? `<i class="tip" data-tip="${this.escapeHtml(def.tip)}">i</i>` : '';
       const priorityAttr = def.priority === 'high' ? ` data-priority="high"` : '';
+      const stStep = def.step || 1;
 
       wrap.innerHTML = `
         <label for="inp-${key}">${def.label} ${tipHTML}</label>
-        <div class="${unitClass}"${unitAttr}>
-          <input type="number" id="inp-${key}" value="${this.getFieldValue(key, mode)}"${stepAttr}${priorityAttr}>
+        <div class="stepper" data-step="${stStep}">
+          <button type="button" class="st-btn st-minus" aria-label="减少">−</button>
+          <div class="${unitClass}"${unitAttr}>
+            <input type="number" id="inp-${key}" value="${this.getFieldValue(key, mode)}"${stepAttr}${priorityAttr}>
+          </div>
+          <button type="button" class="st-btn st-plus" aria-label="增加">＋</button>
         </div>
       `;
       container.appendChild(wrap);
@@ -5698,6 +5762,9 @@ const UI = {
     document.getElementById('inputValue').addEventListener('keydown', e => {
       if (e.key === 'Enter') document.getElementById('inputOk').click();
     });
+
+    // 数值步进按钮（事件委托 + 长按连发）
+    this.bindSteppers();
 
     // 高级设置折叠状态记忆
     this.bindAdvState();

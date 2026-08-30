@@ -568,7 +568,11 @@ const UI = {
         <div class="plot-card-fields">
           <div class="field">
             <label>${basis === 'tree' ? '棵数' : '亩数'} <i class="tip" data-tip="${basis === 'tree' ? '该地块的果树棵数（亩数自动反推）' : '该地块需要打药的面积'}">i</i></label>
-            <div class="unit-suffix" data-unit="${basis === 'tree' ? '棵' : '亩'}"><input type="number" class="plot-size" step="${basis === 'tree' ? 1 : 0.1}" min="0" value="${basis === 'tree' ? (p.treeCount || '') : (p.area || '')}" placeholder="0"></div>
+            <div class="stepper" data-step="${basis === 'tree' ? 10 : 0.5}">
+              <button type="button" class="st-btn st-minus" aria-label="减少">−</button>
+              <div class="unit-suffix" data-unit="${basis === 'tree' ? '棵' : '亩'}"><input type="number" class="plot-size" step="${basis === 'tree' ? 10 : 0.5}" min="0" value="${basis === 'tree' ? (p.treeCount || '') : (p.area || '')}" placeholder="0"></div>
+              <button type="button" class="st-btn st-plus" aria-label="增加">＋</button>
+            </div>
           </div>
           <div class="field">
             <label>作业组 <i class="tip" data-tip="相邻地块填相同组号即可连片连续作业（合并算趟数，组内不返航）；不同组之间按远近来往升降时间在时间参数里体现">i</i></label>
@@ -1054,6 +1058,44 @@ const UI = {
     });
   },
 
+  /* 数值步进：-/+ 按钮，长按 300ms 后每 120ms 连发。
+     事件委托在 document 上，字段重渲染后依然有效。 */
+  bindSteppers() {
+    if (this._steppersBound) return;
+    this._steppersBound = true;
+    const cleanup = btn => {
+      if (btn._t0) { clearTimeout(btn._t0); btn._t0 = null; }
+      if (btn._iv) { clearInterval(btn._iv); btn._iv = null; }
+    };
+    document.addEventListener('pointerdown', e => {
+      const btn = e.target.closest('.st-btn');
+      if (!btn) return;
+      const wrap = btn.closest('.stepper');
+      const input = wrap && wrap.querySelector('input');
+      if (!input) return;
+      const dir = btn.classList.contains('st-plus') ? 1 : -1;
+      const step = Math.max(0.01, parseFloat(wrap.dataset.step) || 1);
+      const apply = () => {
+        let v = parseFloat(input.value);
+        if (isNaN(v)) v = 0;
+        v = Math.max(0, parseFloat((v + dir * step).toFixed(4)));
+        input.value = v;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+      apply();
+      btn._t0 = setTimeout(() => { btn._iv = setInterval(apply, 120); }, 300);
+      const stop = () => cleanup(btn);
+      btn.addEventListener('pointerup', stop, { once: true });
+      btn.addEventListener('pointerleave', stop, { once: true });
+      btn.addEventListener('pointercancel', stop, { once: true });
+    });
+    window.addEventListener('pointerup', e => {
+      const btn = e.target && e.target.closest && e.target.closest('.st-btn');
+      if (btn) cleanup(btn);
+    });
+  },
+
   syncTimingFormFromState() {
     if (!this.state.timing) return;
     Object.keys(this.state.timing).forEach(k => {
@@ -1187,11 +1229,16 @@ const UI = {
       const unitClass = def.unit ? ' unit-suffix' : '';
       const tipHTML = def.tip ? `<i class="tip" data-tip="${this.escapeHtml(def.tip)}">i</i>` : '';
       const priorityAttr = def.priority === 'high' ? ` data-priority="high"` : '';
+      const stStep = def.step || 1;
 
       wrap.innerHTML = `
         <label for="inp-${key}">${def.label} ${tipHTML}</label>
-        <div class="${unitClass}"${unitAttr}>
-          <input type="number" id="inp-${key}" value="${this.getFieldValue(key, mode)}"${stepAttr}${priorityAttr}>
+        <div class="stepper" data-step="${stStep}">
+          <button type="button" class="st-btn st-minus" aria-label="减少">−</button>
+          <div class="${unitClass}"${unitAttr}>
+            <input type="number" id="inp-${key}" value="${this.getFieldValue(key, mode)}"${stepAttr}${priorityAttr}>
+          </div>
+          <button type="button" class="st-btn st-plus" aria-label="增加">＋</button>
         </div>
       `;
       container.appendChild(wrap);
@@ -2049,6 +2096,9 @@ const UI = {
     document.getElementById('inputValue').addEventListener('keydown', e => {
       if (e.key === 'Enter') document.getElementById('inputOk').click();
     });
+
+    // 数值步进按钮（事件委托 + 长按连发）
+    this.bindSteppers();
 
     // 高级设置折叠状态记忆
     this.bindAdvState();
