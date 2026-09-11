@@ -1768,7 +1768,7 @@ html, body {
     <div class="header-left">
       <span class="app-logo" aria-hidden="true">🚁</span>
       <h1><span class="t-full">无人机作业计算器</span><span class="t-short">打药计算器</span></h1>
-      <span class="app-version">v4.3</span>
+      <span class="app-version">v4.4</span>
     </div>
     <div class="header-actions">
       <button id="presetBtn" class="icon-btn" title="预设管理" aria-label="预设管理">📚</button>
@@ -4435,7 +4435,7 @@ const UI = {
   renderPlotsTable(r) {
     const wrap = document.getElementById('plotsTableWrap');
     if (!wrap) return;
-    if (!r || !r.plotMode || !r.plots || r.plots.length === 0) {
+    if (!r || !r.plots || r.plots.length === 0) {
       wrap.innerHTML = '';
       return;
     }
@@ -4534,7 +4534,7 @@ const UI = {
       + (r.timing.chargeAfterWork && r.timing.afterWorkCharge > 0 ? '+' + fdur(r.timing.afterWorkCharge) : '');
     sumWrap.innerHTML = `
       <div class="wo-card"><div class="wo-card-label">总水量</div><div class="wo-card-value">${fmt(r.water, 1)}<small>升</small></div></div>
-      <div class="wo-card"><div class="wo-card-label">${r.plotMode ? '总趟数' : '循环数'}</div><div class="wo-card-value">${r.plotMode ? r.totalTrips : r.cycles}<small>${r.plotMode ? '趟' : '次'}</small></div></div>
+      <div class="wo-card"><div class="wo-card-label">总趟数</div><div class="wo-card-value">${r.totalTrips}<small>趟</small></div></div>
       <div class="wo-card"><div class="wo-card-label">预计总时长</div><div class="wo-card-value">${timeText}</div></div>
       <div class="wo-card"><div class="wo-card-label">药量 参考 / 实际</div><div class="wo-card-value">${r.pesticideRounded}<small>套</small><input type="number" class="wo-sets" min="0" step="1" value="${wo.actualSets || ''}" placeholder="实际"></div></div>`;
 
@@ -4658,7 +4658,7 @@ const UI = {
     L.push('🚁 无人机作业工单');
     L.push(`日期: ${new Date().toLocaleString('zh-CN')}`);
     if (this.state.field.farmerName) L.push(`农户: ${this.state.field.farmerName}`);
-    L.push(`类型: ${plant.icon || ''}${plant.name} · ${basisText}${r.plotMode ? ` · 机载上限 ${r.droneTank}升/趟` : ''}`);
+    L.push(`类型: ${plant.icon || ''}${plant.name} · ${basisText} · 机载上限 ${r.droneTank}升/趟`);
     L.push(LINE);
 
     if (r.plotMode) {
@@ -4690,7 +4690,7 @@ const UI = {
     L.push('【汇总】');
     L.push(`  计算水量 ${fmt(r.water, 1)}升 + 富余 ${fmt(r.spareWater || 0, 0)}升 = 总加水 ${fmt(r.totalAddWater != null ? r.totalAddWater : r.water, 1)}升`);
     L.push(`  已完成 ${fmt(doneTotal, 1)}升 | 剩余 ${fmt(restTotal, 1)}升`);
-    if (r.plotMode) L.push(`  总趟数 ${r.totalTrips}（${(r.groups || []).length} 组） | 兑药 ${r.timing.mixRounds}批(单批${fmt(r.timing.batchCapacity, 0)}升，每批留抽药空间后补满)`);
+    L.push(`  总趟数 ${r.totalTrips}（${(r.groups || []).length} 组） | 兑药 ${r.timing.mixRounds}批(单批${fmt(r.timing.batchCapacity, 0)}升，每批留抽药空间后补满)`);
     let timeText = `预计总时长 ${fdur(r.timing.totalTime)}`;
     if (r.timing.chargeAfterWork && r.timing.afterWorkCharge > 0) timeText += `（另结束后充电 ${fdur(r.timing.afterWorkCharge)}）`;
     L.push(`  ${timeText}`);
@@ -5238,15 +5238,9 @@ const UI = {
       `现有 ${r.existingSets} 套 | 需求合计 ${fmt(r.pesticide, 2)} 套 → 采购 ${r.pesticideRounded} 套（合计后7舍8入）`;
 
     setText('rWater', fmt(r.totalAddWater != null ? r.totalAddWater : r.water, 1));
-    const effArea = (r.area != null ? r.area : this.state.field.area);
-    if (r.plotMode) {
-      document.getElementById('rWaterDetail').textContent =
-        `Σ ${r.plots.length} 个地块 · 机载上限 ${r.droneTank} 升/趟 · 共 ${r.totalTrips} 趟` +
-        (r.spareWater > 0 ? ` · 计算水量 ${fmt(r.water, 1)} + 富余 ${fmt(r.spareWater, 0)}` : '');
-    } else {
-      document.getElementById('rWaterDetail').textContent =
-        `${this.state.plant.waterPerMu} 升/亩 × ${fmt(effArea, 1)} 亩`;
-    }
+    document.getElementById('rWaterDetail').textContent =
+      `Σ ${r.plots.length} 个地块 · 机载上限 ${r.droneTank} 升/趟 · 共 ${r.totalTrips} 趟` +
+      (r.spareWater > 0 ? ` · 计算水量 ${fmt(r.water, 1)} + 富余 ${fmt(r.spareWater, 0)}` : '');
     document.getElementById('rWaterFormula').textContent =
       `公式: 亩数 × 每亩水量（无人机喷洒量，独立于药量计算）`;
 
@@ -5312,24 +5306,15 @@ const UI = {
 
     // 飞行作业
     setText('tFlightTime', fdur(t.flightTimeMin));
-    const flightLabel = t.flightTimeSource === 'manual' ? '准确时间' : '参考时间';
-    if (t.plotUnits) {
-      document.getElementById('tFlightDetail').textContent =
-        `Σ 各地块喷洒时间（多地块）`;
-    } else {
-      document.getElementById('tFlightDetail').textContent =
-        t.flightTimeSource === 'manual'
-          ? `✓ ${flightLabel}（手动输入）`
-          : (t.flightLength > 0
-              ? `${fmt1(t.flightLength, 0)}米 ÷ ${fmt1(this.state.timing.flightSpeed, 1)}m/s（${flightLabel}）`
-              : '—');
-    }
+    document.getElementById('tFlightDetail').textContent =
+      t.flightTimeSource === 'manual'
+        ? '✓ 准确时间（手动输入）'
+        : '参考时间（按亩数与航线间距估算）';
 
-    // 来回升降 + 加药装载
+    // 装载合计（转场概念已删除，地块远近统一由来回升降时间体现）
     setText('tRoundTrip', fdur(t.roundTripTotal));
-    document.getElementById('tRoundTripDetail').textContent = t.plotUnits
-      ? `装载${fmt1(t.totalLoad)}min（每趟升降按时间参数的来回升降时间计）`
-      : `(${this.state.timing.roundTripTime}+装载${t.loadTime != null ? t.loadTime : 0}min) × 循环数`;
+    document.getElementById('tRoundTripDetail').textContent =
+      `装载${fmt1(t.totalLoad)}min（每趟升降按时间参数的来回升降时间计）`;
 
     // 电池等待
     setText('tBatteryWait', fdur(t.batteryWait));
@@ -5885,7 +5870,8 @@ const UI = {
           const v = parseFloat(e.target.value);
           wo.selfByFarmer = wo.selfByFarmer || {};
           wo.selfByFarmer[e.target.dataset.fid] = isNaN(v) ? 0 : Math.max(0, v);
-          this.renderWorkOrderQuick();
+          this.compute();   // 重算结算并经弹窗钩子重渲染
+          this.save();
           return;
         } else if (e.target.classList.contains('wo-note')) {
           wo.note = e.target.value;
@@ -6316,7 +6302,7 @@ window.UI = UI;
     }
 
     // 控制台彩蛋
-    console.log('%c🚁 无人机打药计算器 v4.3', 'font-size:20px;color:#2e7d32;font-weight:bold;');
+    console.log('%c🚁 无人机打药计算器 v4.4', 'font-size:20px;color:#2e7d32;font-weight:bold;');
     console.log('%c本地存储不上传 · 可打包 APK · GitHub 友好', 'color:#1565c0;');
     console.log('快捷键：Ctrl/Cmd + Shift + V 一键粘贴导入配置');
   });
