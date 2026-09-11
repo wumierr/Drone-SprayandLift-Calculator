@@ -580,8 +580,8 @@ a:hover { text-decoration: underline; }
   font-size: 11px;
   white-space: nowrap;
   pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.15s;
+  /* display:none 而非 opacity:0：隐藏的 nowrap 浮层会把页面撑出横向滚动（窄屏 bug） */
+  display: none;
   z-index: 100;
   margin-bottom: 4px;
   box-shadow: 0 2px 8px rgba(0,0,0,.3);
@@ -590,8 +590,10 @@ a:hover { text-decoration: underline; }
   width: max-content;
 }
 .viz-block:hover .viz-block-tooltip {
-  opacity: 1;
+  display: block;
+  animation: tooltipFade .15s ease;
 }
+@keyframes tooltipFade { from { opacity: 0; } to { opacity: 1; } }
 
 .battery-viz-summary {
   margin-top: 10px;
@@ -1311,7 +1313,7 @@ a:hover { text-decoration: underline; }
   .app-header .header-left { gap: 6px; min-width: auto; }
   .app-header .app-logo { font-size: 22px; }
   .app-header .header-actions { gap: 4px; }
-  .app-header .icon-btn { width: 34px; height: 34px; font-size: 14px; }
+  .app-header .icon-btn { width: 34px; height: 34px; min-width: 34px; min-height: 34px; font-size: 14px; }
   .app-header { padding-left: 10px; padding-right: 8px; }
   .extra-row { font-size: 12px; padding: 6px 8px; }
   .extra-row > span { font-size: 11px; }
@@ -1441,7 +1443,7 @@ html, body {
 @media (max-width: 380px) {
   .app-header { padding: 8px 10px; padding-top: calc(8px + env(safe-area-inset-top)); }
   .app-header h1 { font-size: 14px; }
-  .app-header .icon-btn { width: 34px; height: 34px; font-size: 14px; }
+  .app-header .icon-btn { width: 34px; height: 34px; min-width: 34px; min-height: 34px; font-size: 14px; }
   .header-left { gap: 6px; }
   .app-logo { font-size: 22px; }
   .header-actions { gap: 2px; }
@@ -1609,11 +1611,21 @@ html, body {
 }
 
 @media (max-width: 500px) {
+  /* 窄屏：面板可收缩（grid 默认 min-width:auto 会被表格等最小内容撑破页面） */
+  .app-main > .panel { min-width: 0; max-width: 100%; }
+  /* 窄屏：宽表格在面板内横向滚动，不撑破页面 */
+  .summary-table, .plots-table { display: block; overflow-x: auto; }
   .plot-card-fields { grid-template-columns: 1fr 1fr; }
   /* 窄屏：亩数（含 ± 步进）与统计行占满整行，避免数字被单位留白裁剪 */
   .plot-card-fields .field-span { grid-column: 1 / -1; }
   .field .unit-suffix input { padding-right: 48px; }
   .field .unit-suffix::after { font-size: 10px; padding: 2px 4px; max-width: 44px; }
+  /* 窄屏：面板标题提示换行到第二行，避免右侧截断 */
+  .panel-title { flex-wrap: wrap; }
+  .panel-title .hint { flex-basis: 100%; margin-left: 0; }
+  /* 窄屏：电池行收紧最小宽度，删除按钮不再被裁剪 */
+  .batt-row .batt-name { flex: 1 1 76px; }
+  .batt-row .stepper { flex: 1 1 118px; }
 }
 
 /* 用药类型管理按钮行 */
@@ -1955,7 +1967,7 @@ html, body {
     </section>
 
     <section class="panel battery-panel" id="batteryPanel" aria-label="电池循环台账">
-      <div class="panel-title"><span>🔋</span> 电池循环台账 <span class="hint">（每块电池的累计循环，跨任务保存）</span></div>
+      <div class="panel-title"><span>🔋</span> 电池循环台账 <span class="hint">（累计循环，本机保存）</span></div>
       <div id="batteryLedger"><!-- JS 注入 --></div>
     </section>
 
@@ -1996,7 +2008,7 @@ html, body {
         </div>
         <div class="result-extra">
           <div class="extra-row"><span>🚁 飞行高度</span><b id="rHeight">—</b></div>
-          <div class="extra-row"><span>🔄 循环数</span><b id="rCycles">—</b><small id="rCyclesSub" class="extra-inline"></small></div>
+          <div class="extra-row"><span>🔄 充电次数</span><b id="rCycles">—</b><small id="rCyclesSub" class="extra-inline"></small></div>
           <div class="extra-row"><span>⏱️ 作业时间(估)</span><b id="rTiming">—</b></div>
           <div class="extra-row"><span>📐 每亩成本</span><b id="rCostPerMu">—</b></div>
           <div class="extra-row"><span>💵 每亩利润</span><b id="rProfitPerMu">—</b></div>
@@ -5740,17 +5752,14 @@ const UI = {
       `公式: 总收入 ¥${Calculator.fmtMoney(r.income)} − 总成本 ¥${Calculator.fmtMoney(r.totalCost)}`;
 
     setText('rHeight', `${fmt(this.state.plant.flightHeight, 1)} 米`);
-    setText('rCycles', `${r.cycles} 次`);
+    // 充电次数主值直接带来源（手动/参考）；rCyclesSub 由作业时间渲染写"无等待"信息，勿占用
+    setText('rCycles', r.cycles > 0
+      ? `${r.cycles} 次${r.chargeSource === 'manual' ? '（手动）' : '（参考）'}`
+      : '—');
     // 电池台账提示：缓存本次充电次数（手动/参考），更新台账提示行
     this._lastCycles = r.cycles;
     this._lastChargeSource = r.chargeSource || 'estimate';
     this.updateBatteryCalcHint();
-    const cyclesSub = document.getElementById('rCyclesSub');
-    if (cyclesSub) {
-      cyclesSub.textContent = r.chargeSource === 'manual'
-        ? '（手动）'
-        : (r.cycles > 0 ? `（参考：总面积÷${fmt(Number(this.state.costs.cycleArea) || 2, 1)}亩）` : '');
-    }
     setText('rCostPerMu', `¥${Calculator.fmtMoney(r.costPerMu)}`);
     setText('rProfitPerMu', `¥${Calculator.fmtMoney(r.profitPerMu)}`);
     setText('rSprayIncome', `¥${Calculator.fmtMoney(r.income)}`);

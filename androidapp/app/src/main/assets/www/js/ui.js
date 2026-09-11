@@ -1832,17 +1832,14 @@ const UI = {
       `公式: 总收入 ¥${Calculator.fmtMoney(r.income)} − 总成本 ¥${Calculator.fmtMoney(r.totalCost)}`;
 
     setText('rHeight', `${fmt(this.state.plant.flightHeight, 1)} 米`);
-    setText('rCycles', `${r.cycles} 次`);
+    // 充电次数主值直接带来源（手动/参考）；rCyclesSub 由作业时间渲染写"无等待"信息，勿占用
+    setText('rCycles', r.cycles > 0
+      ? `${r.cycles} 次${r.chargeSource === 'manual' ? '（手动）' : '（参考）'}`
+      : '—');
     // 电池台账提示：缓存本次充电次数（手动/参考），更新台账提示行
     this._lastCycles = r.cycles;
     this._lastChargeSource = r.chargeSource || 'estimate';
     this.updateBatteryCalcHint();
-    const cyclesSub = document.getElementById('rCyclesSub');
-    if (cyclesSub) {
-      cyclesSub.textContent = r.chargeSource === 'manual'
-        ? '（手动）'
-        : (r.cycles > 0 ? `（参考：总面积÷${fmt(Number(this.state.costs.cycleArea) || 2, 1)}亩）` : '');
-    }
     setText('rCostPerMu', `¥${Calculator.fmtMoney(r.costPerMu)}`);
     setText('rProfitPerMu', `¥${Calculator.fmtMoney(r.profitPerMu)}`);
     setText('rSprayIncome', `¥${Calculator.fmtMoney(r.income)}`);
