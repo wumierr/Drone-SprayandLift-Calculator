@@ -89,6 +89,7 @@ const DEFAULT_TIMING = {
   loadTime: 1,                // 加药装载时间（min/循环）：给无人机药箱加药液的真实串行耗时
   baseMixTime: 10,            // 基础兑药时间（min/轮，与水量无关）
   batchCapacity: 1000,        // 单批兑水量（升/轮）：配药桶一批能兑的量，总水量超过则分多批
+  manualChargeCount: 0,       // 手动充电次数（总，次）：填了则循环数/每次充电油钱按此值；0=按 总面积÷单循环亩数 估算
   batteryCount: 2,            // 拥有电池数量（块）
   generatorChargeTime: 8,     // 发电机充电时间（min/块）
   threePhaseChargeTime: 5,    // 三相电充电时间（min/块）
@@ -137,7 +138,7 @@ const FIELD_DEFS = {
   // 循环成本
   batteryDepreciation: { label: '电池折旧', unit: '元/次充电', tip: '一组电池每充一次电分摊的折旧费（建议 5-10）', group: 'cycle', advanced: true, default: 7, step: 0.5, min: 0 },
   fuelExpense: { label: '本次油费', unit: '元', tip: '出发加满、回家加满的加油差价（含行车与发电机用油）。每次充电油钱=油费÷充电次数，自动算出', group: 'cycle', default: 150, step: 10, min: 0 },
-  cycleArea: { label: '单循环亩数', unit: '亩', tip: '一个循环（一组电池）能完成的作业亩数（建议 0.5-30）', group: 'cycle', advanced: true, default: 2, step: 0.1, min: 0.1, warnBelow: 0.1, warnAbove: 100 },
+  cycleArea: { label: '单循环亩数', unit: '亩', tip: '一个循环（一组电池充满）能完成的作业亩数（建议 0.5-30）。循环数=总面积÷此值；填了时间参数里的"充电次数（手动）"后此字段禁用', group: 'cycle', advanced: true, default: 2, step: 0.1, min: 0.1, warnBelow: 0.1, warnAbove: 100 },
 
   // 人工
   workers: { label: '作业人数', unit: '人', tip: '含飞手、配药、搬运等所有人员。填0可剔除人工成本', group: 'labor', default: 3, step: 1, integer: true, min: 0 },
@@ -165,6 +166,7 @@ const FIELD_DEFS = {
   flightSpeed: { label: '飞行速度', unit: 'm/s', tip: '无人机作业时的飞行速度，常见 2-5 m/s（建议 1-10）。填了飞行作业时间后此字段禁用', group: 'timing', advanced: true, default: 2.5, step: 0.1, minHard: 0.1, warnBelow: 0.5, warnAbove: 20 },
   lineSpacing: { label: '航线间距', unit: '米', tip: '相邻航线间距，影响喷幅覆盖。一般 1.5-3 米（建议 1-5）。填了飞行作业时间后此字段禁用', group: 'timing', advanced: true, default: 2, step: 0.1, minHard: 0.5, warnBelow: 0.5, warnAbove: 10 },
   manualFlightTime: { label: '飞行作业时间（手动）', unit: 'min', tip: '高优先级：手动输入飞行作业时间。填了则用此值计算（显示"准确时间"），不填或0则用飞行速度×航线间距估算（显示"参考时间"）', group: 'timing', default: 0, step: 0.5, min: 0, priority: 'high' },
+  manualChargeCount: { label: '充电次数（手动）', unit: '次', tip: '高优先级：手动输入本次任务总充电次数。填了则循环数与每次充电油钱按此值计算（显示"手动"），并禁用成本里的"单循环亩数"；不填或0则按 总面积÷单循环亩数 估算（显示"参考"）', group: 'timing', default: 0, step: 1, integer: true, min: 0, priority: 'high' },
   roundTripTime: { label: '来回升降时间', unit: 'min/循环', tip: '每次循环的起飞、降落、转场时间。一般 2-5 分钟', group: 'timing', default: 3, step: 0.5, min: 0, warnAbove: 30 },
   loadTime: { label: '加药装载时间', unit: 'min/循环', tip: '每趟飞行前给无人机药箱加药液的时间。真实串行耗时，不能被飞行抵消（充电可以）。一般 0.5-2 分钟', group: 'timing', default: 1, step: 0.5, min: 0, warnAbove: 15 },
   baseMixTime: { label: '基础兑药时间', unit: 'min/轮', tip: '每批兑水兑药搅拌的时间，与水量无关', group: 'timing', default: 10, step: 1, min: 0, warnAbove: 60 },
@@ -187,7 +189,7 @@ const FIELD_ORDER = {
   labor: ['workers', 'days', 'dailyWage', 'mealCost', 'accommodation', 'accommodationDays'],
   other: ['pesticidePrice', 'pesticideIncluded', 'droneDepreciation', 'maintenanceReserve', 'protectiveGear', 'cleaningCost', 'insurance', 'miscCost'],
   income: ['pricePerMu', 'subsidy'],
-  timing: ['manualFlightTime', 'flightSpeed', 'lineSpacing', 'roundTripTime', 'loadTime', 'baseMixTime', 'batchCapacity', 'batteryCount', 'generatorChargeTime', 'threePhaseChargeTime', 'chargeMode', 'chargeAfterWork']
+  timing: ['manualFlightTime', 'flightSpeed', 'lineSpacing', 'roundTripTime', 'loadTime', 'baseMixTime', 'batchCapacity', 'manualChargeCount', 'batteryCount', 'generatorChargeTime', 'threePhaseChargeTime', 'chargeMode', 'chargeAfterWork']
 };
 
 // 暴露到全局

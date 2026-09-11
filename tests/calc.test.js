@@ -176,7 +176,8 @@ test('打药统一计算（果树 10 亩 = 单卡）', () => {
   eq(r.pesticideRounded, 5, '7舍8入后 5');
   eq(r.water, 200, '实际水量 10×20');
   eq(r.totalTrips, 3, '趟数 ⌈200÷85⌉=3');
-  eq(r.cycles, 1, '电池循环 ⌈3÷6⌉=1');
+  eq(r.cycles, 5, '充电次数 ⌈10亩÷单循环2亩⌉=5（v4.5 起真正读 cycleArea）');
+  eq(r.chargeSource, 'estimate', '未手动填=参考估算');
   eq(r.pesticideIncluded, false, '默认不包药');
   eq(r.costBreakdown.pesticide, 0, '不包药药剂成本为 0');
   eq(r.stockStatus, 'none', '无库存');
@@ -354,7 +355,7 @@ test('多地块：独立组各自 ⌈组水量÷机载上限⌉，组级覆盖�
   eq(g3.trips, 2, '组3 ⌈100÷85⌉=2');
   eq(r.totalTrips, 13, '总趟数 3+8+2');
   ok(Math.abs(r.income - 875) < 0.01, `收入=${r.income} 应为 35×25`);
-  eq(r.cycles, 3, '电池循环改按趟数=⌈13÷6⌉');
+  eq(r.cycles, 18, '充电次数=⌈35亩÷单循环2亩⌉=18（面积口径，与趟数无关）');
 });
 
 test('作业组连片：同组合并趟数（30L+30L 连片 1 趟，分块则 2 趟）', () => {
@@ -643,6 +644,76 @@ test('savePreset 预设为扁平结构并含 timing 快照', () => {
   ok(p.haulField && typeof p.haulField.totalWeight === 'number', 'p.haulField.totalWeight 存在');
   ok(!('state' in p), '不存在 p.state（历史 bug 来源）');
   ok(p.timing && p.timing.batteryCount === 3, 'timing 已随预设保存');
+});
+
+/* ============================================================
+   v4.5：手动充电次数（总）—— 类似手动飞行时间的高优先级覆盖
+   ============================================================ */
+test('手动充电次数：填了则循环数按此值，chargeSource=manual，覆盖估算', () => {
+  const s = freshState();
+  s.timing.manualChargeCount = 11;
+  const r = C.computePlots(s);
+  eq(r.cycles, 11, '手动 11 次');
+  eq(r.chargeSource, 'manual', '来源=手动');
+  // 每次充电油钱 = 本次油费 ÷ 手动次数
+  ok(Math.abs(r.perChargeOil - s.costs.fuelExpense / 11) < 1e-9, `perChargeOil=${r.perChargeOil} 应为 油费÷11`);
+  // 单循环亩数此时不参与
+  s.costs.cycleArea = 999;
+  eq(C.computePlots(s).cycles, 11, 'cycleArea 再大也不影响手动值');
+});
+
+test('充电次数估算：⌈总面积÷单循环亩数⌉，无地块时为 0', () => {
+  const s = freshState();
+  s.field.plots = [
+    { id: 'a', name: 'A', area: 5, groupId: 1 },
+    { id: 'b', name: 'B', area: 8, groupId: 1 }
+  ];
+  s.costs.cycleArea = 3;
+  const r = C.computePlots(s);
+  eq(r.cycles, 5, '⌈13÷3⌉=5');
+  eq(r.chargeSource, 'estimate', '来源=参考');
+  const empty = freshState();
+  empty.field.plots = [];
+  eq(C.computePlots(empty).cycles, 0, '无地块=0');
+});
+
+test('旧存档无 manualChargeCount 字段 → 合并默认 0（估算口径不变）', () => {
+  const s = freshState();
+  delete s.timing.manualChargeCount;
+  const r = C.computePlots(s);
+  eq(r.chargeSource, 'estimate', '缺字段按估算');
+  eq(r.cycles, 5, '10亩÷2亩=5');
+});
+
+/* ============================================================
+   v4.5：电池循环台账存储（独立键 + 导出往返）
+   ============================================================ */
+const clearLS = () => { ctx.localStorage._d = {}; };
+
+test('电池台账：getBatteries 空默认 / saveBatteries 保存 / 清洗结构', () => {
+  clearLS();
+  const d = S.getBatteries();
+  eq(d, { list: [], records: [] }, '空默认');
+  S.saveBatteries({ list: [{ id: 'b1', name: '电池1', cycles: 210 }], records: [{ id: 'r1' }], junk: 1 });
+  const d2 = S.getBatteries();
+  eq(d2.list.length, 1, 'list 已存');
+  eq(d2.records.length, 1, 'records 已存');
+  ok(!('junk' in d2), '多余字段被清洗');
+  clearLS();
+});
+
+test('电池台账：文本导出含【电池循环台账】段，导入还原循环数（records 不迁移）', () => {
+  const s = freshState();
+  s.batteries = { list: [{ id: 'b1', name: '电池1', cycles: 210 }, { id: 'b2', name: '电池2', cycles: 33 }], records: [{ id: 'r1', total: 5 }] };
+  const txt = S.exportText(s, 'spray');
+  ok(txt.includes('【电池循环台账】'), '含台账段');
+  ok(txt.includes('循环=210'), '含循环数');
+  // 打药模式带台账不应被误判为吊运
+  const back = S.importText(txt);
+  eq(back.mode, 'spray', '台账段不触发吊运检测');
+  eq(back.batteries.list.length, 2, '两块电池');
+  eq(back.batteries.list[0].cycles, 210, '循环数往返一致');
+  eq(back.batteries.records.length, 0, 'records 不随配置迁移');
 });
 
 /* ---------- 汇总 ---------- */

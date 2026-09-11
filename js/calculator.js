@@ -396,10 +396,14 @@ const Calculator = {
     const mixTotalTime = mixRounds * baseMixTime;
     const firstMixTime = mixRounds > 0 ? baseMixTime : 0;
 
-    /* 电池循环成本：按趟数（每次落地装药=一次电池竞争事件）×电池折旧；
-       本次油费整笔计入；每次充电油钱 = 油费 ÷ 充电次数（发电机模式=充电油耗参考） */
-    const tripsPerCycle = Math.max(1, Number(costs.tripsPerBatteryCyclePlot) || 6);
-    result.cycles = Math.ceil(totalTrips / tripsPerCycle);
+    /* 充电次数（循环数）：手动优先（manualChargeCount>0）；
+       否则按 总面积÷单循环亩数 估算（一组电池充满能打的亩数）。
+       电池折旧 = 循环数 × 折旧单价；每次充电油钱 = 本次油费 ÷ 循环数 */
+    const cycleArea = Math.max(0.1, Number(costs.cycleArea) || 2);
+    const manualChargeCount = Math.max(0, Math.floor(Number(t.manualChargeCount) || 0));
+    result.chargeSource = manualChargeCount > 0 ? 'manual' : 'estimate';
+    result.cycles = manualChargeCount > 0 ? manualChargeCount
+      : (totalArea > 0 ? Math.ceil(totalArea / cycleArea) : 0);
     const batteryDepreciation = Math.max(0, Number(costs.batteryDepreciation) || 0);
     const fuelExpense = Math.max(0, Number(costs.fuelExpense) || 0);
     result.costBreakdown.cycle = result.cycles * batteryDepreciation;
