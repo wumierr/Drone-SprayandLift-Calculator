@@ -10,7 +10,8 @@ const Storage = {
     history: 'drone_spray_history_v2',
     theme: 'drone_spray_theme_v1',
     types: 'drone_spray_types_v1',
-    farmers: 'drone_spray_farmers_v1'
+    farmers: 'drone_spray_farmers_v1',
+    batteries: 'drone_spray_batteries_v1'
   },
 
   get(key, fallback) {
@@ -42,6 +43,21 @@ const Storage = {
   /* ---------- 农户档案库 ---------- */
   getFarmers() { return this.get(this.KEYS.farmers, null); },
   saveFarmers(farmers) { return this.set(this.KEYS.farmers, farmers); },
+
+  /* ---------- 电池循环台账（跨任务累计：list=电池列表 records=分配记录） ---------- */
+  getBatteries() {
+    const data = this.get(this.KEYS.batteries, null);
+    return {
+      list: Array.isArray(data && data.list) ? data.list : [],
+      records: Array.isArray(data && data.records) ? data.records : []
+    };
+  },
+  saveBatteries(data) {
+    return this.set(this.KEYS.batteries, {
+      list: Array.isArray(data && data.list) ? data.list : [],
+      records: Array.isArray(data && data.records) ? data.records : []
+    });
+  },
 
   getState() { return this.get(this.KEYS.state, null); },
   saveState(state) { this.set(this.KEYS.state, state); },
@@ -99,6 +115,16 @@ const Storage = {
       lines.push('【农户】');
       state.farmers.forEach(f => {
         lines.push(`  [农户] 名称=${f.name} | 电话=${f.phone || ''} | 每亩收费=${f.pricePerMu != null ? f.pricePerMu : 0} | 启用=${f.enabled === false ? '否' : '是'}${f.notes ? ` | 备注=${f.notes}` : ''}`);
+      });
+      lines.push('');
+    }
+
+    // 电池循环台账（跨任务累计资产；分配记录不导出，仅导出每块电池当前循环数）
+    const battList = state.batteries && Array.isArray(state.batteries.list) ? state.batteries.list : [];
+    if (battList.length) {
+      lines.push('【电池循环台账】');
+      battList.forEach(b => {
+        lines.push(`  [电池] 名称=${b.name || '电池'} | 循环=${Math.max(0, Math.round(Number(b.cycles) || 0))}`);
       });
       lines.push('');
     }
@@ -251,7 +277,8 @@ const Storage = {
       haulIncome: { ...state.haulIncome },
       workOrder: state.workOrder ? { ...state.workOrder } : null,
       types: Array.isArray(state.typeLibrary) ? state.typeLibrary.filter(t => !t.builtin) : [],
-      farmers: Array.isArray(state.farmers) ? state.farmers : []
+      farmers: Array.isArray(state.farmers) ? state.farmers : [],
+      batteries: state.batteries ? { list: state.batteries.list || [], records: [] } : null
     }, null, 2);
   },
 
@@ -290,7 +317,9 @@ const Storage = {
       haulIncome: Object.assign({}, window.DEFAULT_HAUL_INCOME, obj.haulIncome || {}),
       workOrder: Object.assign({}, woDefaults, obj.workOrder || {}),
       types: Array.isArray(obj.types) ? obj.types : [],
-      farmers: Array.isArray(obj.farmers) ? obj.farmers : []
+      farmers: Array.isArray(obj.farmers) ? obj.farmers : [],
+      batteries: obj.batteries && Array.isArray(obj.batteries.list)
+        ? { list: obj.batteries.list, records: [] } : null
     };
     return result;
   },
@@ -308,7 +337,8 @@ const Storage = {
       haulIncome: { ...window.DEFAULT_HAUL_INCOME },
       workOrder: { completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' },
       types: [],
-      farmers: []
+      farmers: [],
+      batteries: null
     };
 
     // 检测模式
@@ -421,6 +451,23 @@ const Storage = {
 
     const lines = text.split('\n');
     lines.forEach(line => {
+      // 电池台账行：  [电池] 名称=电池1 | 循环=210
+      if (line.includes('[电池]')) {
+        const kv = {};
+        line.replace(/^\s*\[电池\]\s*/, '').split('|').forEach(seg => {
+          const idx = seg.indexOf('=');
+          if (idx > -1) kv[seg.slice(0, idx).trim()] = seg.slice(idx + 1).trim();
+        });
+        if (kv['名称']) {
+          if (!result.batteries) result.batteries = { list: [], records: [] };
+          result.batteries.list.push({
+            id: 'batt_imp' + result.batteries.list.length + '_' + kv['名称'],
+            name: kv['名称'],
+            cycles: Math.max(0, Math.round(parseFloat(kv['循环']) || 0))
+          });
+        }
+        return;
+      }
       // 农户档案行：  [农户] 名称=xx | 电话=xx | 每亩收费=25 | 启用=是
       if (line.includes('[农户]')) {
         const kv = {};

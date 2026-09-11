@@ -54,7 +54,7 @@
     <div class="header-left">
       <span class="app-logo" aria-hidden="true">🚁</span>
       <h1><span class="t-full">无人机作业计算器</span><span class="t-short">打药计算器</span></h1>
-      <span class="app-version">v4.4</span>
+      <span class="app-version">v4.5</span>
     </div>
     <div class="header-actions">
       <button id="presetBtn" class="icon-btn" title="预设管理" aria-label="预设管理">📚</button>
@@ -168,7 +168,12 @@
         <div class="form-grid" id="timingAdvGrid"></div>
       </details>
     </section>
-  
+
+    <section class="panel battery-panel" id="batteryPanel" aria-label="电池循环台账">
+      <div class="panel-title"><span>🔋</span> 电池循环台账 <span class="hint">（每块电池的累计循环，跨任务保存）</span></div>
+      <div id="batteryLedger"><!-- JS 注入 --></div>
+    </section>
+
     <section class="panel result-panel" aria-label="计算结果">
       <div class="panel-title"><span>📊</span> 计算结果 <span class="mode-tag" id="modeTag">打药模式</span></div>
 

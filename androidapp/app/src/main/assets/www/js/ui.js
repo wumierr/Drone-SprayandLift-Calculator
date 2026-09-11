@@ -18,7 +18,9 @@ const UI = {
     // 作业工单覆盖层（已完成量/实际用药/备注）
     workOrder: { completedByPlot: {}, completedSingle: 0, actualSets: 0, note: '' },
     // 农户档案库（独立存储键，不随作业状态保存）
-    farmers: []
+    farmers: [],
+    // 电池循环台账（独立存储键，跨任务累计）
+    batteries: { list: [], records: [] }
   },
 
   /* ---------- 初始化 ---------- */
@@ -26,9 +28,12 @@ const UI = {
     this.loadTypes();
     this.loadState();
     this.loadFarmers();
+    this.loadBatteries();
     this.bindModeSwitcher();
     this.bindEvents();
+    this.bindBatteryLedger();
     this.applyMode(this.state.mode);
+    this.renderBatteryLedger();
     this.applyTheme(Storage.getTheme());
   },
 
@@ -186,6 +191,9 @@ const UI = {
     const timingParamPanel = document.getElementById('timingParamPanel');
     if (timingPanel) timingPanel.style.display = mode === 'spray' ? '' : 'none';
     if (timingParamPanel) timingParamPanel.style.display = mode === 'spray' ? '' : 'none';
+    // 电池循环台账：仅打药模式显示（充电次数来自打药计算）
+    const batteryPanel = document.getElementById('batteryPanel');
+    if (batteryPanel) batteryPanel.style.display = mode === 'spray' ? '' : 'none';
     // 重新渲染表单和结果
     this.renderAll();
     // 渲染完后立即计算一次，确保结果区域有值
@@ -555,7 +563,7 @@ const UI = {
           <button type="button" class="icon-btn plot-del" title="删除该地块">🗑</button>
         </div>
         <div class="plot-card-fields">
-          <div class="field">
+          <div class="field field-span">
             <label>亩数 <i class="tip" data-tip="该地块需要打药的面积">i</i></label>
             <div class="stepper" data-step="0.5">
               <button type="button" class="st-btn st-minus" aria-label="减少">−</button>
@@ -571,7 +579,7 @@ const UI = {
             <label>农户 <i class="tip" data-tip="该地块归属的农户，结算按农户分开；选择后带出档案默认单价">i</i></label>
             <select class="plot-farmer">${this.farmerOptions(p.farmerId)}</select>
           </div>
-          <div class="field">
+          <div class="field field-span">
             <label>该地块</label>
             <div class="plot-stat">${this.plotStatText(p)}</div>
           </div>
@@ -650,6 +658,327 @@ const UI = {
     this.renderPlotsEditor();
     this.compute();
     this.save();
+  },
+
+  /* ============================================================
+     ★★ 电池循环台账（跨任务累计资产）★★
+     - 每块电池：名称 + 基础循环次数（可独立微调/改名/删除）
+     - 本次任务：填任务循环总数 → 分配到每块电池 → 确认后累加
+     - 每次确认生成记录，可整笔回滚（恢复该笔涉及电池的原值）
+     - 独立存储键 drone_spray_batteries_v1，不随作业状态保存
+     ============================================================ */
+  loadBatteries() {
+    this.state.batteries = Storage.getBatteries();
+  },
+
+  saveBatteries() {
+    Storage.saveBatteries(this.state.batteries);
+  },
+
+  renderBatteryLedger() {
+    const wrap = document.getElementById('batteryLedger');
+    if (!wrap) return;
+    const data = this.state.batteries || { list: [], records: [] };
+    const esc = this.escapeHtml;
+    const fmt = Calculator.fmt.bind(Calculator);
+
+    let html = '';
+    // 计算结果带入提示（值由 renderSprayResults 更新，这里只渲染骨架）
+    html += `
+      <div class="batt-calc-hint">
+        <span id="battCalcHintText">本次计算充电次数：—</span>
+        <button type="button" class="btn btn-secondary btn-sm batt-pull">⟳ 带入</button>
+      </div>`;
+
+    // 电池列表
+    if (data.list.length === 0) {
+      const bc = Math.max(1, Math.round(Number(this.state.timing.batteryCount) || 1));
+      html += `
+        <div class="batt-empty">
+          还没有电池记录。可按时间参数里的"拥有电池数量（${bc}块）"一键创建，或手动添加。
+          <div class="batt-empty-actions">
+            <button type="button" class="btn btn-secondary btn-sm batt-quick-create">⚡ 创建 ${bc} 块电池</button>
+            <button type="button" class="btn btn-secondary btn-sm batt-add">＋ 手动添加</button>
+          </div>
+        </div>`;
+    } else {
+      html += '<div class="batt-list">';
+      data.list.forEach(b => {
+        html += `
+        <div class="batt-row" data-id="${b.id}">
+          <input type="text" class="batt-name" value="${esc(b.name || '电池')}" placeholder="电池名称">
+          <div class="stepper" data-step="1">
+            <button type="button" class="st-btn st-minus" aria-label="减少">−</button>
+            <div class="unit-suffix" data-unit="次"><input type="number" class="batt-cycles" step="1" min="0" value="${Math.max(0, Math.round(Number(b.cycles) || 0))}"></div>
+            <button type="button" class="st-btn st-plus" aria-label="增加">＋</button>
+          </div>
+          <button type="button" class="icon-btn batt-del" title="删除该电池">🗑</button>
+        </div>`;
+      });
+      html += '</div>';
+      html += '<button type="button" class="btn btn-secondary btn-sm batt-add" style="margin-top:8px;">＋ 添加电池</button>';
+    }
+
+    // 任务分配区（有电池才显示）
+    if (data.list.length > 0) {
+      const total = this._battTaskTotal != null ? this._battTaskTotal : '';
+      html += `
+      <div class="batt-alloc">
+        <div class="batt-alloc-head">
+          <span class="batt-alloc-title">📥 本次任务循环分配</span>
+          <span class="batt-alloc-total">
+            <input type="text" id="battTaskLabel" placeholder="备注：如 张三果园30亩" value="${esc(this._battTaskLabel || '')}">
+            <label>总数 <input type="number" id="battTaskTotal" step="1" min="0" value="${total}" placeholder="0"> 次</label>
+          </span>
+        </div>
+        <div class="batt-alloc-rows">`;
+      data.list.forEach(b => {
+        const av = this._battAlloc && this._battAlloc[b.id] != null ? this._battAlloc[b.id] : '';
+        html += `
+          <div class="batt-alloc-row">
+            <span class="batt-alloc-name">${esc(b.name || '电池')}<small class="batt-alloc-base">${fmt(Number(b.cycles) || 0)}次</small></span>
+            <input type="number" class="batt-alloc-input" data-id="${b.id}" step="1" min="0" value="${av}" placeholder="0">
+          </div>`;
+      });
+      html += `
+        </div>
+        <div class="batt-alloc-foot">
+          <span id="battAllocRest" class="batt-alloc-rest"></span>
+          <button type="button" class="btn btn-secondary btn-sm batt-fill">平均分</button>
+          <button type="button" class="btn btn-primary btn-sm batt-apply">✓ 确认加到电池</button>
+        </div>
+      </div>`;
+    }
+
+    // 操作记录（可回滚）
+    if (data.records.length > 0) {
+      html += '<div class="batt-records"><div class="batt-records-title">🧾 分配记录（回滚只恢复该笔涉及的电池）</div>';
+      data.records.forEach(rec => {
+        const when = new Date(rec.ts).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const names = data.list;
+        const detail = Object.entries(rec.deltas || {})
+          .map(([id, d]) => {
+            const b = names.find(x => x.id === id);
+            return `${esc(b ? b.name : '电池')} +${d}`;
+          }).join(' · ');
+        html += `
+        <div class="batt-record">
+          <span class="batt-record-main"><b>${when}</b>${rec.label ? `（${esc(rec.label)}）` : ''} 共 ${rec.total} 次：${detail}</span>
+          <button type="button" class="btn btn-secondary btn-sm batt-rollback" data-rec="${rec.id}">↩ 回滚</button>
+        </div>`;
+      });
+      html += '</div>';
+    }
+
+    wrap.innerHTML = html;
+    this.updateBattAllocRest();
+    this.updateBatteryCalcHint();
+  },
+
+  /* 计算结果充电次数 → 台账提示行（由 renderSprayResults 调用，不重绘台账避免丢焦点） */
+  updateBatteryCalcHint() {
+    const el = document.getElementById('battCalcHintText');
+    if (!el) return;
+    const c = this._lastCycles;
+    el.textContent = c != null && c > 0
+      ? `本次计算充电次数：${c} 次${this._lastChargeSource === 'manual' ? '（手动）' : '（参考）'}`
+      : '本次计算充电次数：—（先填写地块与参数）';
+  },
+
+  /* 未分配余量提示 */
+  updateBattAllocRest() {
+    const restEl = document.getElementById('battAllocRest');
+    if (!restEl) return;
+    const total = Math.max(0, Math.floor(Number((this._battTaskTotal != null ? this._battTaskTotal : 0)) || 0));
+    let sum = 0;
+    (this.state.batteries.list || []).forEach(b => {
+      sum += Math.max(0, Math.floor(Number(this._battAlloc && this._battAlloc[b.id]) || 0));
+    });
+    const rest = total - sum;
+    restEl.textContent = rest === 0
+      ? (total > 0 ? '✓ 已全部分配' : '未分配')
+      : (rest > 0 ? `还有 ${rest} 次未分配` : `超出 ${-rest} 次`);
+    restEl.dataset.warn = rest === 0 ? '' : 'true';
+  },
+
+  bindBatteryLedger() {
+    const wrap = document.getElementById('batteryLedger');
+    if (!wrap) return;
+    wrap.addEventListener('click', e => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      if (btn.classList.contains('batt-add')) { this.battAdd(1); return; }
+      if (btn.classList.contains('batt-quick-create')) {
+        const n = Math.max(1, Math.round(Number(this.state.timing.batteryCount) || 1));
+        this.battAdd(n);
+        return;
+      }
+      if (btn.classList.contains('batt-pull')) {
+        const c = this._lastCycles;
+        if (!c || c <= 0) { this.toast('还没有计算结果，先填写地块与参数', 'warn'); return; }
+        this._battTaskTotal = Math.round(c);
+        const inp = document.getElementById('battTaskTotal');
+        if (inp) inp.value = this._battTaskTotal;
+        this.updateBattAllocRest();
+        return;
+      }
+      if (btn.classList.contains('batt-fill')) { this.battFillEven(); return; }
+      if (btn.classList.contains('batt-apply')) { this.battApplyAllocation(); return; }
+      if (btn.classList.contains('batt-del')) {
+        const row = btn.closest('.batt-row');
+        const id = row && row.dataset.id;
+        const b = this.state.batteries.list.find(x => x.id === id);
+        if (!b) return;
+        this.confirmDialog(`删除「${b.name}」？其循环数将从台账移除（不影响其他电池）。`, () => {
+          this.state.batteries.list = this.state.batteries.list.filter(x => x.id !== id);
+          if (this._battAlloc) delete this._battAlloc[id];
+          this.saveBatteries();
+          this.renderBatteryLedger();
+          this.toast(`已删除 ${b.name}`, 'success');
+        });
+        return;
+      }
+      if (btn.classList.contains('batt-rollback')) {
+        this.battRollback(btn.dataset.rec);
+        return;
+      }
+    });
+    // 名称/循环数直接编辑（手动细微调整）
+    wrap.addEventListener('change', e => {
+      const t = e.target;
+      if (t.classList.contains('batt-name')) {
+        const row = t.closest('.batt-row');
+        const b = this.state.batteries.list.find(x => x.id === (row && row.dataset.id));
+        if (b) { b.name = t.value.trim() || '电池'; this.saveBatteries(); }
+        return;
+      }
+      if (t.classList.contains('batt-cycles')) {
+        const row = t.closest('.batt-row');
+        const b = this.state.batteries.list.find(x => x.id === (row && row.dataset.id));
+        if (b) {
+          b.cycles = Math.max(0, Math.round(parseFloat(t.value) || 0));
+          t.value = b.cycles;
+          this.saveBatteries();
+        }
+        return;
+      }
+      if (t.id === 'battTaskTotal' || t.id === 'battTaskLabel' || t.classList.contains('batt-alloc-input')) {
+        this._battTaskTotal = parseFloat(document.getElementById('battTaskTotal')?.value) || 0;
+        this._battTaskLabel = (document.getElementById('battTaskLabel')?.value || '').trim();
+        this.state.batteries.list.forEach(b => {
+          const el = wrap.querySelector(`.batt-alloc-input[data-id="${b.id}"]`);
+          if (el) {
+            this._battAlloc = this._battAlloc || {};
+            this._battAlloc[b.id] = Math.max(0, Math.floor(parseFloat(el.value) || 0));
+          }
+        });
+        this.updateBattAllocRest();
+      }
+    });
+    // 分配输入实时刷新余量
+    wrap.addEventListener('input', e => {
+      if (e.target.classList.contains('batt-alloc-input')) {
+        this._battAlloc = this._battAlloc || {};
+        this._battAlloc[e.target.dataset.id] = Math.max(0, Math.floor(parseFloat(e.target.value) || 0));
+        this.updateBattAllocRest();
+      }
+      if (e.target.id === 'battTaskTotal') {
+        this._battTaskTotal = parseFloat(e.target.value) || 0;
+        this.updateBattAllocRest();
+      }
+      if (e.target.id === 'battTaskLabel') {
+        this._battTaskLabel = e.target.value.trim();
+      }
+    });
+  },
+
+  battAdd(n) {
+    for (let i = 0; i < n; i++) {
+      const no = this.state.batteries.list.length + 1;
+      this.state.batteries.list.push({
+        id: 'batt' + Date.now().toString(36) + '_' + no,
+        name: `电池${no}`,
+        cycles: 0
+      });
+    }
+    this.saveBatteries();
+    this.renderBatteryLedger();
+  },
+
+  /* 平均分：整除直接分，余数从第一块起每块 +1 */
+  battFillEven() {
+    const list = this.state.batteries.list;
+    const total = Math.max(0, Math.floor(Number(this._battTaskTotal) || 0));
+    if (!list.length || total <= 0) { this.toast('先填任务循环总数', 'warn'); return; }
+    this._battAlloc = this._battAlloc || {};
+    const base = Math.floor(total / list.length);
+    let rest = total - base * list.length;
+    list.forEach(b => {
+      const d = base + (rest > 0 ? 1 : 0);
+      if (rest > 0) rest--;
+      this._battAlloc[b.id] = d;
+      const el = document.querySelector(`#batteryLedger .batt-alloc-input[data-id="${b.id}"]`);
+      if (el) el.value = d;
+    });
+    this.updateBattAllocRest();
+  },
+
+  /* 确认分配：校验恰好分完 → 累加到每块电池 → 写记录 */
+  battApplyAllocation() {
+    const list = this.state.batteries.list;
+    const total = Math.max(0, Math.floor(Number(this._battTaskTotal) || 0));
+    if (!list.length) { this.toast('请先添加电池', 'warn'); return; }
+    if (total <= 0) { this.toast('请填本次任务循环总数', 'warn'); return; }
+    this._battAlloc = this._battAlloc || {};
+    const deltas = {};
+    let sum = 0;
+    list.forEach(b => {
+      const d = Math.max(0, Math.floor(Number(this._battAlloc[b.id]) || 0));
+      if (d > 0) deltas[b.id] = d;
+      sum += d;
+    });
+    if (sum !== total) {
+      this.toast(sum < total ? `还有 ${total - sum} 次未分配，分完才能确认` : `分配超出总数 ${sum - total} 次，请调整`, 'warn');
+      return;
+    }
+    const prev = {};
+    Object.keys(deltas).forEach(id => {
+      const b = list.find(x => x.id === id);
+      prev[id] = b.cycles;
+      b.cycles += deltas[id];
+    });
+    this.state.batteries.records.unshift({
+      id: 'rec' + Date.now().toString(36),
+      ts: new Date().toISOString(),
+      label: (this._battTaskLabel || '').trim(),
+      total: total,
+      deltas: deltas,
+      prev: prev
+    });
+    if (this.state.batteries.records.length > 30) this.state.batteries.records.length = 30;
+    this.saveBatteries();
+    this._battAlloc = {};
+    this._battTaskTotal = 0;
+    this.renderBatteryLedger();
+    this.toast(`已把 ${total} 次循环加到 ${Object.keys(deltas).length} 块电池 🔋`, 'success');
+  },
+
+  /* 回滚：恢复该笔记录涉及的电池到分配前数值，并移除该记录 */
+  battRollback(recId) {
+    const recs = this.state.batteries.records;
+    const idx = recs.findIndex(r => r.id === recId);
+    if (idx < 0) return;
+    const rec = recs[idx];
+    this.confirmDialog(`回滚「${new Date(rec.ts).toLocaleString('zh-CN')}」的分配（共 ${rec.total} 次）？涉及电池将恢复到分配前的循环数。`, () => {
+      Object.entries(rec.prev || {}).forEach(([id, v]) => {
+        const b = this.state.batteries.list.find(x => x.id === id);
+        if (b) b.cycles = Math.max(0, Math.round(Number(v) || 0));
+      });
+      recs.splice(idx, 1);
+      this.saveBatteries();
+      this.renderBatteryLedger();
+      this.toast('已回滚该笔分配 ↩', 'success');
+    });
   },
 
   /* 地块明细表（结果区） */
@@ -1161,6 +1490,8 @@ const UI = {
     });
     // 飞行速度/航线间距禁用逻辑（manualFlightTime > 0 时禁用）
     this.updateFlightFieldsDisabled();
+    // 单循环亩数禁用逻辑（manualChargeCount > 0 时禁用）
+    this.updateChargeFieldsDisabled();
   },
 
   /* 飞行速度/航线间距禁用状态更新 */
@@ -1174,6 +1505,17 @@ const UI = {
         el.readOnly = disabled;
       }
     });
+  },
+
+  /* 单循环亩数禁用状态更新（manualChargeCount > 0 时禁用，充电次数已手动指定） */
+  updateChargeFieldsDisabled() {
+    const manualChargeCount = Number(this.state.timing.manualChargeCount) || 0;
+    const disabled = manualChargeCount > 0;
+    const el = document.getElementById('inp-cycleArea');
+    if (el) {
+      el.dataset.disabled = disabled ? 'true' : '';
+      el.readOnly = disabled;
+    }
   },
 
   /* ============================================================
@@ -1324,6 +1666,10 @@ const UI = {
     if (key === 'manualFlightTime') {
       this.updateFlightFieldsDisabled();
     }
+    // 特殊处理：manualChargeCount 实时更新单循环亩数禁用状态（但不计算）
+    if (key === 'manualChargeCount') {
+      this.updateChargeFieldsDisabled();
+    }
   },
 
   /* 更新 state 的通用方法 */
@@ -1409,6 +1755,10 @@ const UI = {
     if (key === 'manualFlightTime') {
       this.updateFlightFieldsDisabled();
     }
+    // 特殊处理：manualChargeCount 变化时更新单循环亩数禁用状态
+    if (key === 'manualChargeCount') {
+      this.updateChargeFieldsDisabled();
+    }
     this.compute();
     this.save();
   },
@@ -1483,6 +1833,16 @@ const UI = {
 
     setText('rHeight', `${fmt(this.state.plant.flightHeight, 1)} 米`);
     setText('rCycles', `${r.cycles} 次`);
+    // 电池台账提示：缓存本次充电次数（手动/参考），更新台账提示行
+    this._lastCycles = r.cycles;
+    this._lastChargeSource = r.chargeSource || 'estimate';
+    this.updateBatteryCalcHint();
+    const cyclesSub = document.getElementById('rCyclesSub');
+    if (cyclesSub) {
+      cyclesSub.textContent = r.chargeSource === 'manual'
+        ? '（手动）'
+        : (r.cycles > 0 ? `（参考：总面积÷${fmt(Number(this.state.costs.cycleArea) || 2, 1)}亩）` : '');
+    }
     setText('rCostPerMu', `¥${Calculator.fmtMoney(r.costPerMu)}`);
     setText('rProfitPerMu', `¥${Calculator.fmtMoney(r.profitPerMu)}`);
     setText('rSprayIncome', `¥${Calculator.fmtMoney(r.income)}`);
@@ -2329,6 +2689,12 @@ const UI = {
       }
     });
     if ((imported.farmers || []).length) this.saveFarmers();
+    // 电池台账：导入即整体替换（循环数是累计资产，以配置为准；分配记录不随配置迁移）
+    if (imported.batteries && Array.isArray(imported.batteries.list) && imported.batteries.list.length) {
+      this.state.batteries = { list: imported.batteries.list, records: [] };
+      this.saveBatteries();
+      this.renderBatteryLedger();
+    }
     (this.state.field.plots || []).forEach(pl => {
       if (!pl.farmerId || !this.getFarmer(pl.farmerId)) pl.farmerId = 'farmer_default';
     });

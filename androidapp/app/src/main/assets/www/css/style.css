@@ -1592,6 +1592,10 @@ html, body {
 
 @media (max-width: 500px) {
   .plot-card-fields { grid-template-columns: 1fr 1fr; }
+  /* 窄屏：亩数（含 ± 步进）与统计行占满整行，避免数字被单位留白裁剪 */
+  .plot-card-fields .field-span { grid-column: 1 / -1; }
+  .field .unit-suffix input { padding-right: 48px; }
+  .field .unit-suffix::after { font-size: 10px; padding: 2px 4px; max-width: 44px; }
 }
 
 /* 用药类型管理按钮行 */
@@ -1710,3 +1714,70 @@ html, body {
 .dose-val { font-size: 13px; color: var(--text-primary); font-family: var(--font-mono); }
 .dose-val b { color: var(--accent); font-size: 14px; }
 .dose-dim { color: var(--text-muted); font-family: var(--font-sans); }
+
+
+/* ============ 电池循环台账 ============ */
+.batt-calc-hint {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: var(--accent-soft); border-radius: 10px;
+  padding: 8px 12px; font-size: 13px; color: var(--text-primary);
+  margin-bottom: 10px;
+}
+.batt-empty { font-size: 13px; color: var(--text-secondary); padding: 10px 2px; }
+.batt-empty-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.batt-list { display: flex; flex-direction: column; gap: 8px; }
+.batt-row { display: flex; align-items: center; gap: 8px; }
+.batt-row .batt-name {
+  flex: 1 1 96px; min-width: 0; min-height: 40px;
+  padding: 8px 10px; font-size: 14px;
+  border: 1px solid var(--input-border); border-radius: 8px;
+  background: var(--panel-bg); color: var(--text-primary);
+}
+.batt-row .stepper { flex: 1 1 150px; }
+.batt-row .st-btn { min-height: 40px; }
+.batt-alloc {
+  margin-top: 12px;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.batt-alloc-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.batt-alloc-title { font-size: 13px; font-weight: 700; color: var(--accent); }
+.batt-alloc-total { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.batt-alloc-total #battTaskLabel {
+  height: 32px; width: 150px; padding: 2px 8px; font-size: 12px;
+  border: 1px solid var(--input-border); border-radius: 6px;
+  background: var(--panel-bg); color: var(--text-primary);
+}
+.batt-alloc-total label { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-secondary); }
+.batt-alloc-total input[type="number"] {
+  width: 76px; height: 32px; padding: 2px 6px;
+  border: 1px solid var(--input-border); border-radius: 6px;
+  background: var(--panel-bg); color: var(--text-primary);
+}
+.batt-alloc-rows { display: flex; flex-direction: column; gap: 6px; }
+.batt-alloc-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: var(--panel-bg); border-radius: 8px; padding: 5px 9px;
+}
+.batt-alloc-name { font-size: 13px; color: var(--text-primary); display: inline-flex; align-items: baseline; gap: 6px; min-width: 0; }
+.batt-alloc-base { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+.batt-alloc-input {
+  width: 84px; height: 34px; padding: 4px 8px; text-align: right;
+  border: 1px solid var(--input-border); border-radius: 8px;
+  background: var(--panel-bg); color: var(--text-primary);
+}
+.batt-alloc-foot { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.batt-alloc-foot .batt-apply { margin-left: auto; }
+.batt-alloc-rest { font-size: 12px; color: var(--text-muted); flex: 1; min-width: 0; }
+.batt-alloc-rest[data-warn="true"] { color: #ef6c00; font-weight: 600; }
+.batt-records { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.batt-records-title { font-size: 12px; color: var(--text-muted); }
+.batt-record {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: var(--input-bg); border-radius: 8px; padding: 7px 10px;
+  font-size: 12px; color: var(--text-secondary); flex-wrap: wrap;
+}
+.batt-record-main { flex: 1; min-width: 0; }
+.batt-record-main b { color: var(--text-primary); font-weight: 600; }
