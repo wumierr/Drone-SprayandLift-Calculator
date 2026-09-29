@@ -11,7 +11,7 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-REPO_DEFAULT="https://github.com/wumierr/Drone-SprayandLift-Calculator.git"
+REPO_DEFAULT="https://github.com/wumierr/spraybook.git"
 MSG="${1:-}"
 FORCE=0
 for a in "$@"; do [ "$a" = "--force" ] && FORCE=1; done
@@ -36,7 +36,7 @@ proxy_guard
 
 command -v git >/dev/null 2>&1 || { err "未安装 git"; exit 1; }
 
-[ -d .git ] || { note "初始化 git 仓库"; git init -q; git branch -M main; }
+[ -d .git ] || { note "初始化 git 仓库"; git init -q; git branch -M calculator-only; }
 
 if ! git remote get-url origin >/dev/null 2>&1; then
   note "添加远程 origin -> $REPO_DEFAULT"

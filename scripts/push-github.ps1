@@ -31,7 +31,7 @@ param(
 . (Join-Path $PSScriptRoot '_lib.ps1')
 Set-Location $ProjectRoot
 
-$DefaultRepo = 'https://github.com/wumierr/Drone-SprayandLift-Calculator.git'
+$DefaultRepo = 'https://github.com/wumierr/spraybook.git'
 
 Write-Step '推送到 GitHub（本地优先）'
 
@@ -103,7 +103,7 @@ $remoteHead = git ls-remote --heads origin $Branch 2>$null
 if ($LASTEXITCODE -ne 0) {
     Write-Fail '无法连接远程仓库'
     Write-Tip '本机对 GitHub 的访问受限：确认代理已关闭 / 网络可达 / 凭据有效'
-    Write-Tip 'SSH 方式可试: git remote set-url origin git@github.com:wumierr/Drone-SprayandLift-Calculator.git'
+    Write-Tip 'SSH 方式可试: git remote set-url origin git@github.com:wumierr/spraybook.git'
     Wait-Exit 1
 }
 

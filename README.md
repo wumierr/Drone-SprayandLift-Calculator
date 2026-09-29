@@ -1,5 +1,8 @@
 # 🚁 无人机打药计算器
 
+> ⚠️ **本项目已迁移至 [spraybook](https://github.com/wumierr/spraybook)**（植保飞防一体化：计算器 + 记账系统）。
+> 本仓库自 v4.5（ae8f964）起归档，仅保留"纯计算器功能剥离版"；计算器的后续更新请改 `spraybook` 仓库的 `calculator-only` 分支（本地 `_github.bat` 已指向该处），**不要直接改本仓库**。
+
 > 一款专为植保无人机作业设计的 **药量 / 水量 / 成本 / 粗略利润** 计算器。
 > 纯静态 HTML+CSS+JS，无需后端、无需构建，**双击 `index.html` 即可在 Win10 本地打开**，亦可打包为安卓 WebView APK。
 

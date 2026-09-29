@@ -2,11 +2,11 @@
 chcp 65001 >nul 2>&1
 title Push to GitHub
 
-set REPO=https://github.com/wumierr/Drone-SprayandLift-Calculator.git
+set REPO=https://github.com/wumierr/spraybook.git
 
 if not exist .git (
     git init
-    git branch -M main
+    git branch -M calculator-only
 )
 git remote get-url origin >nul 2>&1
 if %errorlevel% neq 0 (
@@ -35,9 +35,9 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: ========== 关键修改：添加 -X ours 自动使用本地版本解决冲突 ==========
+:: Push to calculator-only branch of spraybook（本仓库已归档，计算器后续更新推 spraybook 的功能剥离分支）
 echo Syncing with remote...
-git pull origin main --rebase --autostash -X ours
+git pull origin calculator-only --rebase --autostash -X ours
 
 if %errorlevel% neq 0 (
     echo Pull failed — check for conflicts.
@@ -45,8 +45,8 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: Push to main
-git push -u origin main
+:: Push to calculator-only
+git push -u origin calculator-only
 
 if %errorlevel% equ 0 (
     echo.
